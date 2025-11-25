@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MTG Printable Label Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap 5.3.3 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <!-- Bootstrap Icons (optional but recommended for icons) -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+  />
+
+  <style>
+    /* Symbol images: 20x20, with a small right margin */
+    .set-item img {
+      width: 20px;
+      height: 20px;
+      margin-right: 4px;
+    }
+
+    /* Make navbar sticky (always visible) */
+    .navbar {
+      z-index: 1030; /* ensure it stays above other elements */
+    }
+
+    /* Hide the clear button by default; shown via JS when needed */
+    #clear-search {
+      display: none;
+    }
+
+    /* Basic accordion item spacing */
+    .accordion-item {
+      border: 1px solid #ddd;
+      border-radius: 0.25rem;
+      margin-bottom: 8px;
+    }
+
+    /* Truncate long set names on one line with ellipsis */
+    .truncate-label {
+      display: inline-block;    /* so we can constrain width */
+      max-width: 280px;         /* adjust as desired */
+      white-space: nowrap;      /* prevent wrapping */
+      overflow: hidden;         /* clip overflow */
+      text-overflow: ellipsis;  /* show "..." when truncated */
+      vertical-align: middle;   /* align with the checkbox icon */
+    }
+
+    /* Group toggle button styling */
+    .toggle-group {
+      min-width: 140px;
+    }
+
+    /* Global toggle button styling */
+    #toggle-select-all-global {
+      min-width: 140px;
+    }
+
+    /* Align checkbox + label vertically and add spacing */
+    .set-item {
+      display: flex;
+      align-items: center;
+    }
+    .set-item .form-check-input {
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sticky Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold" href="#">
+        MTG Labels
+      </a>
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#navbarSupportedContent"
+        aria-controls="navbarSupportedContent"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <!-- Left-aligned items: Generate PDF & Template dropdown -->
+        <div class="d-flex align-items-center ms-3">
+          <!-- Generate PDF button (submits #sets-form) -->
+          <button
+            type="submit"
+            class="btn btn-primary me-3"
+            form="sets-form"
+          >
+            <i class="bi bi-file-earmark-pdf"></i> Generate PDF
+          </button>
+
+          <!-- Template Dropdown (placeholder) -->
+          <div class="dropdown">
+            <button
+              class="btn btn-secondary dropdown-toggle"
+              type="button"
+              id="templateDropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Select Template
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="templateDropdown">
+              <li><a class="dropdown-item" href="#">Template 1</a></li>
+              <li><a class="dropdown-item" href="#">Template 2</a></li>
+              <li><a class="dropdown-item" href="#">Template 3</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Right-aligned items: Global Select All & Search -->
+        <div class="ms-auto d-flex align-items-center">
+          <!-- Global Select All / Deselect All -->
+          <button
+            type="button"
+            class="btn btn-secondary me-3"
+            id="toggle-select-all-global"
+          >
+            <i class="bi bi-check-all"></i> Select All
+          </button>
+
+          <!-- Search -->
+          <div class="input-group me-3">
+            <span class="input-group-text" id="search-icon">
+              <i class="bi bi-search"></i>
+            </span>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Search sets..."
+              aria-label="Search sets"
+              id="search"
+            />
+            <button
+              class="btn btn-outline-secondary"
+              type="button"
+              id="clear-search"
+              aria-label="Clear search"
+            >
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <h1 class="mb-4 text-center">MTG Printable Label Generator</h1>
+
+    <!-- Accordion for grouped sets -->
+    <form action="/generate-pdf" method="post" id="sets-form">
+      {% for group, sets in grouped_sets.items() %}
+      <div class="accordion" id="accordion-{{ group }}">
+        <div class="accordion-item">
+          <!--
+            A parent container for the entire heading row (full width).
+            We include the heading + "Select Group" button in one line.
+          -->
+          <div
+            class="d-flex justify-content-between align-items-center w-100 px-2 py-2"
+            id="heading-{{ group }}"
+          >
+            <!-- The heading itself -->
+            <h2 class="accordion-header mb-0 flex-grow-1">
+              <!-- The standard Bootstrap accordion button -->
+              <button
+                class="accordion-button collapsed text-start w-100"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse-{{ group }}"
+                aria-expanded="false"
+                aria-controls="collapse-{{ group }}"
+              >
+                {{ group }}
+              </button>
+            </h2>
+
+            <!-- Per-group toggle button (Select Group / Deselect Group) -->
+            <button
+              type="button"
+              class="btn btn-sm btn-secondary toggle-group"
+              data-group="#collapse-{{ group }}"
+            >
+              <i class="bi bi-check-all"></i> Select Group
+            </button>
+          </div>
+
+          <!-- Collapsible content -->
+          <div
+            id="collapse-{{ group }}"
+            class="accordion-collapse collapse"
+            aria-labelledby="heading-{{ group }}"
+            data-bs-parent="#accordion-{{ group }}"
+          >
+            <div class="accordion-body">
+              <!-- Slightly tighter spacing between columns (g-1) -->
+              <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-1">
+                {% for set in sets %}
+                <div class="col">
+                  <div class="form-check set-item">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      name="set_ids"
+                      value="{{ set.id }}"
+                      id="set-{{ set.id }}"
+                    />
+                    <!--
+                      Symbol on the LEFT, then the set name,
+                      with full name in the "title" attribute for hover.
+                    -->
+                    <label
+                      class="form-check-label truncate-label"
+                      for="set-{{ set.id }}"
+                      title="{{ set.name }}"
+                    >
+                      <img src="{{ set.icon_svg_uri }}" alt="symbol" />
+                      {{ set.name }}
+                    </label>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </form>
+  </div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const searchInput = document.getElementById("search");
+      const clearButton = document.getElementById("clear-search");
+      const globalToggleBtn = document.getElementById("toggle-select-all-global");
+
+      // ========== GLOBAL SELECT ALL/DESELECT ALL ==========
+      function updateGlobalToggleLabel() {
+        const allCbs = document.querySelectorAll('input[type="checkbox"]');
+        const anyUnchecked = Array.from(allCbs).some(cb => !cb.checked);
+        globalToggleBtn.innerHTML = anyUnchecked
+          ? '<i class="bi bi-check-all"></i> Select All'
+          : '<i class="bi bi-x-circle"></i> Deselect All';
+      }
+
+      globalToggleBtn.addEventListener("click", function () {
+        const allCbs = document.querySelectorAll('input[type="checkbox"]');
+        const anyUnchecked = Array.from(allCbs).some(cb => !cb.checked);
+        allCbs.forEach(cb => (cb.checked = anyUnchecked));
+        saveGlobalSelections();
+        updateGlobalToggleLabel();
+        // Also update each group's button text
+        document.querySelectorAll(".toggle-group").forEach(btn => {
+          const groupSelector = btn.getAttribute("data-group");
+          updateGroupToggleLabel(groupSelector, btn);
+        });
+      });
+
+      // ========== GROUP TOGGLE (SELECT GROUP / DESELECT GROUP) ==========
+      document.querySelectorAll(".toggle-group").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const groupSelector = this.getAttribute("data-group");
+          const checkboxes = document.querySelectorAll(groupSelector + " input[type='checkbox']");
+          const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+          checkboxes.forEach(cb => (cb.checked = !allChecked));
+          saveGlobalSelections();
+          updateGlobalToggleLabel();
+          updateGroupToggleLabel(groupSelector, this);
+        });
+      });
+
+      function updateGroupToggleLabel(groupSelector, button) {
+        const checkboxes = document.querySelectorAll(groupSelector + " input[type='checkbox']");
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        button.innerHTML = allChecked
+          ? '<i class="bi bi-x-circle"></i> Deselect Group'
+          : '<i class="bi bi-check-all"></i> Select Group';
+      }
+
+      // ========== LOCAL STORAGE PERSISTENCE ==========
+      function saveGlobalSelections() {
+        const selected = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+          .map(cb => cb.value);
+        localStorage.setItem("selectedSets", JSON.stringify(selected));
+      }
+
+      function loadGlobalSelections() {
+        const stored = localStorage.getItem("selectedSets");
+        if (stored) {
+          const selected = JSON.parse(stored);
+          document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+            cb.checked = selected.includes(cb.value);
+          });
+        }
+      }
+
+      // ========== EXPAND GROUPS WITH SELECTED SETS ON LOAD ==========
+      function expandGroupsWithSelectedSets() {
+        const selected = JSON.parse(localStorage.getItem("selectedSets") || "[]");
+        document.querySelectorAll(".accordion").forEach(function (accordion) {
+          const collapseElement = accordion.querySelector(".accordion-collapse");
+          let groupHasSelected = false;
+          accordion.querySelectorAll("input[type='checkbox']").forEach(cb => {
+            if (selected.includes(cb.value)) groupHasSelected = true;
+          });
+          if (groupHasSelected) {
+            let collapseInstance = bootstrap.Collapse.getInstance(collapseElement);
+            if (!collapseInstance) {
+              collapseInstance = new bootstrap.Collapse(collapseElement, { toggle: false });
+            }
+            collapseInstance.show();
+          }
+          // Update the group toggle button text
+          const toggleBtn = accordion.querySelector(".toggle-group");
+          if (toggleBtn && collapseElement) {
+            updateGroupToggleLabel("#" + collapseElement.id, toggleBtn);
+          }
+        });
+      }
+
+      // ========== CHECKBOX CHANGE HANDLER ==========
+      document.querySelectorAll("input[type='checkbox']").forEach(function (cb) {
+        cb.addEventListener("change", function () {
+          saveGlobalSelections();
+          updateGlobalToggleLabel();
+          const parentAccordion = cb.closest(".accordion");
+          if (parentAccordion) {
+            const collapseElement = parentAccordion.querySelector(".accordion-collapse");
+            const toggleBtn = parentAccordion.querySelector(".toggle-group");
+            if (collapseElement && toggleBtn) {
+              updateGroupToggleLabel("#" + collapseElement.id, toggleBtn);
+            }
+          }
+        });
+      });
+
+      // ========== SEARCH FUNCTIONALITY ==========
+      function toggleClearButton() {
+        clearButton.style.display = searchInput.value.trim() ? "inline-block" : "none";
+      }
+
+      function handleSearch() {
+        const filter = searchInput.value.toLowerCase();
+        document.querySelectorAll(".accordion").forEach(function (accordion) {
+          let groupHasMatch = false;
+          accordion.querySelectorAll(".col").forEach(function (col) {
+            const item = col.querySelector(".set-item");
+            if (!item) return;
+            const text = item.textContent.toLowerCase();
+            if (text.indexOf(filter) > -1) {
+              col.style.display = "";
+              groupHasMatch = true;
+            } else {
+              col.style.display = "none";
+            }
+          });
+          const collapseElement = accordion.querySelector(".accordion-collapse");
+          if (groupHasMatch) {
+            let collapseInstance = bootstrap.Collapse.getInstance(collapseElement);
+            if (!collapseInstance) {
+              collapseInstance = new bootstrap.Collapse(collapseElement, { toggle: false });
+            }
+            collapseInstance.show();
+            accordion.style.display = "";
+          } else {
+            let collapseInstance = bootstrap.Collapse.getInstance(collapseElement);
+            if (collapseInstance) collapseInstance.hide();
+            accordion.style.display = "none";
+          }
+        });
+      }
+
+      function resetAccordionsToDefault() {
+        document.querySelectorAll(".col").forEach(col => (col.style.display = ""));
+        document.querySelectorAll(".accordion").forEach(function (accordion) {
+          const collapseElem = accordion.querySelector(".accordion-collapse");
+          let groupHasSelected = false;
+          accordion.querySelectorAll("input[type='checkbox']").forEach(cb => {
+            if (cb.checked) groupHasSelected = true;
+          });
+          let ci = bootstrap.Collapse.getInstance(collapseElem);
+          if (!ci) {
+            ci = new bootstrap.Collapse(collapseElem, { toggle: false });
+          }
+          groupHasSelected ? ci.show() : ci.hide();
+          accordion.style.display = "";
+        });
+      }
+
+      // ========== ON PAGE LOAD ==========
+      loadGlobalSelections();
+      updateGlobalToggleLabel();
+      expandGroupsWithSelectedSets();
+
+      // Hook up search + clear button
+      toggleClearButton();
+      searchInput.addEventListener("input", function () {
+        toggleClearButton();
+        if (searchInput.value.trim() === "") {
+          resetAccordionsToDefault();
+        } else {
+          handleSearch();
+        }
+      });
+      clearButton.addEventListener("click", function () {
+        searchInput.value = "";
+        toggleClearButton();
+        resetAccordionsToDefault();
+      });
+    });
+  </script>
+</body>
+</html>
