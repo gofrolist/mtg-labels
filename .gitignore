@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+.ENV
+
+# UV
+# Note: uv.lock should be committed for reproducible builds
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+*.py,cover
+.cache
+nosetests.xml
+coverage.xml
+*.log
+
+# IDEs
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+static/images/*.svg
+!static/images/.gitkeep
+specs/
+.specify
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+

@@ -5,6 +5,11 @@
   <title>MTG Printable Label Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+  <link rel="apple-touch-icon" href="/static/favicon.svg" />
+
   <!-- Bootstrap 5.3.3 CSS -->
   <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
@@ -29,9 +34,69 @@
       z-index: 1030; /* ensure it stays above other elements */
     }
 
-    /* Hide the clear button by default; shown via JS when needed */
+    /* Search input group - fixed width to prevent size changes */
+    #navbarSupportedContent .input-group {
+      width: 250px;
+      position: relative;
+    }
+
+    /* Ensure search icon container has rounded left corners */
+    #search-icon {
+      border-top-left-radius: 0.375rem !important;
+      border-bottom-left-radius: 0.375rem !important;
+    }
+
+    /* Add padding to input field to make room for clear button */
+    #search {
+      padding-right: 2.5rem;
+      border-top-right-radius: 0.375rem !important;
+      border-bottom-right-radius: 0.375rem !important;
+    }
+
+    /* Clear button styling - positioned inside the input field like Google */
     #clear-search {
-      display: none;
+      position: absolute;
+      right: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      padding: 0;
+      border: none;
+      background: transparent;
+      border-radius: 50%;
+      width: 1.75rem;
+      height: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s ease, visibility 0.2s ease, background-color 0.2s ease;
+      z-index: 10;
+      cursor: pointer;
+    }
+
+    #clear-search.visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    #clear-search:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    #clear-search:active {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    #clear-search i {
+      font-size: 1rem;
+      color: rgba(0, 0, 0, 0.54);
+    }
+
+    #clear-search:hover i {
+      color: rgba(0, 0, 0, 0.87);
     }
 
     /* Basic accordion item spacing */
@@ -39,6 +104,29 @@
       border: 1px solid #ddd;
       border-radius: 0.25rem;
       margin-bottom: 8px;
+    }
+
+    /* Remove blue background from accordion buttons */
+    .accordion-button {
+      background-color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0.5rem 1rem;
+    }
+
+    .accordion-button:not(.collapsed) {
+      background-color: transparent !important;
+      color: inherit;
+    }
+
+    .accordion-button:focus {
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    /* Adjust accordion header container */
+    .accordion-header {
+      border: none;
     }
 
     /* Truncate long set names on one line with ellipsis */
@@ -69,6 +157,66 @@
     .set-item .form-check-input {
       margin-right: 8px;
     }
+
+    /* Donate modal styling */
+    #donateModal .modal-content {
+      border-radius: 0.5rem;
+    }
+
+    #donateModal .modal-header {
+      display: flex;
+      justify-content: center;
+      position: relative;
+    }
+
+    #donateModal .modal-header .modal-title {
+      text-align: center;
+    }
+
+    #donateModal .modal-header .btn-close {
+      position: absolute;
+      right: 1rem;
+    }
+
+    #donateModal .modal-body {
+      padding: 0.75rem 1.5rem;
+    }
+
+    #donateModal .modal-body a {
+      color: #0d6efd;
+      transition: color 0.2s ease;
+    }
+
+    #donateModal .modal-body a:hover {
+      color: #0a58ca;
+      text-decoration: underline;
+    }
+
+    #donateModal .lead {
+      font-size: 1.1rem;
+      font-weight: 400;
+    }
+
+    /* Footer styling */
+    footer {
+      margin-top: auto;
+    }
+
+    footer a {
+      color: #0d6efd;
+      transition: color 0.2s ease;
+    }
+
+    footer a:hover {
+      color: #0a58ca;
+      text-decoration: underline;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
   </style>
 </head>
 <body>
@@ -91,47 +239,8 @@
       </button>
 
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <!-- Left-aligned items: Generate PDF & Template dropdown -->
+        <!-- Left-aligned items: Search & Select All -->
         <div class="d-flex align-items-center ms-3">
-          <!-- Generate PDF button (submits #sets-form) -->
-          <button
-            type="submit"
-            class="btn btn-primary me-3"
-            form="sets-form"
-          >
-            <i class="bi bi-file-earmark-pdf"></i> Generate PDF
-          </button>
-
-          <!-- Template Dropdown (placeholder) -->
-          <div class="dropdown">
-            <button
-              class="btn btn-secondary dropdown-toggle"
-              type="button"
-              id="templateDropdown"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-            >
-              Select Template
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="templateDropdown">
-              <li><a class="dropdown-item" href="#">Template 1</a></li>
-              <li><a class="dropdown-item" href="#">Template 2</a></li>
-              <li><a class="dropdown-item" href="#">Template 3</a></li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Right-aligned items: Global Select All & Search -->
-        <div class="ms-auto d-flex align-items-center">
-          <!-- Global Select All / Deselect All -->
-          <button
-            type="button"
-            class="btn btn-secondary me-3"
-            id="toggle-select-all-global"
-          >
-            <i class="bi bi-check-all"></i> Select All
-          </button>
-
           <!-- Search -->
           <div class="input-group me-3">
             <span class="input-group-text" id="search-icon">
@@ -145,7 +254,6 @@
               id="search"
             />
             <button
-              class="btn btn-outline-secondary"
               type="button"
               id="clear-search"
               aria-label="Clear search"
@@ -153,13 +261,92 @@
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
+
+          <!-- Global Select All / Deselect All -->
+          <button
+            type="button"
+            class="btn btn-secondary me-3"
+            id="toggle-select-all-global"
+          >
+            <i class="bi bi-check-all"></i> Select All
+          </button>
+        </div>
+
+        <!-- Right-aligned items: Template dropdown & Generate PDF -->
+        <div class="ms-auto d-flex align-items-center">
+          <!-- Template Dropdown -->
+          <div class="dropdown me-3">
+            <button
+              class="btn btn-secondary dropdown-toggle"
+              type="button"
+              id="templateDropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <span id="templateDropdownText">Avery 5160/8460 (1" x 2-5/8")</span>
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="templateDropdown">
+              <li>
+                <a class="dropdown-item template-option active" href="#" data-template="avery5160">
+                  1" x 2-5/8" (Avery 5160/8460, 30 Per Letter Sheet)
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item template-option" href="#" data-template="averyl7160">
+                  63.5 x 38.1mm (Avery L7160, 21 Per A4 Sheet)
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item template-option" href="#" data-template="avery64x30-r">
+                  64 x 30mm (Avery 64x30-R, 27 Per A4 Sheet)
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item template-option" href="#" data-template="averyj8158">
+                  64 x 26.7mm (Avery J8158, 30 Per A4 Sheet)
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item template-option" href="#" data-template="averyl7157">
+                  64 x 24.3mm (Avery L7157, 33 Per A4 Sheet)
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Debug Template Checkbox (only shown if feature flag is enabled) -->
+          {% if enable_template_debug %}
+          <div class="form-check me-3">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="use_template"
+              id="use-template-checkbox"
+              form="sets-form"
+            />
+            <label class="form-check-label text-light" for="use-template-checkbox">
+              Overlay on Template PDF
+            </label>
+          </div>
+          {% endif %}
+
+          <!-- Generate PDF button (submits #sets-form) -->
+          <button
+            type="submit"
+            class="btn btn-primary"
+            form="sets-form"
+          >
+            <i class="bi bi-file-earmark-pdf"></i> Generate PDF
+          </button>
+          <!-- Hidden input to store selected template (default will be set by JavaScript) -->
+          <input type="hidden" name="template" id="selectedTemplate" value="" form="sets-form" />
         </div>
       </div>
     </div>
   </nav>
 
   <div class="container mt-4">
-    <h1 class="mb-4 text-center">MTG Printable Label Generator</h1>
+    <!-- <h1 class="mb-4 text-center">MTG Printable Label Generator</h1> -->
 
     <!-- Accordion for grouped sets -->
     <form action="/generate-pdf" method="post" id="sets-form">
@@ -243,6 +430,49 @@
     </form>
   </div>
 
+  <!-- Footer -->
+  <footer class="mt-5 py-4 bg-light border-top">
+    <div class="container">
+      <div class="row">
+        <div class="col text-center">
+          <p class="mb-2 small text-muted" style="line-height: 1.6;">
+            This label generator is unofficial Fan Content permitted under the<br>
+            <a href="https://company.wizards.com/fancontentpolicy" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Wizards of the Coast Fan Content Policy</a>.
+          </p>
+
+          <p class="mb-0 small text-muted" style="line-height: 1.6;">
+            It uses set information provided by <a href="https://scryfall.com/" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Scryfall</a> in accordance with their <a href="https://scryfall.com/docs/api#use-of-scryfall-data" target="_blank" rel="noopener noreferrer" class="text-decoration-none">guidelines</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Donate Modal -->
+  <div class="modal fade" id="donateModal" tabindex="-1" aria-labelledby="donateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
+      <div class="modal-content">
+        <div class="modal-header border-bottom-0 pb-1 pt-3">
+          <h5 class="modal-title fw-bold" id="donateModalLabel">Thank You!</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body pt-0 pb-2">
+          <p class="text-center mb-3 lead">Your PDF is being generated. If you find this tool useful, consider supporting its development!</p>
+          <div class="text-center mb-2">
+            <form action="https://www.paypal.com/donate" method="post" target="_top" class="d-inline-block">
+              <input type="hidden" name="business" value="3ABRQKUCLUGXN" />
+              <input type="hidden" name="no_recurring" value="0" />
+              <input type="hidden" name="item_name" value="for buying more MTG cards :)" />
+              <input type="hidden" name="currency_code" value="USD" />
+              <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+              <img alt="" border="0" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -272,6 +502,16 @@
           const groupSelector = btn.getAttribute("data-group");
           updateGroupToggleLabel(groupSelector, btn);
         });
+        // Expand all groups when selecting all
+        if (anyUnchecked) {
+          document.querySelectorAll(".accordion-collapse").forEach(function (collapseElement) {
+            let collapseInstance = bootstrap.Collapse.getInstance(collapseElement);
+            if (!collapseInstance) {
+              collapseInstance = new bootstrap.Collapse(collapseElement, { toggle: false });
+            }
+            collapseInstance.show();
+          });
+        }
       });
 
       // ========== GROUP TOGGLE (SELECT GROUP / DESELECT GROUP) ==========
@@ -284,6 +524,17 @@
           saveGlobalSelections();
           updateGlobalToggleLabel();
           updateGroupToggleLabel(groupSelector, this);
+          // Expand the group when selecting items
+          if (!allChecked) {
+            const collapseElement = document.querySelector(groupSelector);
+            if (collapseElement) {
+              let collapseInstance = bootstrap.Collapse.getInstance(collapseElement);
+              if (!collapseInstance) {
+                collapseInstance = new bootstrap.Collapse(collapseElement, { toggle: false });
+              }
+              collapseInstance.show();
+            }
+          }
         });
       });
 
@@ -354,7 +605,11 @@
 
       // ========== SEARCH FUNCTIONALITY ==========
       function toggleClearButton() {
-        clearButton.style.display = searchInput.value.trim() ? "inline-block" : "none";
+        if (searchInput.value.trim()) {
+          clearButton.classList.add("visible");
+        } else {
+          clearButton.classList.remove("visible");
+        }
       }
 
       function handleSearch() {
@@ -405,7 +660,115 @@
         });
       }
 
+      // ========== FORM SUBMISSION VALIDATION & DONATE MODAL ==========
+      const setsForm = document.getElementById("sets-form");
+      const donateModal = new bootstrap.Modal(document.getElementById("donateModal"));
+
+      setsForm.addEventListener("submit", async function (e) {
+        const checkedBoxes = document.querySelectorAll('input[name="set_ids"]:checked');
+        if (checkedBoxes.length === 0) {
+          e.preventDefault();
+          alert("Please select at least one set before generating the PDF.");
+          return false;
+        }
+
+        // Prevent default form submission
+        e.preventDefault();
+
+        // Show the donate modal
+        donateModal.show();
+
+        // Prepare form data
+        const formData = new FormData(setsForm);
+
+        try {
+          // Submit form via fetch API
+          const response = await fetch("/generate-pdf", {
+            method: "POST",
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          // Get the PDF blob
+          const blob = await response.blob();
+
+          // Create download link
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "mtg_labels.pdf";
+          document.body.appendChild(a);
+          a.click();
+
+          // Cleanup
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          donateModal.hide();
+          alert("An error occurred while generating the PDF. Please try again.");
+        }
+      });
+
+      // ========== TEMPLATE SELECTION ==========
+      const templateDropdown = document.getElementById("templateDropdown");
+      const templateDropdownText = document.getElementById("templateDropdownText");
+      const selectedTemplateInput = document.getElementById("selectedTemplate");
+      const templateOptions = document.querySelectorAll(".template-option");
+
+      // Get default template from the first active option (or first option if none active)
+      function getDefaultTemplate() {
+        const activeOption = Array.from(templateOptions).find(opt => opt.classList.contains("active"));
+        return activeOption
+          ? activeOption.getAttribute("data-template")
+          : templateOptions[0]?.getAttribute("data-template") || "avery5160";
+      }
+
+      // Helper function to get template label text from dropdown items
+      function getTemplateLabel(templateId) {
+        const option = Array.from(templateOptions).find(
+          opt => opt.getAttribute("data-template") === templateId
+        );
+        return option ? option.textContent.trim() : "Select Template";
+      }
+
+      // Load saved template from localStorage
+      function loadTemplateSelection() {
+        const defaultTemplate = getDefaultTemplate();
+        const savedTemplate = localStorage.getItem("selectedTemplate") || defaultTemplate;
+        selectedTemplateInput.value = savedTemplate;
+        templateDropdownText.textContent = getTemplateLabel(savedTemplate);
+
+        // Update active state
+        templateOptions.forEach(option => {
+          if (option.getAttribute("data-template") === savedTemplate) {
+            option.classList.add("active");
+          } else {
+            option.classList.remove("active");
+          }
+        });
+      }
+
+      // Handle template option clicks
+      templateOptions.forEach(option => {
+        option.addEventListener("click", function(e) {
+          e.preventDefault();
+          const template = this.getAttribute("data-template");
+          selectedTemplateInput.value = template;
+          templateDropdownText.textContent = this.textContent.trim();
+          localStorage.setItem("selectedTemplate", template);
+
+          // Update active state
+          templateOptions.forEach(opt => opt.classList.remove("active"));
+          this.classList.add("active");
+        });
+      });
+
       // ========== ON PAGE LOAD ==========
+      loadTemplateSelection();
       loadGlobalSelections();
       updateGlobalToggleLabel();
       expandGroupsWithSelectedSets();
