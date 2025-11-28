@@ -57,12 +57,11 @@ COPY --chown=appuser:appgroup . .
 USER appuser
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8080
 
 # Add healthcheck (using Python from venv)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/')" || exit 1
+    CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/')" || exit 1
 
 # Run application using Python from virtual environment
-CMD ["/app/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-
+CMD ["/app/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

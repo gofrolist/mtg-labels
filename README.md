@@ -52,13 +52,13 @@ source .venv/bin/activate  # On macOS/Linux
 
 ```bash
 # Development server with auto-reload
-uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 8080
 
 # Or using UV's run command directly
 uv run uvicorn main:app --reload
 ```
 
-Access the application at: `http://localhost:8000`
+Access the application at: `http://localhost:8080`
 
 ### Running Tests
 
