@@ -22,6 +22,11 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v7
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcairo2-dev pkg-config
+
     - name: Sync deps
       run: uv sync --all-extras
 
@@ -41,7 +46,9 @@ jobs:
     - name: Upload coverage
       uses: codecov/codecov-action@v5
       if: always() && steps.pytest.outcome != 'skipped'
+      continue-on-error: true
       with:
         files: ./coverage.xml
         use_oidc: true
         fail_ci_if_error: false
+        verbose: true
