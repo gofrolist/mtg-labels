@@ -188,6 +188,11 @@ class PDFGenerator:
         Args:
             set_data: Dictionary containing set data
         """
+        # Handle placeholder labels (empty slots to shift starting position)
+        if set_data.get("__placeholder__"):
+            logger.debug(f"Placeholder label at index {self.current_label}, leaving blank")
+            return
+
         label_index = self.current_label
         row = label_index // self.template["labels_per_row"]
         col = label_index % self.template["labels_per_row"]

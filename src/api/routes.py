@@ -106,6 +106,7 @@ def create_app() -> FastAPI:
         set_ids: list[str] | None = Form(None),
         use_template: str | None = Form(None),
         template: str | None = Form(None),
+        placeholders: int = Form(0),
     ) -> StreamingResponse:
         """
         Generate PDF with labels for selected sets.
@@ -146,17 +147,43 @@ def create_app() -> FastAPI:
 
         logger.info(
             f"Generating PDF for set_ids: {set_ids}, "
-            f"template: {label_template}, use_template: {use_template_bool}"
+            f"template: {label_template}, use_template: {use_template_bool}, "
+            f"placeholders: {placeholders}"
         )
+
+        # Calculate how many placeholders (empty labels) to insert at the start.
+        # We clamp this to at most labels_per_page - 1 so the user can shift
+        # labels within the first page of the sheet.
+        labels_config = LABEL_TEMPLATES[label_template]
+        labels_per_page = int(labels_config["labels_per_row"] * labels_config["label_rows"])
+        raw_placeholders = placeholders or 0
+        placeholder_count = max(0, min(raw_placeholders, max(labels_per_page - 1, 0)))
         all_sets = scryfall_client.fetch_sets()
         filtered = scryfall_client.filter_sets(all_sets)
 
         # Convert to dict format for PDFGenerator
-        selected_sets_data = []
+        # Create a mapping of set_id to set_dict for quick lookup
+        sets_by_id: dict[str, dict] = {}
         for s in filtered:
             set_dict = s.to_dict() if isinstance(s, MTGSet) else s
-            if set_dict.get("id") in set_ids:
-                selected_sets_data.append(set_dict)
+            set_id_key = set_dict.get("id")
+            if isinstance(set_id_key, str):
+                sets_by_id[set_id_key] = set_dict
+
+        # Build the list of labels to render:
+        # - First, placeholder entries (empty labels at start)
+        # - Then, actual sets, possibly with duplicates (for quantities)
+        selected_sets_data: list[dict] = []
+
+        # Add placeholders as special entries understood by PDFGenerator
+        for _ in range(placeholder_count):
+            selected_sets_data.append({"__placeholder__": True})
+
+        # Expand set_ids list to include duplicates based on quantities
+        # The frontend sends set_ids multiple times based on quantity
+        for set_id in set_ids:
+            if set_id in sets_by_id:
+                selected_sets_data.append(sets_by_id[set_id])
 
         if not selected_sets_data:
             logger.error("No valid sets selected")
