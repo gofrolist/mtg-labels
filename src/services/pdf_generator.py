@@ -456,13 +456,9 @@ class PDFGenerator:
                         # svg_uri is nullable, so only cache if it exists
                         if symbol_text and svg_uri:
                             self._symbology_cache[symbol_text] = svg_uri
-                    logger.debug(
-                        f"Cached {len(self._symbology_cache)} symbols from symbology API"
-                    )
+                    logger.debug(f"Cached {len(self._symbology_cache)} symbols from symbology API")
                 else:
-                    logger.warning(
-                        f"Failed to fetch symbology API, status: {response.status_code}"
-                    )
+                    logger.warning(f"Failed to fetch symbology API, status: {response.status_code}")
                     return None
             except Exception as e:
                 logger.error(f"Error fetching symbology API: {e}")

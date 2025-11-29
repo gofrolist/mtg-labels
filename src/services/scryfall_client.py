@@ -230,7 +230,6 @@ class ScryfallClient:
         logger.info(f"Grouped sets into {len(groups)} groups")
         return groups
 
-
     def get_card_types_by_color(self) -> dict[str, list[str]]:
         """
         Get card types organized by color for label generation.
@@ -257,9 +256,7 @@ class ScryfallClient:
         try:
             card_types_catalog = self.fetch_card_types_catalog()
         except Exception as e:
-            logger.warning(
-                f"Failed to fetch card types catalog, using fallback: {e}"
-            )
+            logger.warning(f"Failed to fetch card types catalog, using fallback: {e}")
             # Fallback to common types
             card_types_catalog = [
                 "Creature",
@@ -289,9 +286,7 @@ class ScryfallClient:
             "Planeswalker",
             "Land",
         ]
-        type_order = common_types + [
-            t for t in filtered_types if t not in common_types
-        ]
+        type_order = common_types + [t for t in filtered_types if t not in common_types]
 
         # Create structure: each color gets all types
         result: dict[str, list[str]] = {}
@@ -344,14 +339,10 @@ class ScryfallClient:
                         data = response.json()
                         if data.get("object") == "catalog" and "data" in data:
                             card_types = data["data"]
-                            self.logger.info(
-                                f"Fetched {len(card_types)} card types from catalog"
-                            )
+                            self.logger.info(f"Fetched {len(card_types)} card types from catalog")
                             return card_types
                         else:
-                            self.logger.error(
-                                "Unexpected response format from card types catalog"
-                            )
+                            self.logger.error("Unexpected response format from card types catalog")
                             raise HTTPException(
                                 status_code=500,
                                 detail="Unexpected response format from Scryfall catalog.",

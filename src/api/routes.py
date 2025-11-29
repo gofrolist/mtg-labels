@@ -210,12 +210,14 @@ def create_app() -> FastAPI:
                 if ":" in card_type_id:
                     color, card_type = card_type_id.split(":", 1)
                     # Create a simple dict for the label
-                    selected_items_data.append({
-                        "color": color,
-                        "type": card_type,
-                        "name": f"{card_type}",  # Just the type name for the label
-                        "id": card_type_id,  # Use the combined ID
-                    })
+                    selected_items_data.append(
+                        {
+                            "color": color,
+                            "type": card_type,
+                            "name": f"{card_type}",  # Just the type name for the label
+                            "id": card_type_id,  # Use the combined ID
+                        }
+                    )
         else:
             # Handle sets (default)
             all_sets = scryfall_client.fetch_sets()
