@@ -19,7 +19,7 @@ SET_TYPES = (
     # "arsenal",  # A Commander-oriented gift set
     "from_the_vault",  # From the Vault gift sets
     # "spellbook",  # Spellbook series gift sets
-    # "premium_deck",  # Premium Deck Series decks
+    "premium_deck",  # Premium Deck Series decks
     "duel_deck",  # Duel Decks
     "draft_innovation",  # Special draft sets, like Conspiracy and Battlebond
     # "treasure_chest",  # Magic Online treasure chest prize sets
