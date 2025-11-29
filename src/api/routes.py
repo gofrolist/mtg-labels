@@ -70,6 +70,13 @@ def create_app() -> FastAPI:
         all_sets = scryfall_client.fetch_sets()
         filtered = scryfall_client.filter_sets(all_sets)
         grouped_sets = scryfall_client.group_sets(filtered)
+
+        # Calculate labels per page for each template
+        template_labels_per_page = {
+            template_id: int(template_config["labels_per_row"] * template_config["label_rows"])
+            for template_id, template_config in LABEL_TEMPLATES.items()
+        }
+
         return app.state.templates.TemplateResponse(
             request,
             "index.html",
@@ -77,6 +84,7 @@ def create_app() -> FastAPI:
                 "grouped_sets": grouped_sets,
                 "current_template": CURRENT_LABEL_TEMPLATE,
                 "enable_template_debug": ENABLE_TEMPLATE_DEBUG,
+                "template_labels_per_page": template_labels_per_page,
             },
         )
 

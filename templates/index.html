@@ -22,11 +22,42 @@
   />
 
   <style>
+    /* CSS custom properties for consistent theming */
+    :root {
+      --mtg-bg: #f8f9fa;
+      --mtg-card-bg: #ffffff;
+      --mtg-text: #212529;
+      --mtg-text-muted: #6c757d;
+      --mtg-border: #dee2e6;
+      --mtg-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    /* Dark mode theme variables */
+    [data-theme="dark"] {
+      --mtg-bg: #121212;
+      --mtg-card-bg: #1e1e1e;
+      --mtg-text: #e0e0e0;
+      --mtg-text-muted: #9e9e9e;
+      --mtg-border: #333333;
+      --mtg-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    body {
+      background-color: var(--mtg-bg);
+      color: var(--mtg-text);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
     /* Symbol images: 20x20, with a small right margin */
     .set-item img {
       width: 20px;
       height: 20px;
       margin-right: 4px;
+    }
+
+    /* Make set icons white in dark mode - same size as light theme */
+    [data-theme="dark"] .set-item img {
+      filter: invert(1);
     }
 
     /* Make navbar sticky (always visible) */
@@ -151,16 +182,10 @@
       position: relative;
     }
 
-    /* Ensure dropdown menu stays within viewport - use Bootstrap's boundary option via data attributes */
+    /* Make dropdown menu same width as button */
     #templateDropdownMenu {
-      max-width: min(calc(100vw - 2rem), 400px);
-    }
-
-    /* On smaller screens or when near right edge, adjust dropdown positioning */
-    @media (max-width: 1400px) {
-      #templateDropdownMenu {
-        max-width: min(calc(100vw - 2rem), 350px);
-      }
+      width: 100%;
+      min-width: 0;
     }
 
     /* Ensure dropdown menu items don't overflow */
@@ -417,6 +442,11 @@
     #mobile-generate-pdf {
       white-space: nowrap;
       flex-shrink: 0;
+      min-width: 80px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 38px; /* Bootstrap default button height */
     }
 
     /* Ensure navbar items don't overflow on any screen size */
@@ -499,15 +529,290 @@
       flex-direction: column;
       min-height: 100vh;
     }
+
+    /* Make main content area grow to push footer down */
+    body > .container {
+      flex: 1 0 auto;
+    }
+
+    /* Theme toggle button in navbar */
+    .theme-toggle {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 0.375rem;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #fff;
+      transition: all 0.2s ease;
+      margin-left: 0.5rem;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.5);
+    }
+
+    [data-theme="dark"] .navbar {
+      background-color: #1a1a2e !important;
+    }
+
+    /* Selection counter at top of page */
+    .selection-counter-container {
+      padding: 0;
+      margin-top: 0.25rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Mobile margins for selection counter */
+    @media (max-width: 991.98px) {
+      .selection-counter-container .d-flex {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .selection-counter-container .search-feedback {
+        order: 1;
+        width: 100%;
+      }
+
+      .selection-counter-container .ms-auto {
+        order: 2;
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
+
+    .selection-counter {
+      background: none;
+      color: var(--mtg-text);
+      padding: 0;
+      border-radius: 0;
+      font-weight: 600;
+      font-size: 0.875rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .selection-counter.empty {
+      background: none;
+      color: var(--mtg-text-muted);
+    }
+
+    /* Search results feedback */
+    .search-feedback {
+      font-size: 0.875rem;
+      color: var(--mtg-text-muted);
+      padding: 0.25rem 0;
+      min-height: 0;
+    }
+
+    .search-feedback:empty {
+      display: none;
+    }
+
+    .search-feedback.no-results {
+      color: #dc3545;
+    }
+
+    /* Loading spinner in button */
+    .btn-loading {
+      position: relative;
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .btn-loading .btn-spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      vertical-align: middle;
+    }
+
+    .btn-loading .btn-text {
+      display: none;
+    }
+
+    .btn-loading i {
+      display: none;
+    }
+
+    /* Center spinner in button when loading */
+    .btn-loading {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Dark mode form controls */
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select,
+    [data-theme="dark"] .input-group-text {
+      background-color: var(--mtg-card-bg);
+      border-color: var(--mtg-border);
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .form-control:focus,
+    [data-theme="dark"] .form-select:focus {
+      background-color: var(--mtg-card-bg);
+      border-color: #0d6efd;
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .form-control::placeholder {
+      color: var(--mtg-text-muted);
+      opacity: 1;
+    }
+
+    [data-theme="dark"] .accordion-item {
+      background: var(--mtg-card-bg);
+      border-color: var(--mtg-border);
+    }
+
+    [data-theme="dark"] .accordion-button {
+      background: var(--mtg-card-bg) !important;
+      color: var(--mtg-text) !important;
+    }
+
+    [data-theme="dark"] .accordion-button:not(.collapsed) {
+      background: var(--mtg-card-bg) !important;
+      color: var(--mtg-text) !important;
+    }
+
+    [data-theme="dark"] .accordion-button::after {
+      filter: invert(1);
+    }
+
+    [data-theme="dark"] .accordion-body {
+      background: var(--mtg-card-bg);
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] footer {
+      background: var(--mtg-card-bg) !important;
+      border-color: var(--mtg-border) !important;
+      color: var(--mtg-text) !important;
+    }
+
+    [data-theme="dark"] footer a {
+      color: #0d6efd !important;
+    }
+
+    [data-theme="dark"] footer a:hover {
+      color: #0a58ca !important;
+    }
+
+    [data-theme="dark"] .modal-content {
+      background: var(--mtg-card-bg);
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .modal-header {
+      border-color: var(--mtg-border);
+    }
+
+    [data-theme="dark"] .btn-close {
+      filter: invert(1);
+    }
+
+
+    [data-theme="dark"] .btn-secondary {
+      background-color: var(--mtg-card-bg);
+      border-color: var(--mtg-border);
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .btn-secondary:hover {
+      background-color: var(--mtg-border);
+      border-color: var(--mtg-border);
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .dropdown-menu {
+      background: var(--mtg-card-bg);
+      border-color: var(--mtg-border);
+    }
+
+    [data-theme="dark"] .dropdown-item {
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .dropdown-item .text-muted {
+      color: var(--mtg-text-muted) !important;
+    }
+
+    [data-theme="dark"] .dropdown-item:hover,
+    [data-theme="dark"] .dropdown-item:focus {
+      background-color: rgba(13, 110, 253, 0.1);
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .dropdown-item:hover .text-muted,
+    [data-theme="dark"] .dropdown-item:focus .text-muted {
+      color: var(--mtg-text-muted) !important;
+    }
+
+    [data-theme="dark"] .dropdown-item.active {
+      background-color: rgba(13, 110, 253, 0.2);
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .dropdown-item.active .text-muted {
+      color: var(--mtg-text-muted) !important;
+    }
+
+    [data-theme="dark"] .form-check-label {
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .set-item {
+      background: var(--mtg-card-bg);
+      border-color: var(--mtg-border);
+      color: var(--mtg-text);
+    }
+
+    [data-theme="dark"] .text-muted {
+      color: var(--mtg-text-muted) !important;
+    }
+
+    [data-theme="dark"] .small {
+      color: var(--mtg-text-muted);
+    }
+
+    [data-theme="dark"] #clear-search i {
+      color: var(--mtg-text-muted);
+    }
+
+    [data-theme="dark"] #clear-search:hover i {
+      color: var(--mtg-text);
+    }
   </style>
 </head>
 <body>
   <!-- Sticky Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#">
-        MTG Labels
-      </a>
+      <div class="d-flex align-items-center">
+        <a class="navbar-brand fw-bold" href="#">
+          MTG Labels
+        </a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <i class="bi bi-moon-fill" id="themeIcon"></i>
+        </button>
+      </div>
 
       <!-- Generate PDF button and hamburger menu - always visible on mobile -->
       <div class="d-flex align-items-center">
@@ -517,7 +822,9 @@
           form="sets-form"
           id="mobile-generate-pdf"
         >
-          <i class="bi bi-file-earmark-pdf"></i> PDF
+          <span class="btn-text">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+          </span>
         </button>
 
         <button
@@ -534,7 +841,7 @@
       </div>
 
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <!-- Left-aligned items: Search & Select All -->
+        <!-- Left-aligned items: Search -->
         <div class="d-flex align-items-center ms-3">
           <!-- Search -->
           <div class="input-group me-3">
@@ -556,15 +863,6 @@
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
-
-          <!-- Global Select All / Deselect All -->
-          <button
-            type="button"
-            class="btn btn-secondary me-3"
-            id="toggle-select-all-global"
-          >
-            <i class="bi bi-check-all"></i> Select All
-          </button>
         </div>
 
         <!-- Right-aligned items: Template dropdown & Generate PDF -->
@@ -585,27 +883,32 @@
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="templateDropdown" id="templateDropdownMenu">
               <li>
                 <a class="dropdown-item template-option active" href="#" data-template="avery5160">
-                  1" x 2-5/8" (Avery 5160/8460, 30 Per Letter Sheet)
+                  <strong>1" x 2-5/8"</strong>
+                  <div class="small text-muted">Avery 5160/8460 (30/sheet)</div>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item template-option" href="#" data-template="averyl7160">
-                  63.5 x 38.1mm (Avery L7160, 21 Per A4 Sheet)
+                  <strong>63.5 x 38.1mm</strong>
+                  <div class="small text-muted">Avery L7160 (21/sheet)</div>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item template-option" href="#" data-template="avery64x30-r">
-                  64 x 30mm (Avery 64x30-R, 27 Per A4 Sheet)
+                  <strong>64 x 30mm</strong>
+                  <div class="small text-muted">Avery 64x30-R (27/sheet)</div>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item template-option" href="#" data-template="averyj8158">
-                  64 x 26.7mm (Avery J8158, 30 Per A4 Sheet)
+                  <strong>64 x 26.7mm</strong>
+                  <div class="small text-muted">Avery J8158 (30/sheet)</div>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item template-option" href="#" data-template="averyl7157">
-                  64 x 24.3mm (Avery L7157, 33 Per A4 Sheet)
+                  <strong>64 x 24.3mm</strong>
+                  <div class="small text-muted">Avery L7157 (33/sheet)</div>
                 </a>
               </li>
             </ul>
@@ -634,7 +937,9 @@
             form="sets-form"
             id="desktop-generate-pdf"
           >
-            <i class="bi bi-file-earmark-pdf"></i> PDF
+            <span class="btn-text">
+              <i class="bi bi-file-earmark-pdf"></i> PDF
+            </span>
           </button>
           <!-- Hidden input to store selected template (default will be set by JavaScript) -->
           <input type="hidden" name="template" id="selectedTemplate" value="" form="sets-form" />
@@ -643,8 +948,29 @@
     </div>
   </nav>
 
-  <div class="container mt-4">
+  <div class="container mt-2">
     <!-- <h1 class="mb-4 text-center">MTG Printable Label Generator</h1> -->
+
+    <!-- Selection Counter at Top -->
+    <div class="selection-counter-container">
+      <div class="d-flex justify-content-between align-items-center gap-2">
+        <div class="search-feedback" id="searchFeedback"></div>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <span class="selection-counter empty" id="selectionCounter">
+            <i class="bi bi-check2-square"></i>
+            <span id="selectionCountText">0 sets</span>
+          </span>
+          <!-- Global Select All / Deselect All -->
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            id="toggle-select-all-global"
+          >
+            <i class="bi bi-check-all"></i> Select All
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Accordion for grouped sets -->
     <form action="/generate-pdf" method="post" id="sets-form">
@@ -703,6 +1029,10 @@
                       name="set_ids"
                       value="{{ set.id }}"
                       id="set-{{ set.id }}"
+                      data-type="{{ set.set_type }}"
+                      {% if set.released_at %}
+                      data-release="{{ set.released_at[:4] }}"
+                      {% endif %}
                     />
                     <!--
                       Symbol on the LEFT, then the set name,
@@ -729,13 +1059,15 @@
   </div>
 
   <!-- Footer -->
-  <footer class="mt-5 py-4 bg-light border-top">
+  <footer class="py-4 bg-light border-top">
     <div class="container">
       <div class="row">
         <div class="col text-center">
           <p class="mb-2 small text-muted" style="line-height: 1.6;">
-            This label generator is unofficial Fan Content permitted under the
-            <a href="https://company.wizards.com/fancontentpolicy" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Wizards of the Coast Fan Content Policy</a>.
+            MTG Printable Label Generator is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
+          </p>
+          <p class="mb-2 small text-muted" style="line-height: 1.6;">
+            <a href="https://company.wizards.com/en/legal/fancontentpolicy" target="_blank" rel="noopener noreferrer" class="text-decoration-none">View the full Fan Content Policy</a>.
           </p>
 
           <p class="mb-0 small text-muted" style="line-height: 1.6;">
@@ -779,6 +1111,60 @@
       const searchInput = document.getElementById("search");
       const clearButton = document.getElementById("clear-search");
       const globalToggleBtn = document.getElementById("toggle-select-all-global");
+      const searchFeedback = document.getElementById("searchFeedback");
+      const selectionCounter = document.getElementById("selectionCounter");
+      const selectionCountText = document.getElementById("selectionCountText");
+      const desktopPdfBtn = document.getElementById("desktop-generate-pdf");
+      const mobilePdfBtn = document.getElementById("mobile-generate-pdf");
+
+      // Store original button content for restoration
+      const originalDesktopContent = desktopPdfBtn ? desktopPdfBtn.innerHTML : '';
+      const originalMobileContent = mobilePdfBtn ? mobilePdfBtn.innerHTML : '';
+
+      // ========== INITIALIZE TOOLTIPS ==========
+      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+      const tooltipList = [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
+
+      // ========== THEME TOGGLE ==========
+      const themeToggle = document.getElementById("themeToggle");
+      const themeIcon = document.getElementById("themeIcon");
+
+      function setTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("theme", theme);
+        themeIcon.className = theme === "dark" ? "bi bi-sun-fill" : "bi bi-moon-fill";
+      }
+
+      function toggleTheme() {
+        const current = document.documentElement.getAttribute("data-theme");
+        setTheme(current === "dark" ? "light" : "dark");
+      }
+
+      // Load saved theme
+      const savedTheme = localStorage.getItem("theme") ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      setTheme(savedTheme);
+
+      themeToggle.addEventListener("click", toggleTheme);
+
+      // ========== SELECTION COUNTER ==========
+      // Template to labels per page mapping (from backend config)
+      const templateLabelsPerPage = {{ template_labels_per_page | tojson }} || {};
+
+      function updateSelectionCounter() {
+        const checkedCount = document.querySelectorAll('input[name="set_ids"]:checked').length;
+        const selectedTemplate = document.getElementById("selectedTemplate").value || 'avery5160';
+        const labelsPerPage = templateLabelsPerPage[selectedTemplate] || 30;
+        const pageCount = checkedCount > 0 ? Math.ceil(checkedCount / labelsPerPage) : 0;
+
+        let counterText = `${checkedCount} set${checkedCount !== 1 ? 's' : ''}`;
+        if (pageCount > 0) {
+          counterText += ` / ${pageCount} page${pageCount !== 1 ? 's' : ''}`;
+        }
+
+        selectionCountText.textContent = counterText;
+        selectionCounter.classList.toggle("empty", checkedCount === 0);
+      }
 
       // ========== GLOBAL SELECT ALL/DESELECT ALL ==========
       function updateGlobalToggleLabel() {
@@ -795,6 +1181,7 @@
         allCbs.forEach(cb => (cb.checked = anyUnchecked));
         saveGlobalSelections();
         updateGlobalToggleLabel();
+        updateSelectionCounter();
         // Also update each group's button text
         document.querySelectorAll(".toggle-group").forEach(btn => {
           const groupSelector = btn.getAttribute("data-group");
@@ -821,6 +1208,7 @@
           checkboxes.forEach(cb => (cb.checked = !allChecked));
           saveGlobalSelections();
           updateGlobalToggleLabel();
+          updateSelectionCounter();
           updateGroupToggleLabel(groupSelector, this);
           // Expand the group when selecting items
           if (!allChecked) {
@@ -890,6 +1278,7 @@
         cb.addEventListener("change", function () {
           saveGlobalSelections();
           updateGlobalToggleLabel();
+          updateSelectionCounter();
           const parentAccordion = cb.closest(".accordion");
           if (parentAccordion) {
             const collapseElement = parentAccordion.querySelector(".accordion-collapse");
@@ -910,17 +1299,28 @@
         }
       }
 
+      function updateSearchFeedback(message, isError = false) {
+        if (searchFeedback) {
+          searchFeedback.textContent = message;
+          searchFeedback.classList.toggle("no-results", isError);
+        }
+      }
+
       function handleSearch() {
         const filter = searchInput.value.toLowerCase();
+        let matchCount = 0;
+
         document.querySelectorAll(".accordion").forEach(function (accordion) {
           let groupHasMatch = false;
           accordion.querySelectorAll(".col").forEach(function (col) {
             const item = col.querySelector(".set-item");
             if (!item) return;
             const text = item.textContent.toLowerCase();
-            if (text.indexOf(filter) > -1) {
+            const title = col.querySelector("label")?.getAttribute("title")?.toLowerCase() || "";
+            if (text.indexOf(filter) > -1 || title.indexOf(filter) > -1) {
               col.style.display = "";
               groupHasMatch = true;
+              matchCount++;
             } else {
               col.style.display = "none";
             }
@@ -939,6 +1339,17 @@
             accordion.style.display = "none";
           }
         });
+
+        // Update search feedback
+        if (filter) {
+          if (matchCount === 0) {
+            updateSearchFeedback(`No sets found for "${filter}"`, true);
+          } else {
+            updateSearchFeedback(`${matchCount} set${matchCount !== 1 ? 's' : ''} found`, false);
+          }
+        } else {
+          updateSearchFeedback("");
+        }
       }
 
       function resetAccordionsToDefault() {
@@ -958,7 +1369,30 @@
         });
       }
 
-      // ========== FORM SUBMISSION VALIDATION & DONATE MODAL ==========
+      // ========== BUTTON LOADING STATE ==========
+      function setButtonLoading(loading) {
+        if (loading) {
+          if (desktopPdfBtn) {
+            desktopPdfBtn.classList.add("btn-loading");
+            desktopPdfBtn.innerHTML = '<span class="btn-spinner"></span>';
+          }
+          if (mobilePdfBtn) {
+            mobilePdfBtn.classList.add("btn-loading");
+            mobilePdfBtn.innerHTML = '<span class="btn-spinner"></span>';
+          }
+        } else {
+          if (desktopPdfBtn) {
+            desktopPdfBtn.classList.remove("btn-loading");
+            desktopPdfBtn.innerHTML = originalDesktopContent;
+          }
+          if (mobilePdfBtn) {
+            mobilePdfBtn.classList.remove("btn-loading");
+            mobilePdfBtn.innerHTML = originalMobileContent;
+          }
+        }
+      }
+
+      // ========== FORM SUBMISSION VALIDATION & LOADING STATE ==========
       const setsForm = document.getElementById("sets-form");
       const donateModal = new bootstrap.Modal(document.getElementById("donateModal"));
 
@@ -973,8 +1407,8 @@
         // Prevent default form submission
         e.preventDefault();
 
-        // Show the donate modal
-        donateModal.show();
+        // Show loading spinner in button
+        setButtonLoading(true);
 
         // Prepare form data
         const formData = new FormData(setsForm);
@@ -1004,9 +1438,13 @@
           // Cleanup
           window.URL.revokeObjectURL(url);
           document.body.removeChild(a);
+
+          // Hide loading, show donate modal
+          setButtonLoading(false);
+          donateModal.show();
         } catch (error) {
           console.error("Error generating PDF:", error);
-          donateModal.hide();
+          setButtonLoading(false);
           alert("An error occurred while generating the PDF. Please try again.");
         }
       });
@@ -1062,6 +1500,9 @@
           // Update active state
           templateOptions.forEach(opt => opt.classList.remove("active"));
           this.classList.add("active");
+
+          // Update selection counter to reflect new page count
+          updateSelectionCounter();
         });
       });
 
@@ -1107,6 +1548,7 @@
       loadTemplateSelection();
       loadGlobalSelections();
       updateGlobalToggleLabel();
+      updateSelectionCounter();
       expandGroupsWithSelectedSets();
 
       // Hook up search + clear button
@@ -1115,6 +1557,7 @@
         toggleClearButton();
         if (searchInput.value.trim() === "") {
           resetAccordionsToDefault();
+          updateSearchFeedback("");
         } else {
           handleSearch();
         }
@@ -1123,6 +1566,7 @@
         searchInput.value = "";
         toggleClearButton();
         resetAccordionsToDefault();
+        updateSearchFeedback("");
       });
     });
   </script>
