@@ -29,4 +29,4 @@ primary_region = "lax"
   vm_size = "shared-cpu-1x"
   cpu_kind = "shared"
   cpus = 1
-  memory = 512
+  memory = 256
