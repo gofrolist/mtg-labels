@@ -32,12 +32,275 @@
     /* Make navbar sticky (always visible) */
     .navbar {
       z-index: 1030; /* ensure it stays above other elements */
+      overflow-x: visible;
+    }
+
+    /* Prevent navbar from overflowing - desktop only */
+    .navbar .container-fluid {
+      display: flex;
+      align-items: center;
+      min-width: 0; /* Allow flex items to shrink below content size */
+      width: 100%;
+      max-width: 100%;
+      overflow: visible;
+    }
+
+    @media (min-width: 992px) {
+      .navbar .container-fluid {
+        flex-wrap: nowrap !important;
+      }
+    }
+
+    @media (max-width: 991.98px) {
+      .navbar .container-fluid {
+        flex-wrap: wrap;
+      }
+    }
+
+    /* Allow navbar brand to shrink on smaller screens */
+    .navbar-brand {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 150px;
+      flex-shrink: 0;
     }
 
     /* Search input group - fixed width to prevent size changes */
     #navbarSupportedContent .input-group {
       width: 250px;
       position: relative;
+      flex-shrink: 0;
+    }
+
+    /* Ensure navbar collapse container doesn't overflow */
+    .navbar-collapse {
+      flex-basis: auto;
+      flex-grow: 1;
+      min-width: 0;
+      overflow: visible;
+    }
+
+    /* Prevent navbar collapse from wrapping - desktop only */
+    @media (min-width: 992px) {
+      .navbar-collapse.show,
+      .navbar-collapse.collapsing {
+        flex-wrap: nowrap;
+      }
+    }
+
+
+    /* Ensure all navbar buttons have consistent alignment */
+    #navbarSupportedContent .btn {
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+    }
+
+    /* Ensure template dropdown button matches height of other buttons */
+    #templateDropdown {
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+    }
+
+    /* Ensure the right-aligned container aligns items properly - desktop only */
+    @media (min-width: 992px) {
+      #navbarSupportedContent .ms-auto {
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap !important;
+        flex-shrink: 0;
+        min-width: 0;
+      }
+    }
+
+    /* Allow template dropdown to shrink more aggressively */
+    #navbarSupportedContent .dropdown.me-3 {
+      flex-shrink: 1;
+      min-width: 0;
+      max-width: 300px;
+    }
+
+    /* Ensure template dropdown button can shrink */
+    #navbarSupportedContent .dropdown.me-3 .btn {
+      width: 100%;
+      min-width: 0;
+    }
+
+    /* Template dropdown button should be able to shrink */
+    #templateDropdown {
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    /* Template dropdown text should truncate more aggressively */
+    #templateDropdownText {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-block;
+      max-width: 100%;
+    }
+
+    /* Ensure dropdown container is positioned relatively */
+    #navbarSupportedContent .dropdown {
+      position: relative;
+    }
+
+    /* Ensure dropdown menu stays within viewport - use Bootstrap's boundary option via data attributes */
+    #templateDropdownMenu {
+      max-width: min(calc(100vw - 2rem), 400px);
+    }
+
+    /* On smaller screens or when near right edge, adjust dropdown positioning */
+    @media (max-width: 1400px) {
+      #templateDropdownMenu {
+        max-width: min(calc(100vw - 2rem), 350px);
+      }
+    }
+
+    /* Ensure dropdown menu items don't overflow */
+    #templateDropdownMenu .dropdown-item {
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    /* Allow right-aligned items to shrink on medium screens */
+    @media (min-width: 992px) and (max-width: 1200px) {
+      /* Reduce search input width on smaller desktop screens */
+      #navbarSupportedContent .input-group {
+        width: 200px;
+      }
+
+      #navbarSupportedContent .ms-auto {
+        flex-wrap: nowrap !important;
+        gap: 0.5rem;
+      }
+
+      /* Make template dropdown shrink more aggressively */
+      #navbarSupportedContent .dropdown.me-3 {
+        flex-shrink: 1;
+        min-width: 120px;
+        max-width: 250px;
+      }
+
+      #desktop-generate-pdf {
+        flex-shrink: 0;
+      }
+
+      /* Reduce Select All button min-width */
+      #toggle-select-all-global {
+        min-width: 120px;
+      }
+    }
+
+    /* Extra small desktop screens */
+    @media (min-width: 992px) and (max-width: 1024px) {
+      #navbarSupportedContent .input-group {
+        width: 180px;
+      }
+
+      /* Make template dropdown even smaller */
+      #navbarSupportedContent .dropdown.me-3 {
+        max-width: 180px;
+      }
+    }
+
+    /* Mobile responsive styles */
+    @media (max-width: 991.98px) {
+      /* Ensure collapsed navbar content aligns properly with container-fluid when shown */
+      #navbarSupportedContent {
+        padding-left: 0;
+        padding-right: 0;
+      }
+
+      /* Only apply flex layout when the collapse is shown */
+      #navbarSupportedContent.show {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100%;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      /* Keep search bar and Select All on one line on mobile */
+      #navbarSupportedContent .d-flex.ms-3 {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-top: 0.5rem;
+        margin-bottom: 0 !important;
+        width: 100%;
+        flex-direction: row !important;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      /* Make search bar flexible on mobile */
+      #navbarSupportedContent .input-group {
+        flex: 1;
+        min-width: 200px;
+        position: relative;
+        width: auto !important;
+      }
+
+      /* Make Select All button auto-width on mobile */
+      #toggle-select-all-global {
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin-right: 0 !important;
+      }
+
+      /* Stack right-aligned items properly on mobile */
+      #navbarSupportedContent .ms-auto {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-top: 0 !important;
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        flex-wrap: wrap !important;
+        gap: 0.5rem;
+      }
+
+      /* Make template dropdown full width on mobile */
+      #navbarSupportedContent .dropdown {
+        width: 100% !important;
+        margin-bottom: 0 !important;
+        margin-right: 0 !important;
+        position: relative;
+        max-width: 100% !important;
+        flex-shrink: 0;
+      }
+
+      #navbarSupportedContent .dropdown .btn {
+        width: 100%;
+        text-align: left;
+      }
+
+      /* Desktop PDF button hidden on mobile */
+      #desktop-generate-pdf {
+        display: none !important;
+      }
+
+      /* Remove right margin from buttons on mobile */
+      #navbarSupportedContent .me-3 {
+        margin-right: 0 !important;
+      }
+
+      /* Ensure buttons don't overlap */
+      #navbarSupportedContent > * {
+        margin-bottom: 0.5rem;
+      }
+
+      #navbarSupportedContent > *:last-child {
+        margin-bottom: 0;
+      }
     }
 
     /* Ensure search icon container has rounded left corners */
@@ -149,6 +412,25 @@
       min-width: 140px;
     }
 
+    /* PDF button - prevent text wrapping on both desktop and mobile */
+    #desktop-generate-pdf,
+    #mobile-generate-pdf {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Ensure navbar items don't overflow on any screen size */
+    .navbar-nav,
+    .navbar .d-flex {
+      min-width: 0;
+    }
+
+    /* Allow buttons to shrink if absolutely necessary */
+    .navbar .btn {
+      min-width: 0;
+      overflow: hidden;
+    }
+
     /* Align checkbox + label vertically and add spacing */
     .set-item {
       display: flex;
@@ -226,17 +508,30 @@
       <a class="navbar-brand fw-bold" href="#">
         MTG Labels
       </a>
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#navbarSupportedContent"
-        aria-controls="navbarSupportedContent"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
+
+      <!-- Generate PDF button and hamburger menu - always visible on mobile -->
+      <div class="d-flex align-items-center">
+        <button
+          type="submit"
+          class="btn btn-primary d-lg-none me-2"
+          form="sets-form"
+          id="mobile-generate-pdf"
+        >
+          <i class="bi bi-file-earmark-pdf"></i> PDF
+        </button>
+
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarSupportedContent"
+          aria-controls="navbarSupportedContent"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+      </div>
 
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <!-- Left-aligned items: Search & Select All -->
@@ -281,11 +576,13 @@
               type="button"
               id="templateDropdown"
               data-bs-toggle="dropdown"
+              data-bs-boundary="viewport"
+              data-bs-offset="0,8"
               aria-expanded="false"
             >
               <span id="templateDropdownText">Avery 5160/8460 (1" x 2-5/8")</span>
             </button>
-            <ul class="dropdown-menu" aria-labelledby="templateDropdown">
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="templateDropdown" id="templateDropdownMenu">
               <li>
                 <a class="dropdown-item template-option active" href="#" data-template="avery5160">
                   1" x 2-5/8" (Avery 5160/8460, 30 Per Letter Sheet)
@@ -330,13 +627,14 @@
           </div>
           {% endif %}
 
-          <!-- Generate PDF button (submits #sets-form) -->
+          <!-- Generate PDF button (submits #sets-form) - hidden on mobile -->
           <button
             type="submit"
-            class="btn btn-primary"
+            class="btn btn-primary d-none d-lg-inline-block"
             form="sets-form"
+            id="desktop-generate-pdf"
           >
-            <i class="bi bi-file-earmark-pdf"></i> Generate PDF
+            <i class="bi bi-file-earmark-pdf"></i> PDF
           </button>
           <!-- Hidden input to store selected template (default will be set by JavaScript) -->
           <input type="hidden" name="template" id="selectedTemplate" value="" form="sets-form" />
@@ -436,7 +734,7 @@
       <div class="row">
         <div class="col text-center">
           <p class="mb-2 small text-muted" style="line-height: 1.6;">
-            This label generator is unofficial Fan Content permitted under the<br>
+            This label generator is unofficial Fan Content permitted under the
             <a href="https://company.wizards.com/fancontentpolicy" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Wizards of the Coast Fan Content Policy</a>.
           </p>
 
@@ -766,6 +1064,44 @@
           this.classList.add("active");
         });
       });
+
+      // ========== DROPDOWN POSITIONING ==========
+      const templateDropdownElement = document.getElementById("templateDropdown");
+      const templateDropdownMenu = document.getElementById("templateDropdownMenu");
+
+      // Ensure dropdown stays within viewport
+      if (templateDropdownElement && templateDropdownMenu) {
+        templateDropdownElement.addEventListener("shown.bs.dropdown", function () {
+          const rect = templateDropdownMenu.getBoundingClientRect();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+
+          // Check if dropdown overflows right edge
+          if (rect.right > viewportWidth) {
+            templateDropdownMenu.style.right = "0";
+            templateDropdownMenu.style.left = "auto";
+            templateDropdownMenu.style.transform = "translateX(0)";
+          }
+
+          // Check if dropdown overflows bottom edge
+          if (rect.bottom > viewportHeight) {
+            templateDropdownMenu.style.bottom = "100%";
+            templateDropdownMenu.style.top = "auto";
+            templateDropdownMenu.style.marginBottom = "0.5rem";
+            templateDropdownMenu.style.marginTop = "0";
+          } else {
+            templateDropdownMenu.style.top = "100%";
+            templateDropdownMenu.style.bottom = "auto";
+            templateDropdownMenu.style.marginTop = "0.5rem";
+            templateDropdownMenu.style.marginBottom = "0";
+          }
+        });
+
+        // Reset positioning when dropdown is hidden
+        templateDropdownElement.addEventListener("hidden.bs.dropdown", function () {
+          templateDropdownMenu.style.transform = "";
+        });
+      }
 
       // ========== ON PAGE LOAD ==========
       loadTemplateSelection();
