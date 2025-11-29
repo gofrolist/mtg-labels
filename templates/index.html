@@ -974,6 +974,7 @@
           <!-- Hidden inputs to store selected template and view mode -->
           <input type="hidden" name="template" id="selectedTemplate" value="" form="sets-form" />
           <input type="hidden" name="view_mode" id="viewModeInput" value="{{ view_mode or 'sets' }}" form="sets-form" />
+          <script type="application/json" id="templateLabelsPerPageData">{{ template_labels_per_page | tojson }}</script>
         </div>
       </div>
     </div>
@@ -1327,7 +1328,8 @@
 
       // ========== SELECTION COUNTER ==========
       // Template to labels per page mapping (from backend config)
-      const templateLabelsPerPage = {{ template_labels_per_page | tojson }} || {};
+      const templateLabelsPerPageElement = document.getElementById('templateLabelsPerPageData');
+      const templateLabelsPerPage = templateLabelsPerPageElement ? JSON.parse(templateLabelsPerPageElement.textContent) : {};
 
       function getTotalLabelCount() {
         let totalLabels = 0;
