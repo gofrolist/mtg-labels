@@ -95,10 +95,10 @@ class PDFGenerator:
         view_mode: str = "sets",
     ) -> None:
         """
-        Initialize PDFGenerator with selected sets or cards.
+        Initialize PDFGenerator with selected sets or card types.
 
         Args:
-            selected_sets: List of set/card dictionaries to generate labels for
+            selected_sets: List of set/card type dictionaries to generate labels for
             template_name: Name of label template to use (defaults to CURRENT_LABEL_TEMPLATE)
             template_path: Optional path to template PDF file for debugging overlay
             view_mode: View mode - "sets" or "types" (default: "sets")
@@ -186,10 +186,10 @@ class PDFGenerator:
 
     def _draw_label(self, set_data: dict) -> None:
         """
-        Draw a single label for a set or card.
+        Draw a single label for a set or card type.
 
         Args:
-            set_data: Dictionary containing set or card data
+            set_data: Dictionary containing set or card type data
         """
         # Handle placeholder labels (empty slots to shift starting position)
         if set_data.get("__placeholder__"):
@@ -474,28 +474,12 @@ class PDFGenerator:
 
         # Special handling for multicolor - use PW symbol
         if color == "Multicolor":
-            # Try PW symbol first (as requested)
+            # Try PW symbol (as requested)
             if self._symbology_cache and "{PW}" in self._symbology_cache:
                 logger.debug("Using {PW} symbol for multicolor")
                 return self._symbology_cache["{PW}"]
-            # Fallback to other multicolor symbols if PW not available
-            multicolor_codes = [
-                "{M}",  # Generic multicolor/gold
-                "{WU}",
-                "{WB}",
-                "{WR}",
-                "{WG}",
-                "{UB}",
-                "{UR}",
-                "{UG}",
-                "{BR}",
-                "{BG}",
-                "{RG}",
-            ]
-            for multicolor_code in multicolor_codes:
-                if self._symbology_cache and multicolor_code in self._symbology_cache:
-                    logger.debug(f"Using {multicolor_code} for multicolor (PW not found)")
-                    return self._symbology_cache[multicolor_code]
+            # If PW symbol is not available, log warning and return None
+            logger.warning("PW symbol not found in symbology cache for multicolor")
 
         logger.warning(f"Symbol code '{symbol_code}' not found in symbology cache")
         return None
