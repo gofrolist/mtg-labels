@@ -1370,17 +1370,25 @@
       }
 
       // ========== BUTTON LOADING STATE ==========
+      function isElementVisible(element) {
+        if (!element) return false;
+        const style = window.getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden' && element.offsetParent !== null;
+      }
+
       function setButtonLoading(loading) {
         if (loading) {
-          if (desktopPdfBtn) {
+          // Only set loading state on visible buttons
+          if (desktopPdfBtn && isElementVisible(desktopPdfBtn)) {
             desktopPdfBtn.classList.add("btn-loading");
             desktopPdfBtn.innerHTML = '<span class="btn-spinner"></span>';
           }
-          if (mobilePdfBtn) {
+          if (mobilePdfBtn && isElementVisible(mobilePdfBtn)) {
             mobilePdfBtn.classList.add("btn-loading");
             mobilePdfBtn.innerHTML = '<span class="btn-spinner"></span>';
           }
         } else {
+          // Restore both buttons (they might have been hidden/shown during loading)
           if (desktopPdfBtn) {
             desktopPdfBtn.classList.remove("btn-loading");
             desktopPdfBtn.innerHTML = originalDesktopContent;
