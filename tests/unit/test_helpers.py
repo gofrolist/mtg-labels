@@ -211,3 +211,33 @@ class TestGetSvgIntrinsicDimensions:
 
         result = get_svg_intrinsic_dimensions(str(svg_file))
         assert result is None
+
+    def test_get_symbol_file_missing_id(self):
+        """Test that warning is logged when set data is missing 'id' field."""
+        from src.services.helpers import get_symbol_file
+
+        set_data = {"name": "Test Set", "icon_svg_uri": "https://example.com/symbol.svg"}
+
+        with patch("src.services.helpers.logger") as mock_logger:
+            result = get_symbol_file(set_data)
+            assert result is None
+            mock_logger.warning.assert_called_once_with("Set data missing 'id' field")
+
+    def test_get_svg_intrinsic_dimensions_value_error(self, tmp_path):
+        """Test handling of ValueError when converting viewBox dimensions."""
+        from src.services.helpers import get_svg_intrinsic_dimensions
+
+        # Create SVG with viewBox that causes ValueError during float conversion
+        svg_content = (
+            '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" '
+            'viewBox="0 0 invalid invalid"></svg>'
+        )
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        with patch("src.services.helpers.logger") as mock_logger:
+            result = get_svg_intrinsic_dimensions(str(svg_file))
+            assert result is None
+            # Verify error was logged (line 155)
+            mock_logger.error.assert_called_once()
+            assert "Error converting viewBox dimensions" in str(mock_logger.error.call_args)
