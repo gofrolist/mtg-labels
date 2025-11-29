@@ -352,3 +352,343 @@ class TestScryfallClientGroupSets:
         """Test grouping empty list returns empty dict."""
         grouped = ScryfallClient.group_sets([])
         assert grouped == {}
+
+
+class TestScryfallClientFetchCardTypesCatalog:
+    """Tests for ScryfallClient.fetch_card_types_catalog() method."""
+
+    def test_fetch_card_types_catalog_success(self):
+        """Test successful fetch of card types catalog from API."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "object": "catalog",
+            "uri": "https://api.scryfall.com/catalog/card-types",
+            "total_values": 17,
+            "data": [
+                "Artifact",
+                "Battle",
+                "Conspiracy",
+                "Creature",
+                "Dungeon",
+                "Emblem",
+                "Enchantment",
+                "Hero",
+                "Instant",
+                "Kindred",
+                "Land",
+                "Phenomenon",
+                "Plane",
+                "Planeswalker",
+                "Scheme",
+                "Sorcery",
+                "Vanguard",
+            ],
+        }
+
+        with patch.object(client.session, "get", return_value=mock_response):
+            result = client.fetch_card_types_catalog()
+
+        assert isinstance(result, list)
+        assert len(result) == 17
+        assert "Creature" in result
+        assert "Instant" in result
+        assert "Sorcery" in result
+
+    def test_fetch_card_types_catalog_uses_cache(self):
+        """Test that fetch_card_types_catalog uses cached data on second call."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "object": "catalog",
+            "data": ["Creature", "Instant", "Sorcery"],
+        }
+
+        with patch.object(client.session, "get", return_value=mock_response) as mock_get:
+            # First call
+            result1 = client.fetch_card_types_catalog()
+            # Second call should use cache
+            result2 = client.fetch_card_types_catalog()
+
+        assert result1 == result2
+        # Should only call API once
+        assert mock_get.call_count == 1
+
+    def test_fetch_card_types_catalog_uses_instance_cache(self):
+        """Test that instance cache is used before API call."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+        # Set instance cache directly
+        client._card_types_cache = ["Creature", "Instant", "Sorcery"]
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"object": "catalog", "data": ["Artifact"]}
+
+        with patch.object(client.session, "get", return_value=mock_response) as mock_get:
+            result = client.fetch_card_types_catalog()
+
+        assert result == ["Creature", "Instant", "Sorcery"]
+        # Should not call API when using instance cache
+        assert mock_get.call_count == 0
+
+    def test_fetch_card_types_catalog_network_error(self):
+        """Test handling of network errors."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+
+        with patch.object(
+            client.session, "get", side_effect=requests.RequestException("Network error")
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                client.fetch_card_types_catalog()
+
+            assert exc_info.value.status_code == 500
+            assert "Error fetching card types catalog" in exc_info.value.detail
+
+    def test_fetch_card_types_catalog_api_error(self):
+        """Test handling of API errors (non-200 status)."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+        mock_response = Mock()
+        mock_response.status_code = 500
+
+        with patch.object(client.session, "get", return_value=mock_response):
+            with pytest.raises(HTTPException) as exc_info:
+                client.fetch_card_types_catalog()
+
+            assert exc_info.value.status_code == 500
+            assert "Error fetching card types catalog" in exc_info.value.detail
+
+    def test_fetch_card_types_catalog_invalid_response_format(self):
+        """Test handling of invalid response format."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"object": "not_catalog", "data": []}
+
+        with patch.object(client.session, "get", return_value=mock_response):
+            with pytest.raises(HTTPException) as exc_info:
+                client.fetch_card_types_catalog()
+
+            assert exc_info.value.status_code == 500
+            assert "Unexpected response format" in exc_info.value.detail
+
+
+class TestScryfallClientGetCardTypesByColor:
+    """Tests for ScryfallClient.get_card_types_by_color() method."""
+
+    @patch("src.services.scryfall_client.ScryfallClient.fetch_card_types_catalog")
+    def test_get_card_types_by_color_success(self, mock_fetch_catalog):
+        """Test successful organization of card types by color."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        mock_fetch_catalog.return_value = [
+            "Artifact",
+            "Battle",
+            "Conspiracy",
+            "Creature",
+            "Dungeon",
+            "Emblem",
+            "Enchantment",
+            "Hero",
+            "Instant",
+            "Kindred",
+            "Land",
+            "Phenomenon",
+            "Plane",
+            "Planeswalker",
+            "Scheme",
+            "Sorcery",
+            "Vanguard",
+        ]
+
+        client = ScryfallClient()
+        result = client.get_card_types_by_color()
+
+        # Should have all 7 colors
+        assert len(result) == 7
+        assert "White" in result
+        assert "Blue" in result
+        assert "Black" in result
+        assert "Red" in result
+        assert "Green" in result
+        assert "Multicolor" in result
+        assert "Colorless" in result
+
+        # Should exclude the excluded types
+        for color in result:
+            assert "Conspiracy" not in result[color]
+            assert "Dungeon" not in result[color]
+            assert "Emblem" not in result[color]
+            assert "Hero" not in result[color]
+            assert "Phenomenon" not in result[color]
+            assert "Plane" not in result[color]
+            assert "Scheme" not in result[color]
+            assert "Vanguard" not in result[color]
+
+        # Should include common types
+        assert "Creature" in result["White"]
+        assert "Instant" in result["White"]
+        assert "Sorcery" in result["White"]
+        assert "Enchantment" in result["White"]
+        assert "Artifact" in result["White"]
+        assert "Planeswalker" in result["White"]
+        assert "Land" in result["White"]
+        assert "Battle" in result["White"]
+        assert "Kindred" in result["White"]
+
+        # All colors should have the same types
+        white_types = result["White"]
+        for color in ["Blue", "Black", "Red", "Green", "Multicolor", "Colorless"]:
+            assert result[color] == white_types
+
+    @patch("src.services.scryfall_client.ScryfallClient.fetch_card_types_catalog")
+    def test_get_card_types_by_color_fallback_on_error(self, mock_fetch_catalog):
+        """Test that fallback types are used when catalog fetch fails."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        mock_fetch_catalog.side_effect = HTTPException(status_code=500, detail="API Error")
+
+        client = ScryfallClient()
+        result = client.get_card_types_by_color()
+
+        # Should still return structure with fallback types
+        assert len(result) == 7
+        assert "White" in result
+        # Should have fallback types
+        assert "Creature" in result["White"]
+        assert "Instant" in result["White"]
+        assert "Battle" in result["White"]
+
+    @patch("src.services.scryfall_client.ScryfallClient.fetch_card_types_catalog")
+    def test_get_card_types_by_color_prioritizes_common_types(self, mock_fetch_catalog):
+        """Test that common types appear first in the list."""
+        mock_fetch_catalog.return_value = [
+            "Artifact",
+            "Battle",
+            "Creature",
+            "Enchantment",
+            "Instant",
+            "Kindred",
+            "Land",
+            "Planeswalker",
+            "Sorcery",
+        ]
+
+        client = ScryfallClient()
+        result = client.get_card_types_by_color()
+
+        # Common types should appear first
+        white_types = result["White"]
+        assert white_types[0] == "Creature"
+        assert white_types[1] == "Instant"
+        assert white_types[2] == "Sorcery"
+        assert white_types[3] == "Enchantment"
+        assert white_types[4] == "Artifact"
+        assert white_types[5] == "Planeswalker"
+        assert white_types[6] == "Land"
+        # Then other types
+        assert "Battle" in white_types
+        assert "Kindred" in white_types
+
+    def test_fetch_card_types_catalog_uses_list_cache(self):
+        """Test that list cache format is handled correctly."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+        # Set cache as a list (not CachedSetData)
+        cached_list = ["Creature", "Instant", "Sorcery"]
+        cache_manager.set("card_types_catalog", cached_list)
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"object": "catalog", "data": ["Artifact"]}
+
+        with patch.object(client.session, "get", return_value=mock_response) as mock_get:
+            result = client.fetch_card_types_catalog()
+
+        assert result == cached_list
+        # Should not call API when using list cache
+        assert mock_get.call_count == 0
+
+    def test_fetch_card_types_catalog_timeout_retry(self):
+        """Test that timeout errors are retried."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"object": "catalog", "data": ["Creature"]}
+
+        # First call times out, second succeeds
+        with patch.object(
+            client.session,
+            "get",
+            side_effect=[
+                requests.Timeout("Timeout error"),
+                mock_response,
+            ],
+        ):
+            result = client.fetch_card_types_catalog()
+
+        assert result == ["Creature"]
+
+    def test_fetch_card_types_catalog_all_retries_fail_timeout(self):
+        """Test handling when all retry attempts fail with timeout."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+
+        with patch.object(client.session, "get", side_effect=requests.Timeout("Timeout error")):
+            with patch("src.services.scryfall_client.SCRYFALL_API_RETRY_ATTEMPTS", 2):
+                with pytest.raises(HTTPException) as exc_info:
+                    client.fetch_card_types_catalog()
+
+                assert exc_info.value.status_code == 500
+                assert "Error fetching card types catalog" in exc_info.value.detail
+
+    def test_fetch_card_types_catalog_all_retries_fail_request_exception(self):
+        """Test handling when all retry attempts fail with RequestException."""
+        cache_manager = get_cache_manager()
+        cache_manager.clear()
+
+        client = ScryfallClient()
+
+        with patch.object(
+            client.session,
+            "get",
+            side_effect=requests.RequestException("Network error"),
+        ):
+            with patch("src.services.scryfall_client.SCRYFALL_API_RETRY_ATTEMPTS", 2):
+                with pytest.raises(HTTPException) as exc_info:
+                    client.fetch_card_types_catalog()
+
+                assert exc_info.value.status_code == 500
+                # The error detail can be either message depending on which exception path is taken
+                assert (
+                    "Error fetching card types catalog" in exc_info.value.detail
+                    or "Network error fetching card types catalog" in exc_info.value.detail
+                )

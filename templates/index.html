@@ -881,8 +881,8 @@
             <input
               type="text"
               class="form-control"
-              placeholder="Search sets..."
-              aria-label="Search sets"
+              placeholder="Search..."
+              aria-label="Search"
               id="search"
             />
             <button
@@ -971,8 +971,9 @@
               <i class="bi bi-file-earmark-pdf"></i> PDF
             </span>
           </button>
-          <!-- Hidden input to store selected template (default will be set by JavaScript) -->
+          <!-- Hidden inputs to store selected template and view mode -->
           <input type="hidden" name="template" id="selectedTemplate" value="" form="sets-form" />
+          <input type="hidden" name="view_mode" id="viewModeInput" value="{{ view_mode or 'sets' }}" form="sets-form" />
         </div>
       </div>
     </div>
@@ -984,7 +985,24 @@
     <!-- Selection Counter at Top -->
     <div class="selection-counter-container">
       <div class="d-flex justify-content-between align-items-center gap-2">
-        <div class="search-feedback" id="searchFeedback"></div>
+        <div class="d-flex align-items-center gap-3">
+          <!-- View Toggle: Sets vs Types -->
+          <div class="btn-group" role="group" aria-label="View mode toggle">
+            <input type="radio" class="btn-check" name="viewMode" id="viewModeSets" value="sets" autocomplete="off" {% if view_mode == "sets" or not view_mode %}checked{% endif %}>
+            <label class="btn btn-sm btn-outline-secondary" for="viewModeSets" title="Organize by Sets">
+              <i class="bi bi-collection"></i> Sets
+            </label>
+            <input type="radio" class="btn-check" name="viewMode" id="viewModeCards" value="types" autocomplete="off" {% if view_mode == "types" %}checked{% endif %}>
+            <label class="btn btn-sm btn-outline-secondary" for="viewModeCards" title="Organize by Color & Type">
+              <i class="bi bi-card-text"></i> Types
+            </label>
+          </div>
+          <span class="selection-counter empty" id="selectionCounter">
+            <i class="bi bi-check2-square"></i>
+            <span id="selectionCountText">0 items</span>
+          </span>
+          <div class="search-feedback" id="searchFeedback"></div>
+        </div>
         <div class="d-flex align-items-center gap-2 ms-auto">
           <div class="d-flex align-items-center gap-1">
             <span class="placeholders-control-label">Empty at start:</span>
@@ -1001,10 +1019,6 @@
               title="Leave this many empty label positions at the start of the first sheet"
             />
           </div>
-          <span class="selection-counter empty" id="selectionCounter">
-            <i class="bi bi-check2-square"></i>
-            <span id="selectionCountText">0 sets</span>
-          </span>
           <!-- Global Select All / Deselect All -->
           <button
             type="button"
@@ -1017,101 +1031,179 @@
       </div>
     </div>
 
-    <!-- Accordion for grouped sets -->
+    <!-- Accordion for grouped sets or cards -->
     <form action="/generate-pdf" method="post" id="sets-form">
-      {% for group, sets in grouped_sets.items() %}
-      <div class="accordion" id="accordion-{{ group }}">
-        <div class="accordion-item">
-          <!--
-            A parent container for the entire heading row (full width).
-            We include the heading + "Select Group" button in one line.
-          -->
-          <div
-            class="d-flex justify-content-between align-items-center w-100 px-2 py-2"
-            id="heading-{{ group }}"
-          >
-            <!-- The heading itself -->
-            <h2 class="accordion-header mb-0 flex-grow-1">
-              <!-- The standard Bootstrap accordion button -->
-              <button
-                class="accordion-button collapsed text-start w-100"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapse-{{ group }}"
-                aria-expanded="false"
-                aria-controls="collapse-{{ group }}"
-              >
-                {{ group }}
-              </button>
-            </h2>
-
-            <!-- Per-group toggle button (Select Group / Deselect Group) -->
-            <button
-              type="button"
-              class="btn btn-sm btn-secondary toggle-group"
-              data-group="#collapse-{{ group }}"
+      {% if view_mode == "types" %}
+        <!-- Types view: card types grouped by color -->
+        {% for color, types in card_types_by_color.items() %}
+        <div class="accordion" id="accordion-color-{{ color }}">
+          <div class="accordion-item">
+            <div
+              class="d-flex justify-content-between align-items-center w-100 px-2 py-2"
+              id="heading-color-{{ color }}"
             >
-              <i class="bi bi-check-all"></i> Select Group
-            </button>
-          </div>
-
-          <!-- Collapsible content -->
-          <div
-            id="collapse-{{ group }}"
-            class="accordion-collapse collapse"
-            aria-labelledby="heading-{{ group }}"
-            data-bs-parent="#accordion-{{ group }}"
-          >
-            <div class="accordion-body">
-              <!-- Slightly tighter spacing between columns (g-1) -->
-              <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-1">
-                {% for set in sets %}
-                <div class="col">
-                  <div class="form-check set-item">
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      name="set_ids"
-                      value="{{ set.id }}"
-                      id="set-{{ set.id }}"
-                      data-type="{{ set.set_type }}"
-                      {% if set.released_at %}
-                      data-release="{{ set.released_at[:4] }}"
-                      {% endif %}
-                    />
-                    <!--
-                      Symbol on the LEFT, then the set name,
-                      with full name in the "title" attribute for hover.
-                    -->
-                    <label
-                      class="form-check-label truncate-label"
-                      for="set-{{ set.id }}"
-                      title="{{ set.name }}"
-                    >
-                      <img src="{{ set.icon_svg_uri }}" alt="symbol" />
-                      {{ set.name }}
-                    </label>
-                    <input
-                      type="number"
-                      class="form-control form-control-sm quantity-input"
-                      name="quantities"
-                      data-set-id="{{ set.id }}"
-                      id="quantity-{{ set.id }}"
-                      value="1"
-                      min="1"
-                      max="100"
-                      aria-label="Quantity for {{ set.name }}"
-                      title="Number of labels to print for {{ set.name }}"
-                    />
+              <h2 class="accordion-header mb-0 flex-grow-1">
+                <button
+                  class="accordion-button collapsed text-start w-100"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#collapse-color-{{ color }}"
+                  aria-expanded="false"
+                  aria-controls="collapse-color-{{ color }}"
+                >
+                  {{ color }}
+                </button>
+              </h2>
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary toggle-group"
+                data-group="#collapse-color-{{ color }}"
+              >
+                <i class="bi bi-check-all"></i> Select Group
+              </button>
+            </div>
+            <div
+              id="collapse-color-{{ color }}"
+              class="accordion-collapse collapse"
+              aria-labelledby="heading-color-{{ color }}"
+              data-bs-parent="#accordion-color-{{ color }}"
+            >
+              <div class="accordion-body">
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-1">
+                  {% for card_type in types %}
+                  <div class="col">
+                    <div class="form-check set-item">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        name="card_type_ids"
+                        value="{{ color }}:{{ card_type }}"
+                        id="type-{{ color }}-{{ card_type }}"
+                      />
+                      <label
+                        class="form-check-label truncate-label"
+                        for="type-{{ color }}-{{ card_type }}"
+                        title="{{ color }} {{ card_type }}"
+                      >
+                        {{ card_type }}
+                      </label>
+                      <input
+                        type="number"
+                        class="form-control form-control-sm quantity-input"
+                        name="quantities"
+                        data-type-id="{{ color }}:{{ card_type }}"
+                        id="quantity-{{ color }}-{{ card_type }}"
+                        value="1"
+                        min="1"
+                        max="100"
+                        aria-label="Quantity for {{ color }} {{ card_type }}"
+                        title="Number of labels to print for {{ color }} {{ card_type }}"
+                      />
+                    </div>
                   </div>
+                  {% endfor %}
                 </div>
-                {% endfor %}
               </div>
             </div>
           </div>
         </div>
-      </div>
-      {% endfor %}
+        {% endfor %}
+      {% else %}
+        <!-- Sets view: grouped by set type -->
+        {% for group, sets in grouped_sets.items() %}
+        <div class="accordion" id="accordion-{{ group }}">
+          <div class="accordion-item">
+            <!--
+              A parent container for the entire heading row (full width).
+              We include the heading + "Select Group" button in one line.
+            -->
+            <div
+              class="d-flex justify-content-between align-items-center w-100 px-2 py-2"
+              id="heading-{{ group }}"
+            >
+              <!-- The heading itself -->
+              <h2 class="accordion-header mb-0 flex-grow-1">
+                <!-- The standard Bootstrap accordion button -->
+                <button
+                  class="accordion-button collapsed text-start w-100"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#collapse-{{ group }}"
+                  aria-expanded="false"
+                  aria-controls="collapse-{{ group }}"
+                >
+                  {{ group }}
+                </button>
+              </h2>
+
+              <!-- Per-group toggle button (Select Group / Deselect Group) -->
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary toggle-group"
+                data-group="#collapse-{{ group }}"
+              >
+                <i class="bi bi-check-all"></i> Select Group
+              </button>
+            </div>
+
+            <!-- Collapsible content -->
+            <div
+              id="collapse-{{ group }}"
+              class="accordion-collapse collapse"
+              aria-labelledby="heading-{{ group }}"
+              data-bs-parent="#accordion-{{ group }}"
+            >
+              <div class="accordion-body">
+                <!-- Slightly tighter spacing between columns (g-1) -->
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-1">
+                  {% for set in sets %}
+                  <div class="col">
+                    <div class="form-check set-item">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        name="set_ids"
+                        value="{{ set.id }}"
+                        id="set-{{ set.id }}"
+                        data-type="{{ set.set_type }}"
+                        {% if set.released_at %}
+                        data-release="{{ set.released_at[:4] }}"
+                        {% endif %}
+                      />
+                      <!--
+                        Symbol on the LEFT, then the set name,
+                        with full name in the "title" attribute for hover.
+                      -->
+                      <label
+                        class="form-check-label truncate-label"
+                        for="set-{{ set.id }}"
+                        title="{{ set.name }}"
+                      >
+                        <img src="{{ set.icon_svg_uri }}" alt="symbol" />
+                        {{ set.name }}
+                      </label>
+                      <input
+                        type="number"
+                        class="form-control form-control-sm quantity-input"
+                        name="quantities"
+                        data-set-id="{{ set.id }}"
+                        id="quantity-{{ set.id }}"
+                        value="1"
+                        min="1"
+                        max="100"
+                        aria-label="Quantity for {{ set.name }}"
+                        title="Number of labels to print for {{ set.name }}"
+                      />
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
     </form>
   </div>
 
@@ -1204,15 +1296,57 @@
 
       themeToggle.addEventListener("click", toggleTheme);
 
+      // ========== VIEW MODE TOGGLE ==========
+      const viewModeInput = document.getElementById("viewModeInput");
+      const viewModeSets = document.getElementById("viewModeSets");
+      const viewModeCards = document.getElementById("viewModeCards");
+
+      function switchViewMode(mode) {
+        if (mode === "types") {
+          window.location.href = "/?view=types";
+        } else {
+          window.location.href = "/?view=sets";
+        }
+      }
+
+      if (viewModeSets) {
+        viewModeSets.addEventListener("change", function() {
+          if (this.checked) {
+            switchViewMode("sets");
+          }
+        });
+      }
+
+      if (viewModeCards) {
+        viewModeCards.addEventListener("change", function() {
+          if (this.checked) {
+            switchViewMode("types");
+          }
+        });
+      }
+
       // ========== SELECTION COUNTER ==========
       // Template to labels per page mapping (from backend config)
       const templateLabelsPerPage = {{ template_labels_per_page | tojson }} || {};
 
       function getTotalLabelCount() {
         let totalLabels = 0;
-        document.querySelectorAll('input[name="set_ids"]:checked').forEach(function(checkbox) {
-          const setId = checkbox.value;
-          const quantityInput = document.getElementById(`quantity-${setId}`);
+        // Check for sets or cards based on current view
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]:checked' : 'input[name="set_ids"]:checked';
+
+        document.querySelectorAll(checkboxName).forEach(function(checkbox) {
+          const itemId = checkbox.value;
+          let quantityInput;
+          if (isCardsView) {
+            // For cards, the quantity input ID is "quantity-{color}-{type}"
+            const parts = itemId.split(":");
+            if (parts.length === 2) {
+              quantityInput = document.getElementById(`quantity-${parts[0]}-${parts[1]}`);
+            }
+          } else {
+            quantityInput = document.getElementById(`quantity-${itemId}`);
+          }
           const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
           totalLabels += quantity;
         });
@@ -1234,7 +1368,11 @@
       }
 
       function updateSelectionCounter() {
-        const checkedCount = document.querySelectorAll('input[name="set_ids"]:checked').length;
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]:checked' : 'input[name="set_ids"]:checked';
+        const itemType = isCardsView ? "card" : "set";
+
+        const checkedCount = document.querySelectorAll(checkboxName).length;
         const totalLabels = getTotalLabelCount();
         const selectedTemplate = document.getElementById("selectedTemplate").value || 'avery5160';
         const labelsPerPage = templateLabelsPerPage[selectedTemplate] || 30;
@@ -1242,7 +1380,7 @@
 
         let counterText = `${totalLabels} label${totalLabels !== 1 ? 's' : ''}`;
         if (checkedCount > 0 && checkedCount !== totalLabels) {
-          counterText += ` (${checkedCount} set${checkedCount !== 1 ? 's' : ''})`;
+          counterText += ` (${checkedCount} ${itemType}${checkedCount !== 1 ? 's' : ''})`;
         }
         if (pageCount > 0) {
           counterText += ` / ${pageCount} page${pageCount !== 1 ? 's' : ''}`;
@@ -1254,7 +1392,9 @@
 
       // ========== GLOBAL SELECT ALL/DESELECT ALL ==========
       function updateGlobalToggleLabel() {
-        const allCbs = document.querySelectorAll('input[type="checkbox"]');
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]' : 'input[name="set_ids"]';
+        const allCbs = document.querySelectorAll(checkboxName);
         const anyUnchecked = Array.from(allCbs).some(cb => !cb.checked);
         globalToggleBtn.innerHTML = anyUnchecked
           ? '<i class="bi bi-check-all"></i> Select All'
@@ -1262,7 +1402,9 @@
       }
 
       globalToggleBtn.addEventListener("click", function () {
-        const allCbs = document.querySelectorAll('input[type="checkbox"]');
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]' : 'input[name="set_ids"]';
+        const allCbs = document.querySelectorAll(checkboxName);
         const anyUnchecked = Array.from(allCbs).some(cb => !cb.checked);
         allCbs.forEach(cb => (cb.checked = anyUnchecked));
         saveGlobalSelections();
@@ -1289,17 +1431,33 @@
       document.querySelectorAll(".toggle-group").forEach(function (btn) {
         btn.addEventListener("click", function () {
           const groupSelector = this.getAttribute("data-group");
-          const checkboxes = document.querySelectorAll(groupSelector + " input[type='checkbox']");
-          const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-          checkboxes.forEach(cb => (cb.checked = !allChecked));
+          const isCardsView = viewModeInput && viewModeInput.value === "types";
+          // For cards view, we need to handle nested structure (color > type > cards)
+          if (isCardsView) {
+            // Find all checkboxes within this color group
+            const colorGroup = document.querySelector(groupSelector);
+            if (colorGroup) {
+              const checkboxes = colorGroup.querySelectorAll('input[name="card_type_ids"]');
+              const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+              checkboxes.forEach(cb => (cb.checked = !allChecked));
+            }
+          } else {
+            const checkboxes = document.querySelectorAll(groupSelector + " input[type='checkbox']");
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => (cb.checked = !allChecked));
+          }
           saveGlobalSelections();
           updateGlobalToggleLabel();
           updateSelectionCounter();
           updateGroupToggleLabel(groupSelector, this);
           // Expand the group when selecting items
-          if (!allChecked) {
-            const collapseElement = document.querySelector(groupSelector);
-            if (collapseElement) {
+          const collapseElement = document.querySelector(groupSelector);
+          if (collapseElement) {
+            const isCardsView = viewModeInput && viewModeInput.value === "types";
+            const checkboxName = isCardsView ? 'input[name="card_type_ids"]' : 'input[type="checkbox"]';
+            const checkboxes = collapseElement.querySelectorAll(checkboxName);
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            if (!allChecked) {
               let collapseInstance = bootstrap.Collapse.getInstance(collapseElement);
               if (!collapseInstance) {
                 collapseInstance = new bootstrap.Collapse(collapseElement, { toggle: false });
@@ -1311,7 +1469,9 @@
       });
 
       function updateGroupToggleLabel(groupSelector, button) {
-        const checkboxes = document.querySelectorAll(groupSelector + " input[type='checkbox']");
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]' : 'input[type="checkbox"]';
+        const checkboxes = document.querySelectorAll(groupSelector + " " + checkboxName);
         const allChecked = Array.from(checkboxes).every(cb => cb.checked);
         button.innerHTML = allChecked
           ? '<i class="bi bi-x-circle"></i> Deselect Group'
@@ -1320,28 +1480,37 @@
 
       // ========== LOCAL STORAGE PERSISTENCE ==========
       function saveGlobalSelections() {
-        const selected = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]:checked' : 'input[name="set_ids"]:checked';
+        const storageKey = isCardsView ? "selectedCardTypes" : "selectedSets";
+        const selected = Array.from(document.querySelectorAll(checkboxName))
           .map(cb => cb.value);
-        localStorage.setItem("selectedSets", JSON.stringify(selected));
+        localStorage.setItem(storageKey, JSON.stringify(selected));
       }
 
       function loadGlobalSelections() {
-        const stored = localStorage.getItem("selectedSets");
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const storageKey = isCardsView ? "selectedCardTypes" : "selectedSets";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]' : 'input[name="set_ids"]';
+        const stored = localStorage.getItem(storageKey);
         if (stored) {
           const selected = JSON.parse(stored);
-          document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+          document.querySelectorAll(checkboxName).forEach(function (cb) {
             cb.checked = selected.includes(cb.value);
           });
         }
       }
 
-      // ========== EXPAND GROUPS WITH SELECTED SETS ON LOAD ==========
-      function expandGroupsWithSelectedSets() {
-        const selected = JSON.parse(localStorage.getItem("selectedSets") || "[]");
+      // ========== EXPAND GROUPS WITH SELECTED ITEMS ON LOAD ==========
+      function expandGroupsWithSelectedItems() {
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const storageKey = isCardsView ? "selectedCardTypes" : "selectedSets";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]' : 'input[type="checkbox"]';
+        const selected = JSON.parse(localStorage.getItem(storageKey) || "[]");
         document.querySelectorAll(".accordion").forEach(function (accordion) {
           const collapseElement = accordion.querySelector(".accordion-collapse");
           let groupHasSelected = false;
-          accordion.querySelectorAll("input[type='checkbox']").forEach(cb => {
+          accordion.querySelectorAll(checkboxName).forEach(cb => {
             if (selected.includes(cb.value)) groupHasSelected = true;
           });
           if (groupHasSelected) {
@@ -1360,12 +1529,13 @@
       }
 
       // ========== CHECKBOX CHANGE HANDLER ==========
-      document.querySelectorAll("input[type='checkbox']").forEach(function (cb) {
-        cb.addEventListener("change", function () {
+      // Use event delegation to handle dynamically added checkboxes
+      document.getElementById("sets-form").addEventListener("change", function(e) {
+        if (e.target.type === "checkbox" && (e.target.name === "set_ids" || e.target.name === "card_type_ids")) {
           saveGlobalSelections();
           updateGlobalToggleLabel();
           updateSelectionCounter();
-          const parentAccordion = cb.closest(".accordion");
+          const parentAccordion = e.target.closest(".accordion");
           if (parentAccordion) {
             const collapseElement = parentAccordion.querySelector(".accordion-collapse");
             const toggleBtn = parentAccordion.querySelector(".toggle-group");
@@ -1373,23 +1543,26 @@
               updateGroupToggleLabel("#" + collapseElement.id, toggleBtn);
             }
           }
-        });
+        }
       });
 
       // ========== QUANTITY INPUT CHANGE HANDLER ==========
-      document.querySelectorAll(".quantity-input").forEach(function (input) {
-        input.addEventListener("change", function () {
-          const value = parseInt(this.value);
+      // Use event delegation to handle dynamically added quantity inputs
+      document.getElementById("sets-form").addEventListener("change", function(e) {
+        if (e.target.classList.contains("quantity-input")) {
+          const value = parseInt(e.target.value);
           if (isNaN(value) || value < 1) {
-            this.value = 1;
+            e.target.value = 1;
           } else if (value > 100) {
-            this.value = 100;
+            e.target.value = 100;
           }
           updateSelectionCounter();
-        });
-        input.addEventListener("input", function () {
+        }
+      });
+      document.getElementById("sets-form").addEventListener("input", function(e) {
+        if (e.target.classList.contains("quantity-input")) {
           updateSelectionCounter();
-        });
+        }
       });
 
       // ========== PLACEHOLDERS (EMPTY LABELS) CHANGE HANDLER ==========
@@ -1433,22 +1606,44 @@
       function handleSearch() {
         const filter = searchInput.value.toLowerCase();
         let matchCount = 0;
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const itemType = isCardsView ? "types" : "sets";
 
         document.querySelectorAll(".accordion").forEach(function (accordion) {
           let groupHasMatch = false;
-          accordion.querySelectorAll(".col").forEach(function (col) {
-            const item = col.querySelector(".set-item");
-            if (!item) return;
-            const text = item.textContent.toLowerCase();
-            const title = col.querySelector("label")?.getAttribute("title")?.toLowerCase() || "";
-            if (text.indexOf(filter) > -1 || title.indexOf(filter) > -1) {
-              col.style.display = "";
-              groupHasMatch = true;
-              matchCount++;
-            } else {
-              col.style.display = "none";
-            }
-          });
+
+          if (isCardsView) {
+            // For cards view, search through nested structure
+            accordion.querySelectorAll(".col").forEach(function (col) {
+              const item = col.querySelector(".set-item");
+              if (!item) return;
+              const text = item.textContent.toLowerCase();
+              const title = col.querySelector("label")?.getAttribute("title")?.toLowerCase() || "";
+              if (text.indexOf(filter) > -1 || title.indexOf(filter) > -1) {
+                col.style.display = "";
+                groupHasMatch = true;
+                matchCount++;
+              } else {
+                col.style.display = "none";
+              }
+            });
+          } else {
+            // For sets view, original logic
+            accordion.querySelectorAll(".col").forEach(function (col) {
+              const item = col.querySelector(".set-item");
+              if (!item) return;
+              const text = item.textContent.toLowerCase();
+              const title = col.querySelector("label")?.getAttribute("title")?.toLowerCase() || "";
+              if (text.indexOf(filter) > -1 || title.indexOf(filter) > -1) {
+                col.style.display = "";
+                groupHasMatch = true;
+                matchCount++;
+              } else {
+                col.style.display = "none";
+              }
+            });
+          }
+
           const collapseElement = accordion.querySelector(".accordion-collapse");
           if (groupHasMatch) {
             let collapseInstance = bootstrap.Collapse.getInstance(collapseElement);
@@ -1467,9 +1662,9 @@
         // Update search feedback
         if (filter) {
           if (matchCount === 0) {
-            updateSearchFeedback(`No sets found for "${filter}"`, true);
+            updateSearchFeedback(`No ${itemType} found for "${filter}"`, true);
           } else {
-            updateSearchFeedback(`${matchCount} set${matchCount !== 1 ? 's' : ''} found`, false);
+            updateSearchFeedback(`${matchCount} ${itemType.slice(0, -1)}${matchCount !== 1 ? 's' : ''} found`, false);
           }
         } else {
           updateSearchFeedback("");
@@ -1477,11 +1672,14 @@
       }
 
       function resetAccordionsToDefault() {
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]' : 'input[type="checkbox"]';
+
         document.querySelectorAll(".col").forEach(col => (col.style.display = ""));
         document.querySelectorAll(".accordion").forEach(function (accordion) {
           const collapseElem = accordion.querySelector(".accordion-collapse");
           let groupHasSelected = false;
-          accordion.querySelectorAll("input[type='checkbox']").forEach(cb => {
+          accordion.querySelectorAll(checkboxName).forEach(cb => {
             if (cb.checked) groupHasSelected = true;
           });
           let ci = bootstrap.Collapse.getInstance(collapseElem);
@@ -1529,10 +1727,14 @@
       const donateModal = new bootstrap.Modal(document.getElementById("donateModal"));
 
       setsForm.addEventListener("submit", async function (e) {
-        const checkedBoxes = document.querySelectorAll('input[name="set_ids"]:checked');
+        const isCardsView = viewModeInput && viewModeInput.value === "types";
+        const checkboxName = isCardsView ? 'input[name="card_type_ids"]:checked' : 'input[name="set_ids"]:checked';
+        const checkedBoxes = document.querySelectorAll(checkboxName);
+        const itemType = isCardsView ? "card" : "set";
+
         if (checkedBoxes.length === 0) {
           e.preventDefault();
-          alert("Please select at least one set before generating the PDF.");
+          alert(`Please select at least one ${itemType} before generating the PDF.`);
           return false;
         }
 
@@ -1542,8 +1744,13 @@
         // Show loading spinner in button
         setButtonLoading(true);
 
-        // Prepare form data with expanded set list based on quantities
+        // Prepare form data with expanded item list based on quantities
         const formData = new FormData();
+
+        // Add view mode
+        if (viewModeInput && viewModeInput.value) {
+          formData.append("view_mode", viewModeInput.value);
+        }
 
         // Add template and use_template fields
         const templateInput = document.getElementById("selectedTemplate");
@@ -1563,15 +1770,26 @@
           formData.append("placeholders", String(placeholdersValue));
         }
 
-        // Expand set_ids based on quantities
+        // Expand item IDs based on quantities
         checkedBoxes.forEach(function(checkbox) {
-          const setId = checkbox.value;
-          const quantityInput = document.getElementById(`quantity-${setId}`);
+          const itemId = checkbox.value;
+          // For cards view, the ID format is "color:type", so we need to handle the ID differently
+          let quantityInput;
+          if (isCardsView) {
+            // For cards, the quantity input ID is "quantity-{color}-{type}"
+            const parts = itemId.split(":");
+            if (parts.length === 2) {
+              quantityInput = document.getElementById(`quantity-${parts[0]}-${parts[1]}`);
+            }
+          } else {
+            quantityInput = document.getElementById(`quantity-${itemId}`);
+          }
           const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
 
-          // Add the set ID multiple times based on quantity
+          // Add the item ID multiple times based on quantity
+          const formFieldName = isCardsView ? "card_type_ids" : "set_ids";
           for (let i = 0; i < quantity; i++) {
-            formData.append("set_ids", setId);
+            formData.append(formFieldName, itemId);
           }
         });
 
@@ -1711,7 +1929,7 @@
       loadGlobalSelections();
       updateGlobalToggleLabel();
       updateSelectionCounter();
-      expandGroupsWithSelectedSets();
+      expandGroupsWithSelectedItems();
 
       // Hook up search + clear button
       toggleClearButton();

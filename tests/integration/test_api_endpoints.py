@@ -99,3 +99,80 @@ class TestApiSetsEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data == []
+
+    @patch("src.api.routes.scryfall_client.filter_sets")
+    @patch("src.api.routes.scryfall_client.fetch_sets")
+    def test_api_sets_endpoint_returns_dicts(self, mock_fetch, mock_filter, client):
+        """Test that /api/sets returns dictionaries."""
+        from src.models.set_data import MTGSet
+
+        sets = [
+            MTGSet(
+                id="test-1",
+                name="Test 1",
+                code="T1",
+                set_type="expansion",
+                card_count=100,
+                released_at="2023-01-01",
+            ),
+            {"id": "test-2", "name": "Test 2", "code": "T2", "set_type": "expansion"},
+        ]
+        mock_fetch.return_value = sets
+        mock_filter.return_value = sets
+
+        response = client.get("/api/sets")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        # MTGSet should be converted to dict
+        assert all(isinstance(item, dict) for item in data)
+
+
+class TestIndexEndpointTypesView:
+    """Tests for GET / endpoint with types view."""
+
+    @patch("src.api.routes.scryfall_client.get_card_types_by_color")
+    def test_index_endpoint_types_view_success(self, mock_get_types, client):
+        """Test successful GET /?view=types request."""
+        mock_get_types.return_value = {
+            "White": ["Creature", "Instant", "Sorcery"],
+            "Blue": ["Creature", "Instant", "Sorcery"],
+            "Multicolor": ["Creature", "Instant", "Sorcery"],
+        }
+
+        response = client.get("/?view=types")
+
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        # Check that types appear in HTML
+        assert "Creature" in response.text
+        assert "White" in response.text
+
+    @patch("src.api.routes.scryfall_client.get_card_types_by_color")
+    def test_index_endpoint_types_view_api_error(self, mock_get_types, client):
+        """Test GET /?view=types when API returns error."""
+        from fastapi import HTTPException
+
+        mock_get_types.side_effect = HTTPException(status_code=500, detail="API Error")
+
+        response = client.get("/?view=types")
+
+        # Should handle error gracefully
+        assert response.status_code == 500
+
+    @patch("src.api.routes.scryfall_client.group_sets")
+    @patch("src.api.routes.scryfall_client.filter_sets")
+    @patch("src.api.routes.scryfall_client.fetch_sets")
+    def test_index_endpoint_sets_view_explicit(
+        self, mock_fetch, mock_filter, mock_group, client, sample_set_data
+    ):
+        """Test GET /?view=sets explicitly sets view mode."""
+        mock_fetch.return_value = sample_set_data
+        mock_filter.return_value = sample_set_data
+        mock_group.return_value = {"Expansion": sample_set_data}
+
+        response = client.get("/?view=sets")
+
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]

@@ -92,16 +92,19 @@ class PDFGenerator:
         selected_sets: list[dict],
         template_name: str | None = None,
         template_path: str | None = None,
+        view_mode: str = "sets",
     ) -> None:
         """
-        Initialize PDFGenerator with selected sets.
+        Initialize PDFGenerator with selected sets or card types.
 
         Args:
-            selected_sets: List of set dictionaries to generate labels for
+            selected_sets: List of set/card type dictionaries to generate labels for
             template_name: Name of label template to use (defaults to CURRENT_LABEL_TEMPLATE)
             template_path: Optional path to template PDF file for debugging overlay
+            view_mode: View mode - "sets" or "types" (default: "sets")
         """
         self.selected_sets = selected_sets
+        self.view_mode = view_mode
         template_key = template_name or CURRENT_LABEL_TEMPLATE
         if template_key not in LABEL_TEMPLATES:
             logger.warning(
@@ -183,10 +186,10 @@ class PDFGenerator:
 
     def _draw_label(self, set_data: dict) -> None:
         """
-        Draw a single label for a set.
+        Draw a single label for a set or card type.
 
         Args:
-            set_data: Dictionary containing set data
+            set_data: Dictionary containing set or card type data
         """
         # Handle placeholder labels (empty slots to shift starting position)
         if set_data.get("__placeholder__"):
@@ -245,51 +248,237 @@ class PDFGenerator:
             )
             max_text_width = max(10, self.template["label_width"] - self.SYMBOL_AREA_WIDTH - 20)
 
-        # Draw set name
-        full_set_name = set_data.get("name", "")
-        fitted_name = fit_text_to_width(
-            abbreviate_set_name(full_set_name),
-            "EBGaramondBold",
-            FONT_SIZE_ROW1,
-            max_text_width,
-            self.canvas,
-        )
+        if self.view_mode == "types":
+            # Draw card type name (e.g., "Creature", "Instant")
+            card_type = set_data.get("type", set_data.get("name", ""))
+            color = set_data.get("color", "")
 
-        # Draw set code and release date
-        set_code = set_data.get("code", "").upper()
-        release_date_str = ""
-        released_at = set_data.get("released_at")
-        if released_at:
+            fitted_name = fit_text_to_width(
+                card_type,
+                "EBGaramondBold",
+                FONT_SIZE_ROW1,
+                max_text_width,
+                self.canvas,
+            )
+
+            # Draw color name on second line (optional, or leave empty)
+            text_line2 = color if color else ""
+
+            # Fit second line to width as well
+            fitted_line2 = fit_text_to_width(
+                text_line2, "SourceSansProRegular", FONT_SIZE_ROW2, max_text_width, self.canvas
+            )
+
+            logger.debug(
+                f"Drawing text for type '{card_type}' (color: {color}) at ({text_x}, {text_y}), "
+                f"max_width={max_text_width}"
+            )
+            self.canvas.setFont("EBGaramondBold", FONT_SIZE_ROW1)
+            self.canvas.setFillColorRGB(0, 0, 0)
+            self.canvas.drawString(text_x, text_y, fitted_name)
+
+            # Position second text line below the first (if color is shown)
+            if fitted_line2:
+                second_text_y = text_y - FONT_SIZE_ROW1 - 4
+                self.canvas.setFont("SourceSansProRegular", FONT_SIZE_ROW2)
+                self.canvas.drawString(text_x, second_text_y, fitted_line2)
+
+            # Draw mana symbol for the color
+            mana_symbol_file = self._get_mana_symbol_file(color)
+            if mana_symbol_file:
+                self._draw_symbol(mana_symbol_file, label_x, label_y, f"{color} {card_type}")
+        else:
+            # Draw set name
+            full_set_name = set_data.get("name", "")
+            fitted_name = fit_text_to_width(
+                abbreviate_set_name(full_set_name),
+                "EBGaramondBold",
+                FONT_SIZE_ROW1,
+                max_text_width,
+                self.canvas,
+            )
+
+            # Draw set code and release date
+            set_code = set_data.get("code", "").upper()
+            release_date_str = ""
+            released_at = set_data.get("released_at")
+            if released_at:
+                try:
+                    date_obj = datetime.datetime.strptime(released_at, "%Y-%m-%d")
+                    release_date_str = date_obj.strftime("%B %Y")
+                except ValueError:
+                    release_date_str = released_at
+
+            text_line2 = f"{set_code} - {release_date_str}"
+
+            # Fit second line to width as well
+            fitted_line2 = fit_text_to_width(
+                text_line2, "SourceSansProRegular", FONT_SIZE_ROW2, max_text_width, self.canvas
+            )
+
+            logger.debug(
+                f"Drawing text for set '{full_set_name}' at ({text_x}, {text_y}), "
+                f"max_width={max_text_width}"
+            )
+            self.canvas.setFont("EBGaramondBold", FONT_SIZE_ROW1)
+            self.canvas.setFillColorRGB(0, 0, 0)
+            self.canvas.drawString(text_x, text_y, fitted_name)
+
+            # Position second text line below the first
+            second_text_y = text_y - FONT_SIZE_ROW1 - 4
+            self.canvas.setFont("SourceSansProRegular", FONT_SIZE_ROW2)
+            self.canvas.drawString(text_x, second_text_y, fitted_line2)
+
+            # Draw the set symbol (lazy loading - only load if needed)
+            local_file = get_symbol_file(set_data)
+            if local_file:
+                self._draw_symbol(local_file, label_x, label_y, full_set_name)
+
+    def _get_mana_symbol_file(self, color: str) -> str | None:
+        """
+        Get mana symbol file path for a color.
+
+        Uses Scryfall's symbology API to get the correct SVG URI.
+
+        Args:
+            color: Color name (White, Blue, Black, Red, Green, Multicolor, Colorless)
+
+        Returns:
+            Path to mana symbol SVG file, or None if unavailable
+        """
+        import time
+
+        import requests
+
+        from src.cache.cache_manager import get_cache_manager
+        from src.config import SCRYFALL_API_RATE_LIMIT_DELAY, logger
+
+        # Map color names to Scryfall mana symbol codes
+        # These are the symbol codes used in mana costs
+        color_to_symbol = {
+            "White": "{W}",
+            "Blue": "{U}",
+            "Black": "{B}",
+            "Red": "{R}",
+            "Green": "{G}",
+            "Multicolor": "{PW}",  # Use PW symbol for multicolor
+            "Colorless": "{C}",
+        }
+
+        symbol_code = color_to_symbol.get(color)
+        if not symbol_code:
+            return None
+
+        cache_manager = get_cache_manager()
+        # Use cache key based on color name and symbol code to ensure correct symbol
+        # This ensures cache invalidation when symbol changes (e.g., Multicolor: {G} -> {PW})
+        symbol_id = f"mana_{color.lower()}_{symbol_code.replace('{', '').replace('}', '')}"
+
+        # Try to get from cache
+        cached_path = cache_manager.get_symbol(symbol_id)
+        if cached_path:
+            logger.debug(f"Mana symbol file found in cache: {cached_path}")
+            return cached_path
+
+        # Get symbol URI from Scryfall symbology API
+        symbol_url = self._get_mana_symbol_uri_from_api(symbol_code, color)
+        if not symbol_url:
+            logger.warning(f"Could not get symbol URI for {color} ({symbol_code})")
+            return None
+
+        logger.info(f"Downloading mana symbol from {symbol_url} for color '{color}'")
+
+        try:
+            time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
+            response = requests.get(symbol_url, timeout=30)
+        except requests.RequestException as e:
+            logger.error(f"Error downloading mana symbol: {e}")
+            return None
+
+        if response.status_code != 200:
+            logger.error(f"Failed to download mana symbol, status: {response.status_code}")
+            return None
+
+        # Save to cache
+        cached_path = cache_manager.save_symbol(symbol_id, response.content)
+        if cached_path:
+            logger.info(f"Saved mana symbol to cache: {cached_path}")
+            return cached_path
+        else:
+            logger.error("Failed to save mana symbol to cache")
+            return None
+
+    def _get_mana_symbol_uri_from_api(self, symbol_code: str, color: str) -> str | None:
+        """
+        Get mana symbol SVG URI from Scryfall symbology API.
+
+        Uses the official Scryfall symbology API as documented at:
+        https://scryfall.com/docs/api/card-symbols
+
+        Args:
+            symbol_code: Symbol code (e.g., "{W}", "{U}", "{B}")
+            color: Color name for logging
+
+        Returns:
+            SVG URI string or None if not found
+        """
+        import time
+
+        import requests
+
+        from src.config import SCRYFALL_API_RATE_LIMIT_DELAY, SCRYFALL_API_TIMEOUT, logger
+
+        # Cache the symbology data to avoid repeated API calls
+        if not hasattr(self, "_symbology_cache"):
+            self._symbology_cache: dict[str, str] | None = None
+
+        # Fetch symbology data if not cached
+        if self._symbology_cache is None:
             try:
-                date_obj = datetime.datetime.strptime(released_at, "%Y-%m-%d")
-                release_date_str = date_obj.strftime("%B %Y")
-            except ValueError:
-                release_date_str = released_at
+                time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
+                response = requests.get(
+                    "https://api.scryfall.com/symbology", timeout=SCRYFALL_API_TIMEOUT
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    # Build a cache of symbol -> svg_uri
+                    # According to Scryfall docs (https://scryfall.com/docs/api/card-symbols):
+                    # - object: "card_symbol"
+                    # - symbol: plaintext symbol (e.g., "{W}")
+                    # - svg_uri: URI to SVG image (nullable)
+                    self._symbology_cache = {}
+                    for symbol_obj in data.get("data", []):
+                        # Validate object type
+                        if symbol_obj.get("object") != "card_symbol":
+                            continue
+                        symbol_text = symbol_obj.get("symbol", "")
+                        svg_uri = symbol_obj.get("svg_uri")
+                        # svg_uri is nullable, so only cache if it exists
+                        if symbol_text and svg_uri:
+                            self._symbology_cache[symbol_text] = svg_uri
+                    logger.debug(f"Cached {len(self._symbology_cache)} symbols from symbology API")
+                else:
+                    logger.warning(f"Failed to fetch symbology API, status: {response.status_code}")
+                    return None
+            except Exception as e:
+                logger.error(f"Error fetching symbology API: {e}")
+                return None
 
-        text_line2 = f"{set_code} - {release_date_str}"
+        # Look up the symbol
+        if self._symbology_cache and symbol_code in self._symbology_cache:
+            return self._symbology_cache[symbol_code]
 
-        # Fit second line to width as well
-        fitted_line2 = fit_text_to_width(
-            text_line2, "SourceSansProRegular", FONT_SIZE_ROW2, max_text_width, self.canvas
-        )
+        # Special handling for multicolor - use PW symbol
+        if color == "Multicolor":
+            # Try PW symbol (as requested)
+            if self._symbology_cache and "{PW}" in self._symbology_cache:
+                logger.debug("Using {PW} symbol for multicolor")
+                return self._symbology_cache["{PW}"]
+            # If PW symbol is not available, log warning and return None
+            logger.warning("PW symbol not found in symbology cache for multicolor")
 
-        logger.debug(
-            f"Drawing text for set '{full_set_name}' at ({text_x}, {text_y}), "
-            f"max_width={max_text_width}"
-        )
-        self.canvas.setFont("EBGaramondBold", FONT_SIZE_ROW1)
-        self.canvas.setFillColorRGB(0, 0, 0)
-        self.canvas.drawString(text_x, text_y, fitted_name)
-
-        # Position second text line below the first
-        second_text_y = text_y - FONT_SIZE_ROW1 - 4
-        self.canvas.setFont("SourceSansProRegular", FONT_SIZE_ROW2)
-        self.canvas.drawString(text_x, second_text_y, fitted_line2)
-
-        # Draw the set symbol (lazy loading - only load if needed)
-        local_file = get_symbol_file(set_data)
-        if local_file:
-            self._draw_symbol(local_file, label_x, label_y, full_set_name)
+        logger.warning(f"Symbol code '{symbol_code}' not found in symbology cache")
+        return None
 
     def _draw_symbol(self, local_file: str, label_x: float, label_y: float, set_name: str) -> None:
         """
