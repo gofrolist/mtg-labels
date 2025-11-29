@@ -84,4 +84,3 @@ static/images/*.svg
 # Docker
 Dockerfile*
 .dockerignore
-
