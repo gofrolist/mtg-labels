@@ -78,8 +78,13 @@ specs/
 *.swp
 
 # Project specific
-static/images/*.svg
-!static/images/.gitkeep
+.cursor
+.pre-commit-config.yaml
+.ruff_cache
+.specify
+Makefile
+fly.toml
+tests
 
 # Docker
 Dockerfile*

@@ -238,47 +238,6 @@ Configure the following secrets in your GitHub repository settings (`Settings` â
 
 See [quickstart.md](specs/001-optimize-project/quickstart.md) for manual deployment instructions.
 
-### Memory Requirements
-
-The application requires sufficient memory for PDF generation and caching. See [Memory Analysis](docs/MEMORY_ANALYSIS.md) for detailed information.
-
-**Quick Summary:**
-- **Minimum**: 512 MB (suitable for low traffic, small PDFs)
-- **Recommended**: 1024 MB (1 GB) for normal production use
-- **Optimal**: 2048 MB (2 GB) for high-traffic scenarios
-
-**Memory Optimizations:**
-The application includes several memory optimizations:
-- LRU cache for SVG drawings (configurable size)
-- Optimized SVG validation (reads only header)
-- Improved garbage collection
-- Proactive cache management
-- See [Memory Optimizations](docs/MEMORY_OPTIMIZATIONS.md) for details
-
-**To verify memory usage:**
-```bash
-# Run memory monitoring script
-uv run python scripts/monitor_memory.py --sets 30 --iterations 5
-
-# Or check memory in production via Fly.io dashboard
-flyctl status
-flyctl metrics
-```
-
-**Current allocation** (from `fly.toml`): 512 MB
-
-To increase memory allocation in Fly.io:
-```bash
-flyctl scale memory 1024  # Set to 1 GB
-```
-
-**Configure cache sizes** (for memory-constrained environments):
-```bash
-# Reduce cache sizes to save memory
-export SVG_DRAWING_CACHE_MAX_SIZE=25
-export CACHE_MAX_SIZE=50
-```
-
 ## Troubleshooting
 
 ### Build Issues
