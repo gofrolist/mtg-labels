@@ -120,6 +120,8 @@ class PDFGenerator:
         self.current_label = 0
         self.text_block_height = FONT_SIZE_ROW1 + FONT_SIZE_ROW2 + 4
         self.SYMBOL_AREA_WIDTH = self.text_block_height + 10
+        # Initialize effective symbol width (will be recalculated in _draw_label for narrow labels)
+        self.effective_symbol_width = SET_SYMBOL_MAX_WIDTH
 
         # Performance metrics
         self.start_time: float | None = None
@@ -230,12 +232,23 @@ class PDFGenerator:
 
         # Calculate available width for text (label width minus margins and symbol space)
         # Symbol is positioned at top-right, so reserve space for max symbol width plus padding
+        # For narrow labels (< 60pt), use a smaller symbol to fit text
+        if self.template["label_width"] >= 60:
+            self.effective_symbol_width = SET_SYMBOL_MAX_WIDTH
+            padding = 5
+        else:
+            # Narrow labels - use smaller symbol (40% of width)
+            self.effective_symbol_width = min(
+                SET_SYMBOL_MAX_WIDTH, self.template["label_width"] * 0.4
+            )
+            padding = 3
+
         symbol_area_start = (
             label_x
             + self.template["label_width"]
             - self.template["label_margin_x"]
-            - SET_SYMBOL_MAX_WIDTH
-            - 5  # 5pt padding between text and symbol
+            - self.effective_symbol_width
+            - padding
         )
         max_text_width = symbol_area_start - text_x
 
@@ -545,8 +558,10 @@ class PDFGenerator:
             intrinsic_height = 1
 
         # Calculate scale
+        # Use effective symbol width for narrow labels
+        effective_symbol_width = getattr(self, "effective_symbol_width", SET_SYMBOL_MAX_WIDTH)
         scale_from_height = target_height / intrinsic_height
-        scale_from_width = SET_SYMBOL_MAX_WIDTH / intrinsic_width
+        scale_from_width = effective_symbol_width / intrinsic_width
         scale_factor = min(scale_from_height, scale_from_width)
         scaled_symbol_height = intrinsic_height * scale_factor
         scaled_width = intrinsic_width * scale_factor
@@ -597,7 +612,9 @@ class PDFGenerator:
         """
         try:
             image_reader = ImageReader(local_file)
-            symbol_width = min(target_height, SET_SYMBOL_MAX_WIDTH)
+            # Use effective symbol width for narrow labels
+            effective_symbol_width = getattr(self, "effective_symbol_width", SET_SYMBOL_MAX_WIDTH)
+            symbol_width = min(target_height, effective_symbol_width)
             symbol_height = symbol_width
 
             # Position symbol in top-right corner
