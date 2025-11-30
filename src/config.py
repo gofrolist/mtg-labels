@@ -218,6 +218,20 @@ LABEL_TEMPLATES: dict[str, dict[str, float]] = {
         "horizontal_gap": 7.087,  # 2.5mm = 7.087 points (gap between columns)
         "vertical_gap": 0,  # 0mm - labels touch vertically (Avery spec)
     },
+    "avery94208": {
+        "page_width": 612,  # 8.5 inches
+        "page_height": 792,  # 11 inches
+        "labels_per_row": 4,  # 4 columns
+        "label_rows": 15,  # 4 columns x 15 rows = 60 labels
+        "label_width": 126,  # 2/3" = 48 points
+        "label_height": 48,  # 1-3/4" = 126 points
+        "label_margin_x": 0.08 * 72,  # 0.03 inch internal margin (reduced for narrow labels)
+        "label_margin_y": 0.1 * 72,  # 0.1 inch internal margin
+        "left_margin": 21.6,  # 0.3" = 21.6 points (Avery spec)
+        "top_margin": 46,  # 0.5" = 36 points (Avery spec) - adjust if PDF template differs
+        "horizontal_gap": 21.6,  # Calculated: (612 - 2*21.6 - 4*48) / 3
+        "vertical_gap": 0,  # Negative gap (overlap) to fit 15 rows: (720 - 15*126) / 14
+    },
 }
 
 # --- Template Files Mapping ---
@@ -227,6 +241,7 @@ TEMPLATE_PDF_FILES: dict[str, str] = {
     "averyl7160": "pdf-templates/avery-l7160.pdf",
     "averyl7157": "pdf-templates/avery-l7157.pdf",
     "averyj8158": "pdf-templates/avery-j8158.pdf",
+    "avery94208": "pdf-templates/avery-94208.pdf",
 }
 
 # --- Maximum Symbol Width ---
