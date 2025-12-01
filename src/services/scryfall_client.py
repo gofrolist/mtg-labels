@@ -155,16 +155,33 @@ class ScryfallClient:
 
         try:
             # Use cache manager's get_or_fetch pattern
-            sets = self.cache_manager.get_or_fetch(cache_key, fetch_from_api)
+            cached_value = self.cache_manager.get_or_fetch(cache_key, fetch_from_api)
 
-            # Wrap in CachedSetData for proper cache management
-            cached_set_data = CachedSetData(sets=sets)
-            self.cache_manager.set(cache_key, cached_set_data)
-
-            # Update legacy cache for backward compatibility
-            self.cache["sets"] = sets
-
-            return sets
+            # Handle case where cache returns CachedSetData object
+            if isinstance(cached_value, CachedSetData):
+                # TTLCache handles expiration, so if we got here, it's valid
+                self.logger.debug("Using cached sets from get_or_fetch")
+                # Update legacy cache for backward compatibility
+                self.cache["sets"] = cached_value.sets
+                return cached_value.sets
+            elif isinstance(cached_value, list):
+                # Fresh fetch or legacy cache format - wrap in CachedSetData for future use
+                sets = cached_value
+                cached_set_data = CachedSetData(sets=sets)
+                self.cache_manager.set(cache_key, cached_set_data)
+                # Update legacy cache for backward compatibility
+                self.cache["sets"] = sets
+                return sets
+            else:
+                # Unexpected type, fetch fresh
+                self.logger.warning(
+                    f"Unexpected cache value type: {type(cached_value)}, fetching fresh"
+                )
+                sets = fetch_from_api()
+                cached_set_data = CachedSetData(sets=sets)
+                self.cache_manager.set(cache_key, cached_set_data)
+                self.cache["sets"] = sets
+                return sets
         except HTTPException:
             # Invalidate cache on error
             self.cache_manager.invalidate_on_error(cache_key)
