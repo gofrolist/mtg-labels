@@ -1,7 +1,7 @@
 name: Backend Deploy
 on:
   workflow_run:
-    workflows: ["Backend Build", "Supabase Migrations"]
+    workflows: ["Backend Build"]
     types: [completed]
     branches: [ main ]
   push:

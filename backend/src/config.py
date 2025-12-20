@@ -13,6 +13,21 @@ from pathlib import Path
 _BACKEND_ROOT = Path(__file__).parent.parent.resolve()
 _PROJECT_ROOT = _BACKEND_ROOT.parent.resolve()
 
+# --- CORS Configuration ---
+# Default CORS origins for development
+# For production, set CORS_ORIGINS explicitly with actual Vercel domain
+_DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://localhost:3000,http://localhost:8080"
+CORS_ORIGINS_STR = os.getenv("CORS_ORIGINS", _DEFAULT_CORS_ORIGINS)
+CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_STR.split(",") if origin.strip()]
+
+# Note: FastAPI CORSMiddleware doesn't support wildcard patterns
+# Set explicit origins in production: fly secrets set CORS_ORIGINS=https://your-app.vercel.app
+
+# --- Frontend Redirect Configuration ---
+# URL to redirect root path (/) to when frontend is hosted separately (e.g., on Vercel)
+# Set this to your Vercel deployment URL in production
+VERCEL_FRONTEND_URL = os.getenv("VERCEL_FRONTEND_URL", "https://mtg-labels.vercel.app")
+
 # --- Set Filtering Configuration ---
 SET_TYPES = (
     "core",  # A yearly Magic core set (Tenth Edition, etc)

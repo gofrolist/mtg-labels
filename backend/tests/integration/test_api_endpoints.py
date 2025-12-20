@@ -17,31 +17,16 @@ def client():
 
 
 class TestIndexEndpoint:
-    """Tests for GET / endpoint."""
+    """Tests for GET / endpoint - Redirects to Vercel frontend."""
 
-    @patch("src.api.routes.scryfall_client.fetch_sets")
-    def test_index_endpoint_success(self, mock_fetch, client, sample_set_data):
-        """Test successful GET / request."""
-        mock_fetch.return_value = sample_set_data
-
-        response = client.get("/")
-
-        assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
-        # Check that set names appear in HTML
-        assert "Test Set" in response.text or "TS1" in response.text
-
-    @patch("src.api.routes.scryfall_client.fetch_sets")
-    def test_index_endpoint_api_error(self, mock_fetch, client):
-        """Test GET / when API returns error."""
-        from fastapi import HTTPException
-
-        mock_fetch.side_effect = HTTPException(status_code=500, detail="API Error")
-
-        response = client.get("/")
-
-        # Should handle error gracefully
-        assert response.status_code == 500
+    def test_index_endpoint_redirects(self, client):
+        """Test that GET / endpoint redirects to Vercel frontend."""
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code == 301
+        assert "Location" in response.headers
+        # Default redirect URL if VERCEL_FRONTEND_URL not set
+        location = response.headers["Location"]
+        assert "vercel.app" in location or "mtg-label-generator" in location
 
 
 class TestApiSetsEndpoint:
@@ -129,50 +114,37 @@ class TestApiSetsEndpoint:
         assert all(isinstance(item, dict) for item in data)
 
 
-class TestIndexEndpointTypesView:
-    """Tests for GET / endpoint with types view."""
+class TestApiCardTypesEndpoint:
+    """Tests for GET /api/card-types endpoint."""
 
     @patch("src.api.routes.scryfall_client.get_card_types_by_color")
-    def test_index_endpoint_types_view_success(self, mock_get_types, client):
-        """Test successful GET /?view=types request."""
+    def test_api_card_types_endpoint_success(self, mock_get_types, client):
+        """Test successful GET /api/card-types request."""
         mock_get_types.return_value = {
             "White": ["Creature", "Instant", "Sorcery"],
             "Blue": ["Creature", "Instant", "Sorcery"],
             "Multicolor": ["Creature", "Instant", "Sorcery"],
         }
 
-        response = client.get("/?view=types")
+        response = client.get("/api/card-types")
 
         assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
-        # Check that types appear in HTML
-        assert "Creature" in response.text
-        assert "White" in response.text
+        assert response.headers["content-type"] == "application/json"
+        data = response.json()
+        assert isinstance(data, dict)
+        assert "White" in data
+        assert "Blue" in data
+        assert isinstance(data["White"], list)
+        assert "Creature" in data["White"]
 
     @patch("src.api.routes.scryfall_client.get_card_types_by_color")
-    def test_index_endpoint_types_view_api_error(self, mock_get_types, client):
-        """Test GET /?view=types when API returns error."""
+    def test_api_card_types_endpoint_api_error(self, mock_get_types, client):
+        """Test GET /api/card-types when API returns error."""
         from fastapi import HTTPException
 
         mock_get_types.side_effect = HTTPException(status_code=500, detail="API Error")
 
-        response = client.get("/?view=types")
+        response = client.get("/api/card-types")
 
         # Should handle error gracefully
         assert response.status_code == 500
-
-    @patch("src.api.routes.scryfall_client.group_sets")
-    @patch("src.api.routes.scryfall_client.filter_sets")
-    @patch("src.api.routes.scryfall_client.fetch_sets")
-    def test_index_endpoint_sets_view_explicit(
-        self, mock_fetch, mock_filter, mock_group, client, sample_set_data
-    ):
-        """Test GET /?view=sets explicitly sets view mode."""
-        mock_fetch.return_value = sample_set_data
-        mock_filter.return_value = sample_set_data
-        mock_group.return_value = {"Expansion": sample_set_data}
-
-        response = client.get("/?view=sets")
-
-        assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]

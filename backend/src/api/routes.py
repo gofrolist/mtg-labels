@@ -5,19 +5,21 @@ This module defines the API routes and application setup.
 
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from src.api.dependencies import setup_error_handlers
 from src.config import (
     APP_NAME,
+    CORS_ORIGINS,
     CURRENT_LABEL_TEMPLATE,
     DEBUG,
     ENABLE_TEMPLATE_DEBUG,
     LABEL_TEMPLATES,
     TEMPLATE_PDF_FILES,
+    VERCEL_FRONTEND_URL,
     logger,
 )
 from src.models.set_data import MTGSet
@@ -48,70 +50,30 @@ def create_app() -> FastAPI:
     # Setup error handlers
     setup_error_handlers(app)
 
+    # Configure CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     # Mount static files (backend/static/)
     static_dir = _BACKEND_ROOT / "static"
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-    # Setup templates (frontend/templates/)
-    templates_dir = _PROJECT_ROOT / "frontend" / "templates"
-    if templates_dir.exists():
-        templates = Jinja2Templates(directory=str(templates_dir))
-        app.state.templates = templates
-
     # Register routes
-    @app.get("/", response_class=HTMLResponse)
-    async def index(request: Request, view: str = "sets") -> HTMLResponse:
+
+    @app.get("/")
+    async def root_redirect():
         """
-        Render the main index page with grouped sets or card types.
-
-        Args:
-            request: FastAPI request object
-            view: View mode - "sets" or "types" (default: "sets")
-
-        Returns:
-            HTML response with index page
+        Redirect root path to Vercel frontend.
+        This allows the old domain to redirect to the new Vercel deployment
+        while keeping the API at /api endpoints.
         """
-        # Calculate labels per page for each template
-        template_labels_per_page = {
-            template_id: int(template_config["labels_per_row"] * template_config["label_rows"])
-            for template_id, template_config in LABEL_TEMPLATES.items()
-        }
-
-        if view == "types":
-            # Get card types organized by color (no need to fetch all cards)
-            card_types_by_color = scryfall_client.get_card_types_by_color()
-
-            return app.state.templates.TemplateResponse(
-                request,
-                "index.html",
-                {
-                    "view_mode": "types",
-                    "card_types_by_color": card_types_by_color,
-                    "grouped_sets": {},
-                    "current_template": CURRENT_LABEL_TEMPLATE,
-                    "enable_template_debug": ENABLE_TEMPLATE_DEBUG,
-                    "template_labels_per_page": template_labels_per_page,
-                },
-            )
-        else:
-            # Default: sets view
-            all_sets = scryfall_client.fetch_sets()
-            filtered = scryfall_client.filter_sets(all_sets)
-            grouped_sets = scryfall_client.group_sets(filtered)
-
-            return app.state.templates.TemplateResponse(
-                request,
-                "index.html",
-                {
-                    "view_mode": "sets",
-                    "grouped_sets": grouped_sets,
-                    "grouped_cards": {},
-                    "current_template": CURRENT_LABEL_TEMPLATE,
-                    "enable_template_debug": ENABLE_TEMPLATE_DEBUG,
-                    "template_labels_per_page": template_labels_per_page,
-                },
-            )
+        return RedirectResponse(url=VERCEL_FRONTEND_URL, status_code=301)
 
     @app.get("/api/sets")
     async def api_sets() -> list[dict]:
@@ -125,6 +87,16 @@ def create_app() -> FastAPI:
         filtered = scryfall_client.filter_sets(all_sets)
         # Convert MTGSet objects to dictionaries if needed
         return [s.to_dict() if isinstance(s, MTGSet) else s for s in filtered]
+
+    @app.get("/api/card-types")
+    async def api_card_types() -> dict[str, list[str]]:
+        """
+        API endpoint to get card types organized by color.
+
+        Returns:
+            Dictionary mapping color names to lists of card types
+        """
+        return scryfall_client.get_card_types_by_color()
 
     @app.post("/generate-pdf")
     async def generate_pdf(

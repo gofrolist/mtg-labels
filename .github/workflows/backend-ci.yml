@@ -26,10 +26,13 @@ jobs:
       with:
         python-version-file: backend/.python-version
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcairo2-dev pkg-config
+
     - name: Install uv
       uses: astral-sh/setup-uv@v7
-      with:
-        version: "0.8.15"
 
     - name: Sync deps
       run: uv sync --all-extras
@@ -45,13 +48,3 @@ jobs:
 
     - name: Pytest
       run: uv run pytest -q
-      env:
-        SUPABASE_URL: https://test.supabase.co
-        SUPABASE_KEY: test-supabase-key
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        REDIS_URL: redis://localhost:6379
-        AWS_ENDPOINT_URL_S3: https://test.tigris.com
-        AWS_ACCESS_KEY_ID: test-access-key
-        AWS_SECRET_ACCESS_KEY: test-secret-key
-        BUCKET_NAME: test-bucket
-        AWS_REGION: auto
