@@ -54,13 +54,11 @@ coverage.xml
 *.swp
 *.swo
 *~
-.DS_Store
+.DS_Store/
 
 # Project specific
 static/images/*.svg
 !static/images/.gitkeep
-specs/
-.specify
 
 # Environment variables
 .env
