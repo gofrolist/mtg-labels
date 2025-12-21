@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --mtg-bg: #f8f9fa;
+  --mtg-card-bg: #ffffff;
+  --mtg-text: #212529;
+  --mtg-text-muted: #6c757d;
+  --mtg-border: #dee2e6;
+}
+
+.dark {
+  --mtg-bg: #121212;
+  --mtg-card-bg: #1e1e1e;
+  --mtg-text: #e0e0e0;
+  --mtg-text-muted: #9e9e9e;
+  --mtg-border: #333333;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--mtg-bg);
+  color: var(--mtg-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-size: 16px; /* Prevent zoom on iOS */
+}
+
+/* Touch-friendly interactions */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Responsive text sizing */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Ensure minimum touch target size */
+button, a, input[type="checkbox"], input[type="radio"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Exception for small inputs */
+input[type="number"], input[type="text"] {
+  min-width: auto;
+}
