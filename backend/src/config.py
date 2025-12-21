@@ -14,14 +14,20 @@ _BACKEND_ROOT = Path(__file__).parent.parent.resolve()
 _PROJECT_ROOT = _BACKEND_ROOT.parent.resolve()
 
 # --- CORS Configuration ---
-# Default CORS origins for development
-# For production, set CORS_ORIGINS explicitly with actual Vercel domain
-_DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://localhost:3000,http://localhost:8080"
+# Default CORS origins for development and production
+# Includes localhost for development and Vercel frontend URL for production
+# Override with CORS_ORIGINS environment variable if needed
+_DEFAULT_CORS_ORIGINS = (
+    "http://localhost:5173,"
+    "http://localhost:3000,"
+    "http://localhost:8080,"
+    "https://mtg-labels.vercel.app"
+)
 CORS_ORIGINS_STR = os.getenv("CORS_ORIGINS", _DEFAULT_CORS_ORIGINS)
 CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_STR.split(",") if origin.strip()]
 
 # Note: FastAPI CORSMiddleware doesn't support wildcard patterns
-# Set explicit origins in production: fly secrets set CORS_ORIGINS=https://your-app.vercel.app
+# To add additional origins, set CORS_ORIGINS environment variable with comma-separated URLs
 
 # --- Frontend Redirect Configuration ---
 # URL to redirect root path (/) to when frontend is hosted separately (e.g., on Vercel)
