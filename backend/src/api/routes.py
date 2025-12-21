@@ -5,9 +5,9 @@ This module defines the API routes and application setup.
 
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.dependencies import setup_error_handlers
@@ -67,12 +67,51 @@ def create_app() -> FastAPI:
     # Register routes
 
     @app.get("/")
-    async def root_redirect():
+    async def root_redirect(request: Request):
         """
         Redirect root path to Vercel frontend.
         This allows the old domain to redirect to the new Vercel deployment
         while keeping the API at /api endpoints.
+
+        Health checks and monitoring services are not redirected to prevent loops.
         """
+        # Check if this is a health check or monitoring request
+        user_agent = request.headers.get("user-agent", "").lower()
+        referer = request.headers.get("referer", "")
+
+        # Health checks often have no user-agent or empty user-agent
+        has_no_user_agent = not user_agent or user_agent.strip() == ""
+
+        # Common health check patterns
+        health_check_patterns = [
+            "health",
+            "monitor",
+            "ping",
+            "uptime",
+            "status",
+            "fly.io",
+            "flyio",
+            "elb",  # AWS ELB
+            "elastichost",  # ElasticHosts
+        ]
+
+        # Check if user-agent indicates a health check
+        is_health_check = has_no_user_agent or any(
+            pattern in user_agent for pattern in health_check_patterns
+        )
+
+        # Check if referer is the Vercel URL (prevent redirect loops)
+        is_from_vercel = VERCEL_FRONTEND_URL in referer
+
+        # Don't redirect health checks or requests already from Vercel
+        if is_health_check or is_from_vercel:
+            return Response(
+                content="OK",
+                status_code=200,
+                headers={"Content-Type": "text/plain"},
+            )
+
+        # Redirect browser requests to Vercel frontend
         return RedirectResponse(url=VERCEL_FRONTEND_URL, status_code=301)
 
     @app.get("/api/sets")
