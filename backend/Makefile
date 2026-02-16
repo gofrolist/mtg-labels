@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev test lint typecheck format check run clean pre-commit
+.PHONY: help install dev test check run clean pre-commit
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -14,16 +14,10 @@ dev: ## Start dev server with hot reload
 test: ## Run all tests
 	uv run pytest
 
-lint: ## Run ruff linter
+check: ## Lint + format + typecheck
 	uv run ruff check
-
-typecheck: ## Run pyright type checker
-	uv run pyright
-
-format: ## Format code with ruff
 	uv run ruff format .
-
-check: lint typecheck ## Lint + typecheck
+	uv run pyright
 
 run: ## Run the app
 	uv run python main.py
