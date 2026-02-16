@@ -7,40 +7,12 @@ Provides multi-layer caching:
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from cachetools import TTLCache
 
 from src.config import CACHE_MAX_SIZE, CACHE_TTL_SECONDS, SYMBOL_CACHE_DIR, logger
-
-
-@dataclass
-class CachedSetData:
-    """Represents cached set list data with metadata for cache management."""
-
-    sets: list[dict]
-    cached_at: datetime = field(default_factory=datetime.now)
-    expires_at: datetime | None = field(default=None)
-    source: str = "scryfall_api"
-
-    def __post_init__(self) -> None:
-        """Set expires_at if not provided."""
-        if self.expires_at is None:
-            self.expires_at = self.cached_at + timedelta(seconds=CACHE_TTL_SECONDS)
-
-    def is_expired(self) -> bool:
-        """Check if cache entry is expired."""
-        if self.expires_at is None:
-            return True
-        return datetime.now() > self.expires_at
-
-    def is_stale(self, max_age_seconds: int = CACHE_TTL_SECONDS) -> bool:
-        """Check if cache entry is stale (older than max_age)."""
-        age = (datetime.now() - self.cached_at).total_seconds()
-        return age > max_age_seconds
 
 
 class CacheManager:
@@ -157,29 +129,6 @@ class CacheManager:
         self._misses = 0
         self._errors = 0
         logger.info("Cache cleared")
-
-    def is_valid(self, key: str) -> bool:
-        """
-        Check if cache entry is valid (exists and not expired).
-
-        Args:
-            key: Cache key to check
-
-        Returns:
-            True if valid, False otherwise
-        """
-        return key in self._memory_cache
-
-    def refresh(self, key: str, value: Any) -> None:
-        """
-        Refresh cache entry with new value.
-
-        Args:
-            key: Cache key
-            value: New value to cache
-        """
-        self.set(key, value)
-        logger.debug(f"Refreshed cache for key: {key}")
 
     def get_or_fetch(self, key: str, fetch_func: Callable[[], Any]) -> Any:
         """
@@ -310,13 +259,6 @@ class CacheManager:
             "cache_size": len(self._memory_cache),
             "max_size": self.max_size,
         }
-
-    def reset_stats(self) -> None:
-        """Reset cache statistics."""
-        self._hits = 0
-        self._misses = 0
-        self._errors = 0
-        logger.debug("Cache statistics reset")
 
 
 # Global cache manager instance

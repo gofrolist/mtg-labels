@@ -89,17 +89,8 @@ class TestApiSetsEndpoint:
     @patch("src.api.routes.scryfall_client.fetch_sets")
     def test_api_sets_endpoint_returns_dicts(self, mock_fetch, mock_filter, client):
         """Test that /api/sets returns dictionaries."""
-        from src.models.set_data import MTGSet
-
         sets = [
-            MTGSet(
-                id="test-1",
-                name="Test 1",
-                code="T1",
-                set_type="expansion",
-                card_count=100,
-                released_at="2023-01-01",
-            ),
+            {"id": "test-1", "name": "Test 1", "code": "T1", "set_type": "expansion"},
             {"id": "test-2", "name": "Test 2", "code": "T2", "set_type": "expansion"},
         ]
         mock_fetch.return_value = sets
@@ -110,7 +101,6 @@ class TestApiSetsEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-        # MTGSet should be converted to dict
         assert all(isinstance(item, dict) for item in data)
 
 

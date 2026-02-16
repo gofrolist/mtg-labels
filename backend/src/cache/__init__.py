@@ -1,5 +1,5 @@
 """Cache package for MTG Label Generator."""
 
-from .cache_manager import CachedSetData, CacheManager
+from .cache_manager import CacheManager
 
-__all__ = ["CacheManager", "CachedSetData"]
+__all__ = ["CacheManager"]

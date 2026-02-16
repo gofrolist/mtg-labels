@@ -67,6 +67,49 @@ def fit_text_to_width(
     return current_text
 
 
+def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str) -> str | None:
+    """
+    Download a symbol SVG and cache it locally.
+
+    Checks the file cache first, downloads from URL if not cached.
+
+    Args:
+        symbol_id: Cache key for the symbol
+        symbol_url: URL to download the symbol from
+        description: Human-readable description for logging
+
+    Returns:
+        Local file path to cached symbol, or None if unavailable
+    """
+    cache_manager = get_cache_manager()
+
+    cached_path = cache_manager.get_symbol(symbol_id)
+    if cached_path:
+        logger.debug(f"Symbol file found in cache: {cached_path}")
+        return cached_path
+
+    logger.info(f"Downloading symbol from {symbol_url} for {description}")
+
+    try:
+        time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
+        response = requests.get(symbol_url, timeout=30)
+    except requests.RequestException as e:
+        logger.error(f"Error downloading symbol: {e}")
+        return None
+
+    if response.status_code != 200:
+        logger.error(f"Failed to download symbol, status: {response.status_code}")
+        return None
+
+    cached_path = cache_manager.save_symbol(symbol_id, response.content)
+    if cached_path:
+        logger.info(f"Saved symbol to cache: {cached_path}")
+        return cached_path
+    else:
+        logger.error("Failed to save symbol to cache")
+        return None
+
+
 def get_symbol_file(set_data: dict) -> str | None:
     """
     Get local file path for set symbol, downloading if necessary.
@@ -89,39 +132,7 @@ def get_symbol_file(set_data: dict) -> str | None:
         logger.warning("Set data missing 'id' field")
         return None
 
-    cache_manager = get_cache_manager()
-
-    # Try to get from cache
-    cached_path = cache_manager.get_symbol(set_id)
-    if cached_path:
-        logger.debug(f"Symbol file found in cache: {cached_path}")
-        return cached_path
-
-    # Download symbol
-    logger.info(f"Downloading symbol from {symbol_url} for set '{set_data.get('name')}'")
-
-    try:
-        # Apply rate limiting for symbol downloads
-        # Note: *.scryfall.io domains don't have rate limits, but we apply it for consistency
-        time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
-
-        response = requests.get(symbol_url, timeout=30)
-    except requests.RequestException as e:
-        logger.error(f"Error downloading symbol image: {e}")
-        return None
-
-    if response.status_code != 200:
-        logger.error(f"Failed to download symbol, status: {response.status_code}")
-        return None
-
-    # Save to cache
-    cached_path = cache_manager.save_symbol(set_id, response.content)
-    if cached_path:
-        logger.info(f"Saved symbol to cache: {cached_path}")
-        return cached_path
-    else:
-        logger.error("Failed to save symbol to cache")
-        return None
+    return download_and_cache_symbol(set_id, symbol_url, f"set '{set_data.get('name')}'")
 
 
 def get_svg_intrinsic_dimensions(file_path: str) -> tuple[float, float] | None:

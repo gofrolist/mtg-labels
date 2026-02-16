@@ -1,10 +1,9 @@
 """Unit tests for CacheManager."""
 
 import time
-from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from src.cache.cache_manager import CachedSetData, CacheManager
+from src.cache.cache_manager import CacheManager
 
 
 class TestCacheManagerInMemoryCache:
@@ -202,27 +201,8 @@ class TestCacheHitRate:
         assert stats["hit_rate"] == 0.5
 
 
-class TestCacheValidationAndRefresh:
-    """Tests for cache validation and refresh."""
-
-    def test_cache_is_valid(self):
-        """Test checking if cache entry is valid."""
-        cache_manager = CacheManager(ttl=1)
-        cache_manager.set("key", "value")
-        assert cache_manager.is_valid("key") is True
-
-        # After expiration
-        time.sleep(2)
-        assert cache_manager.is_valid("key") is False
-
-    def test_cache_refresh(self):
-        """Test refreshing cache entry."""
-        cache_manager = CacheManager(ttl=60)
-        cache_manager.set("key", "value1")
-
-        # Refresh with new value
-        cache_manager.refresh("key", "value2")
-        assert cache_manager.get("key") == "value2"
+class TestCacheGetOrFetch:
+    """Tests for cache get_or_fetch and exception handling."""
 
     def test_cache_get_or_fetch(self):
         """Test get_or_fetch pattern."""
@@ -246,30 +226,6 @@ class TestCacheValidationAndRefresh:
         result2 = cache_manager.get_or_fetch("key", fetch_func2)
         assert result2 == {"data": "fetched"}
         assert call_count == 0  # Should not call fetch_func2
-
-    def test_cached_set_data_is_expired_none_expires_at(self):
-        """Test CachedSetData.is_expired() when expires_at is None (line 37)."""
-        # Create CachedSetData and manually set expires_at to None
-        cached_data = CachedSetData(
-            sets=[{"id": "test"}],
-            cached_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(days=1),
-        )
-        # Manually set expires_at to None to test the None check
-        cached_data.expires_at = None
-        # When expires_at is None, should return True (expired)
-        assert cached_data.is_expired() is True
-
-    def test_cached_set_data_is_stale(self):
-        """Test CachedSetData.is_stale() method (lines 42-43)."""
-        cached_data = CachedSetData(
-            sets=[{"id": "test"}],
-            cached_at=datetime.now() - timedelta(seconds=100),
-            expires_at=datetime.now() + timedelta(seconds=100),
-        )
-        # Should be stale if older than max_age
-        assert cached_data.is_stale(max_age_seconds=50) is True
-        assert cached_data.is_stale(max_age_seconds=200) is False
 
     def test_cache_get_exception_handling(self):
         """Test exception handling in cache.get() (lines 108-111)."""
@@ -300,21 +256,3 @@ class TestCacheValidationAndRefresh:
         # No requests made yet
         hit_rate = cache_manager.get_hit_rate()
         assert hit_rate == 0.0
-
-    def test_cache_reset_stats(self):
-        """Test reset_stats() method (lines 316-319)."""
-        cache_manager = CacheManager(ttl=60)
-        cache_manager.set("key1", "value1")
-        cache_manager.get("key1")  # Hit
-        cache_manager.get("key2")  # Miss
-
-        stats_before = cache_manager.get_stats()
-        assert stats_before["hits"] == 1
-        assert stats_before["misses"] == 1
-
-        cache_manager.reset_stats()
-
-        stats_after = cache_manager.get_stats()
-        assert stats_after["hits"] == 0
-        assert stats_after["misses"] == 0
-        assert stats_after["total_requests"] == 0

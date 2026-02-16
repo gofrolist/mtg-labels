@@ -22,7 +22,6 @@ from src.config import (
     VERCEL_FRONTEND_URL,
     logger,
 )
-from src.models.set_data import MTGSet
 from src.mtg_labels import __version__
 from src.services.pdf_generator import PDFGenerator
 from src.services.scryfall_client import ScryfallClient
@@ -124,8 +123,7 @@ def create_app() -> FastAPI:
         """
         all_sets = scryfall_client.fetch_sets()
         filtered = scryfall_client.filter_sets(all_sets)
-        # Convert MTGSet objects to dictionaries if needed
-        return [s.to_dict() if isinstance(s, MTGSet) else s for s in filtered]
+        return filtered
 
     @app.get("/api/card-types")
     async def api_card_types() -> dict[str, list[str]]:
@@ -241,10 +239,9 @@ def create_app() -> FastAPI:
             # Create a mapping of set_id to set_dict for quick lookup
             sets_by_id: dict[str, dict] = {}
             for s in filtered:
-                set_dict = s.to_dict() if isinstance(s, MTGSet) else s
-                set_id_key = set_dict.get("id")
+                set_id_key = s.get("id")
                 if isinstance(set_id_key, str):
-                    sets_by_id[set_id_key] = set_dict
+                    sets_by_id[set_id_key] = s
 
             # Expand set_ids list to include duplicates based on quantities
             for set_id in set_ids or []:

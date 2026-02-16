@@ -5,7 +5,6 @@ from unittest.mock import Mock, patch
 
 from src.services.pdf_generator import (
     PDFGenerator,
-    clear_svg_drawing_cache,
     get_svg_drawing_cache_size,
 )
 
@@ -302,15 +301,6 @@ class TestPDFGenerator:
             generator.generate()
             generator._cleanup()
             # Should not raise
-
-    def test_clear_svg_drawing_cache(self):
-        """Test clear_svg_drawing_cache function (lines 50-53)."""
-        from src.services.pdf_generator import _svg_drawing_cache
-
-        _svg_drawing_cache["test"] = "value"
-        count = clear_svg_drawing_cache()
-        assert count >= 0
-        assert len(_svg_drawing_cache) == 0
 
     def test_get_svg_drawing_cache_size(self):
         """Test get_svg_drawing_cache_size function."""

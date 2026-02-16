@@ -3,7 +3,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from src.api.dependencies import get_logger, setup_error_handlers
+from src.api.dependencies import setup_error_handlers
 
 
 class TestErrorHandlers:
@@ -43,18 +43,3 @@ class TestErrorHandlers:
         data = response.json()
         assert data["error"]["type"] == "ValidationError"
         assert data["error"]["status_code"] == 422
-
-
-class TestGetLogger:
-    """Tests for get_logger dependency."""
-
-    def test_get_logger_yields_logger(self):
-        """Test that get_logger yields logger instance (line 111)."""
-        logger_gen = get_logger()
-        logger = next(logger_gen)
-        assert logger is not None
-        # Cleanup
-        try:
-            next(logger_gen)
-        except StopIteration:
-            pass

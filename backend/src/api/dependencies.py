@@ -1,8 +1,5 @@
 """Dependency injection and error handling for FastAPI application."""
 
-import logging
-from collections.abc import Generator
-
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -100,12 +97,3 @@ def setup_error_handlers(app: FastAPI) -> None:
                 }
             },
         )
-
-
-def get_logger() -> Generator[logging.Logger]:
-    """Dependency to provide logger instance.
-
-    Yields:
-        Logger instance
-    """
-    yield logger

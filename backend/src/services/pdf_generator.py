@@ -1,13 +1,13 @@
 """PDF generation service for MTG Label Generator."""
 
 import datetime
-import gc
 import io
 import time
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
+import requests
 from pypdf import PdfReader, PdfWriter
 from reportlab.graphics import renderPDF
 from reportlab.lib.utils import ImageReader
@@ -23,12 +23,15 @@ from src.config import (
     FONT_SIZE_ROW2,
     FONT_SOURCE_SANS_PRO_REGULAR,
     LABEL_TEMPLATES,
+    SCRYFALL_API_RATE_LIMIT_DELAY,
+    SCRYFALL_API_TIMEOUT,
     SET_SYMBOL_MAX_WIDTH,
     SVG_DRAWING_CACHE_MAX_SIZE,
     logger,
 )
 from src.services.helpers import (
     abbreviate_set_name,
+    download_and_cache_symbol,
     fit_text_to_width,
     get_svg_intrinsic_dimensions,
     get_symbol_file,
@@ -38,19 +41,6 @@ from src.services.helpers import (
 # Uses OrderedDict for O(1) access and LRU eviction
 _svg_drawing_cache: OrderedDict[str, Any] = OrderedDict()
 _cache_max_size = SVG_DRAWING_CACHE_MAX_SIZE  # Configurable cache size
-
-
-def clear_svg_drawing_cache() -> int:
-    """Clear the SVG drawing cache to free memory.
-
-    Returns:
-        Number of entries cleared
-    """
-    global _svg_drawing_cache
-    count = len(_svg_drawing_cache)
-    _svg_drawing_cache.clear()
-    logger.info(f"Cleared SVG drawing cache ({count} entries)")
-    return count
 
 
 def get_svg_drawing_cache_size() -> int:
@@ -148,11 +138,6 @@ class PDFGenerator:
                     logger.debug(f"Starting new page after {self.current_label} labels")
                     self.canvas.showPage()
                     self.current_label = 0
-                    # Force garbage collection after each page to free memory
-                    # Use more aggressive collection for memory-constrained environments
-                    collected = gc.collect()
-                    if collected > 0:
-                        logger.debug(f"Garbage collected {collected} objects after page")
 
                 self._draw_label(set_data)
                 self.current_label += 1
@@ -359,13 +344,6 @@ class PDFGenerator:
         Returns:
             Path to mana symbol SVG file, or None if unavailable
         """
-        import time
-
-        import requests
-
-        from src.cache.cache_manager import get_cache_manager
-        from src.config import SCRYFALL_API_RATE_LIMIT_DELAY, logger
-
         # Map color names to Scryfall mana symbol codes
         # These are the symbol codes used in mana costs
         color_to_symbol = {
@@ -382,16 +360,8 @@ class PDFGenerator:
         if not symbol_code:
             return None
 
-        cache_manager = get_cache_manager()
         # Use cache key based on color name and symbol code to ensure correct symbol
-        # This ensures cache invalidation when symbol changes (e.g., Multicolor: {G} -> {PW})
         symbol_id = f"mana_{color.lower()}_{symbol_code.replace('{', '').replace('}', '')}"
-
-        # Try to get from cache
-        cached_path = cache_manager.get_symbol(symbol_id)
-        if cached_path:
-            logger.debug(f"Mana symbol file found in cache: {cached_path}")
-            return cached_path
 
         # Get symbol URI from Scryfall symbology API
         symbol_url = self._get_mana_symbol_uri_from_api(symbol_code, color)
@@ -399,27 +369,7 @@ class PDFGenerator:
             logger.warning(f"Could not get symbol URI for {color} ({symbol_code})")
             return None
 
-        logger.info(f"Downloading mana symbol from {symbol_url} for color '{color}'")
-
-        try:
-            time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
-            response = requests.get(symbol_url, timeout=30)
-        except requests.RequestException as e:
-            logger.error(f"Error downloading mana symbol: {e}")
-            return None
-
-        if response.status_code != 200:
-            logger.error(f"Failed to download mana symbol, status: {response.status_code}")
-            return None
-
-        # Save to cache
-        cached_path = cache_manager.save_symbol(symbol_id, response.content)
-        if cached_path:
-            logger.info(f"Saved mana symbol to cache: {cached_path}")
-            return cached_path
-        else:
-            logger.error("Failed to save mana symbol to cache")
-            return None
+        return download_and_cache_symbol(symbol_id, symbol_url, f"color '{color}'")
 
     def _get_mana_symbol_uri_from_api(self, symbol_code: str, color: str) -> str | None:
         """
@@ -435,12 +385,6 @@ class PDFGenerator:
         Returns:
             SVG URI string or None if not found
         """
-        import time
-
-        import requests
-
-        from src.config import SCRYFALL_API_RATE_LIMIT_DELAY, SCRYFALL_API_TIMEOUT, logger
-
         # Cache the symbology data to avoid repeated API calls
         if not hasattr(self, "_symbology_cache"):
             self._symbology_cache: dict[str, str] | None = None
@@ -818,29 +762,4 @@ class PDFGenerator:
         Note: Does not close the buffer as it may still be in use by StreamingResponse.
         The buffer will be cleaned up automatically when no longer referenced.
         """
-        # Clear canvas reference
-        if hasattr(self, "canvas"):
-            try:
-                # Canvas is already saved, just clear reference
-                del self.canvas
-            except Exception:
-                pass
-
-        # Don't close buffer here - it's returned and may still be used by StreamingResponse
-        # The buffer will be cleaned up automatically when no longer referenced
-        # Just clear the reference to help with garbage collection
-        if hasattr(self, "buffer"):
-            try:
-                # Don't close - let it be garbage collected naturally
-                del self.buffer
-            except Exception:
-                pass
-
-        # Force garbage collection with multiple generations for better cleanup
-        collected = gc.collect()
-        if collected > 0:
-            logger.debug(f"Garbage collected {collected} objects during cleanup")
-        # Run collection again to catch objects with finalizers
-        gc.collect()
-
         logger.debug("PDFGenerator resources cleaned up")
