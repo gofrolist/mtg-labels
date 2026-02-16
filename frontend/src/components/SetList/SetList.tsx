@@ -10,6 +10,7 @@ interface SetListProps {
   onQuantityChange: (setId: string, quantity: number) => void
   openGroups?: Set<string>
   onToggleGroup?: (groupName: string) => void
+  onSelectGroup?: (groupName: string, setIds: string[]) => void
 }
 
 export function SetList({
@@ -20,30 +21,38 @@ export function SetList({
   onQuantityChange,
   openGroups = new Set(),
   onToggleGroup = () => {},
+  onSelectGroup,
 }: SetListProps) {
   return (
-    <div className="space-y-2">
+    <form>
       {Object.entries(groupedSets).map(([groupName, sets]) => (
-        <AccordionGroup
-          key={groupName}
-          title={groupName}
-          isOpen={openGroups.has(groupName)}
-          onToggle={() => onToggleGroup(groupName)}
-        >
-          <div className="space-y-1">
-            {sets.map((set) => (
-              <SetItem
-                key={set.id}
-                set={set}
-                isSelected={selectedSetIds.includes(set.id)}
-                quantity={quantities[set.id] || 1}
-                onToggle={() => onToggleSet(set.id)}
-                onQuantityChange={(quantity) => onQuantityChange(set.id, quantity)}
-              />
-            ))}
-          </div>
-        </AccordionGroup>
+        <div key={groupName} className="mb-2">
+          <AccordionGroup
+            title={groupName}
+            isOpen={openGroups.has(groupName)}
+            onToggle={() => onToggleGroup(groupName)}
+            onSelectGroup={onSelectGroup ? () => {
+              const setIds = sets.map(s => s.id)
+              onSelectGroup(groupName, setIds)
+            } : undefined}
+          >
+            {/* Bootstrap-style grid: row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-1 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
+              {sets.map((set) => (
+                <div key={set.id} className="col">
+                  <SetItem
+                    set={set}
+                    isSelected={selectedSetIds.includes(set.id)}
+                    quantity={quantities[set.id] || 1}
+                    onToggle={() => onToggleSet(set.id)}
+                    onQuantityChange={(quantity) => onQuantityChange(set.id, quantity)}
+                  />
+                </div>
+              ))}
+            </div>
+          </AccordionGroup>
+        </div>
       ))}
-    </div>
+    </form>
   )
 }
