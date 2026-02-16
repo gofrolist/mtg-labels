@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.dependencies import setup_error_handlers
 from src.config import (
+    _BACKEND_ROOT,
     APP_NAME,
     CORS_ORIGINS,
     CURRENT_LABEL_TEMPLATE,
@@ -25,10 +26,6 @@ from src.config import (
 from src.mtg_labels import __version__
 from src.services.pdf_generator import PDFGenerator
 from src.services.scryfall_client import ScryfallClient
-
-# Determine project root (backend/src/api/ -> backend/ -> project root)
-_BACKEND_ROOT = Path(__file__).parent.parent.parent.resolve()
-_PROJECT_ROOT = _BACKEND_ROOT.parent.resolve()
 
 # Global Scryfall client instance
 scryfall_client = ScryfallClient()

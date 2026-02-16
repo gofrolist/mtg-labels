@@ -278,26 +278,6 @@ class TestScryfallClientFetchCardTypesCatalog:
         # Should only call API once
         assert mock_get.call_count == 1
 
-    def test_fetch_card_types_catalog_uses_instance_cache(self):
-        """Test that instance cache is used before API call."""
-        cache_manager = get_cache_manager()
-        cache_manager.clear()
-
-        client = ScryfallClient()
-        # Set instance cache directly
-        client._card_types_cache = ["Creature", "Instant", "Sorcery"]
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"object": "catalog", "data": ["Artifact"]}
-
-        with patch.object(client.session, "get", return_value=mock_response) as mock_get:
-            result = client.fetch_card_types_catalog()
-
-        assert result == ["Creature", "Instant", "Sorcery"]
-        # Should not call API when using instance cache
-        assert mock_get.call_count == 0
-
     def test_fetch_card_types_catalog_network_error(self):
         """Test handling of network errors."""
         cache_manager = get_cache_manager()

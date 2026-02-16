@@ -3,10 +3,7 @@
 from io import BytesIO
 from unittest.mock import Mock, patch
 
-from src.services.pdf_generator import (
-    PDFGenerator,
-    get_svg_drawing_cache_size,
-)
+from src.services.pdf_generator import PDFGenerator
 
 
 class TestPDFGenerator:
@@ -292,20 +289,3 @@ class TestPDFGenerator:
         with patch("src.services.pdf_generator.ImageReader", side_effect=Exception("Error")):
             # Should not raise, just log error
             generator._draw_raster_symbol("/nonexistent.png", 0, 0, 50)
-
-    def test_pdf_generator_cleanup(self, sample_set_data):
-        """Test _cleanup method (lines 809-810, 819-820)."""
-        generator = PDFGenerator(sample_set_data)
-
-        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
-            generator.generate()
-            generator._cleanup()
-            # Should not raise
-
-    def test_get_svg_drawing_cache_size(self):
-        """Test get_svg_drawing_cache_size function."""
-        from src.services.pdf_generator import _svg_drawing_cache
-
-        _svg_drawing_cache["test"] = "value"
-        size = get_svg_drawing_cache_size()
-        assert size >= 1

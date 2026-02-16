@@ -66,7 +66,6 @@ class ScryfallClient:
 
         self.cache_manager = get_cache_manager()
         self.logger = logger
-        self._card_types_cache: list[str] | None = None
 
     def fetch_sets(self) -> list[dict]:
         """
@@ -224,9 +223,6 @@ class ScryfallClient:
         Raises:
             HTTPException: If API request fails or returns error status
         """
-        if self._card_types_cache is not None:
-            return self._card_types_cache
-
         cache_key = "card_types_catalog"
 
         def fetch_from_api() -> list[str]:
@@ -267,9 +263,7 @@ class ScryfallClient:
             return card_types
 
         try:
-            card_types = self.cache_manager.get_or_fetch(cache_key, fetch_from_api)
-            self._card_types_cache = card_types
-            return card_types
+            return self.cache_manager.get_or_fetch(cache_key, fetch_from_api)
         except HTTPException:
             self.cache_manager.invalidate_on_error(cache_key)
             raise

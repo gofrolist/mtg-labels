@@ -1,9 +1,9 @@
 """PDF generation service for MTG Label Generator."""
 
-import datetime
 import io
 import time
 from collections import OrderedDict
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -41,15 +41,6 @@ from src.services.helpers import (
 # Uses OrderedDict for O(1) access and LRU eviction
 _svg_drawing_cache: OrderedDict[str, Any] = OrderedDict()
 _cache_max_size = SVG_DRAWING_CACHE_MAX_SIZE  # Configurable cache size
-
-
-def get_svg_drawing_cache_size() -> int:
-    """Get current size of SVG drawing cache.
-
-    Returns:
-        Number of cached entries
-    """
-    return len(_svg_drawing_cache)
 
 
 # Register fonts (should be done once at module import)
@@ -113,6 +104,9 @@ class PDFGenerator:
         # Initialize effective symbol width (will be recalculated in _draw_label for narrow labels)
         self.effective_symbol_width = SET_SYMBOL_MAX_WIDTH
 
+        # Symbology cache for mana symbols (lazily populated from Scryfall API)
+        self._symbology_cache: dict[str, str] | None = None
+
         # Performance metrics
         self.start_time: float | None = None
         self.end_time: float | None = None
@@ -127,49 +121,39 @@ class PDFGenerator:
         """
         self.start_time = time.time()
 
-        try:
-            labels_per_page = self.template["labels_per_row"] * self.template["label_rows"]
+        labels_per_page = self.template["labels_per_row"] * self.template["label_rows"]
 
-            for set_data in self.selected_sets:
-                # Check if we need a new page BEFORE drawing the label
-                # After drawing labels_per_page labels (0 to labels_per_page-1),
-                # we need a new page for the next label
-                if self.current_label == labels_per_page:
-                    logger.debug(f"Starting new page after {self.current_label} labels")
-                    self.canvas.showPage()
-                    self.current_label = 0
+        for set_data in self.selected_sets:
+            if self.current_label == labels_per_page:
+                logger.debug(f"Starting new page after {self.current_label} labels")
+                self.canvas.showPage()
+                self.current_label = 0
 
-                self._draw_label(set_data)
-                self.current_label += 1
-                self.labels_processed += 1
+            self._draw_label(set_data)
+            self.current_label += 1
+            self.labels_processed += 1
 
-                # Periodically clear SVG cache if it's getting large (memory optimization)
-                if get_svg_drawing_cache_size() > _cache_max_size * 0.8:
-                    logger.debug("SVG cache approaching limit, clearing oldest entries")
-                    # Clear half of the cache (keep most recent)
-                    items_to_remove = _cache_max_size // 2
-                    for _ in range(items_to_remove):
-                        if _svg_drawing_cache:
-                            _svg_drawing_cache.popitem(last=False)
+            # Periodically clear SVG cache if it's getting large
+            if len(_svg_drawing_cache) > _cache_max_size * 0.8:
+                items_to_remove = _cache_max_size // 2
+                for _ in range(items_to_remove):
+                    if _svg_drawing_cache:
+                        _svg_drawing_cache.popitem(last=False)
 
-            self.canvas.save()
-            self.buffer.seek(0)
+        self.canvas.save()
+        self.buffer.seek(0)
 
-            self.end_time = time.time()
-            duration = self.end_time - self.start_time
-            logger.info(
-                f"PDF generation complete: {self.labels_processed} labels in {duration:.2f}s "
-                f"({self.labels_processed / duration:.1f} labels/sec)"
-            )
+        self.end_time = time.time()
+        duration = self.end_time - self.start_time
+        logger.info(
+            f"PDF generation complete: {self.labels_processed} labels in {duration:.2f}s "
+            f"({self.labels_processed / duration:.1f} labels/sec)"
+        )
 
-            # If template PDF is provided, merge labels on top of template
-            if self.template_path:
-                return self._merge_with_template()
+        if self.template_path:
+            return self._merge_with_template()
 
-            return self.buffer
-        finally:
-            # Cleanup resources
-            self._cleanup()
+        return self.buffer
 
     def _draw_label(self, set_data: dict) -> None:
         """
@@ -247,90 +231,86 @@ class PDFGenerator:
             max_text_width = max(10, self.template["label_width"] - self.SYMBOL_AREA_WIDTH - 20)
 
         if self.view_mode == "types":
-            # Draw card type name (e.g., "Creature", "Instant")
             card_type = set_data.get("type", set_data.get("name", ""))
             color = set_data.get("color", "")
-
-            fitted_name = fit_text_to_width(
-                card_type,
-                "EBGaramondBold",
-                FONT_SIZE_ROW1,
-                max_text_width,
-                self.canvas,
-            )
-
-            # Draw color name on second line (optional, or leave empty)
-            text_line2 = color if color else ""
-
-            # Fit second line to width as well
-            fitted_line2 = fit_text_to_width(
-                text_line2, "SourceSansProRegular", FONT_SIZE_ROW2, max_text_width, self.canvas
-            )
-
-            logger.debug(
-                f"Drawing text for type '{card_type}' (color: {color}) at ({text_x}, {text_y}), "
-                f"max_width={max_text_width}"
-            )
-            self.canvas.setFont("EBGaramondBold", FONT_SIZE_ROW1)
-            self.canvas.setFillColorRGB(0, 0, 0)
-            self.canvas.drawString(text_x, text_y, fitted_name)
-
-            # Position second text line below the first (if color is shown)
-            if fitted_line2:
-                second_text_y = text_y - FONT_SIZE_ROW1 - 4
-                self.canvas.setFont("SourceSansProRegular", FONT_SIZE_ROW2)
-                self.canvas.drawString(text_x, second_text_y, fitted_line2)
-
-            # Draw mana symbol for the color
-            mana_symbol_file = self._get_mana_symbol_file(color)
-            if mana_symbol_file:
-                self._draw_symbol(mana_symbol_file, label_x, label_y, f"{color} {card_type}")
+            line1_text = card_type
+            line2_text = color or ""
+            symbol_file = self._get_mana_symbol_file(color)
+            symbol_label = f"{color} {card_type}"
         else:
-            # Draw set name
             full_set_name = set_data.get("name", "")
-            fitted_name = fit_text_to_width(
-                abbreviate_set_name(full_set_name),
-                "EBGaramondBold",
-                FONT_SIZE_ROW1,
-                max_text_width,
-                self.canvas,
-            )
-
-            # Draw set code and release date
+            line1_text = abbreviate_set_name(full_set_name)
             set_code = set_data.get("code", "").upper()
             release_date_str = ""
             released_at = set_data.get("released_at")
             if released_at:
                 try:
-                    date_obj = datetime.datetime.strptime(released_at, "%Y-%m-%d")
-                    release_date_str = date_obj.strftime("%B %Y")
+                    release_date_str = datetime.strptime(released_at, "%Y-%m-%d").strftime("%B %Y")
                 except ValueError:
                     release_date_str = released_at
+            line2_text = f"{set_code} - {release_date_str}"
+            symbol_file = get_symbol_file(set_data)
+            symbol_label = full_set_name
 
-            text_line2 = f"{set_code} - {release_date_str}"
+        # Fit text to available width
+        fitted_name = fit_text_to_width(
+            line1_text, "EBGaramondBold", FONT_SIZE_ROW1, max_text_width, self.canvas
+        )
+        fitted_line2 = fit_text_to_width(
+            line2_text, "SourceSansProRegular", FONT_SIZE_ROW2, max_text_width, self.canvas
+        )
 
-            # Fit second line to width as well
-            fitted_line2 = fit_text_to_width(
-                text_line2, "SourceSansProRegular", FONT_SIZE_ROW2, max_text_width, self.canvas
-            )
+        # Draw text
+        self._draw_label_text(text_x, text_y, fitted_name, fitted_line2)
 
-            logger.debug(
-                f"Drawing text for set '{full_set_name}' at ({text_x}, {text_y}), "
-                f"max_width={max_text_width}"
-            )
-            self.canvas.setFont("EBGaramondBold", FONT_SIZE_ROW1)
-            self.canvas.setFillColorRGB(0, 0, 0)
-            self.canvas.drawString(text_x, text_y, fitted_name)
+        # Draw symbol
+        if symbol_file:
+            self._draw_symbol(symbol_file, label_x, label_y, symbol_label)
 
-            # Position second text line below the first
+    def _draw_label_text(self, text_x: float, text_y: float, line1: str, line2: str) -> None:
+        """Draw the two text lines on a label.
+
+        Args:
+            text_x: X position for text
+            text_y: Y position for first line
+            line1: First line text (set name or card type)
+            line2: Second line text (set code/date or color)
+        """
+        self.canvas.setFont("EBGaramondBold", FONT_SIZE_ROW1)
+        self.canvas.setFillColorRGB(0, 0, 0)
+        self.canvas.drawString(text_x, text_y, line1)
+
+        if line2:
             second_text_y = text_y - FONT_SIZE_ROW1 - 4
             self.canvas.setFont("SourceSansProRegular", FONT_SIZE_ROW2)
-            self.canvas.drawString(text_x, second_text_y, fitted_line2)
+            self.canvas.drawString(text_x, second_text_y, line2)
 
-            # Draw the set symbol (lazy loading - only load if needed)
-            local_file = get_symbol_file(set_data)
-            if local_file:
-                self._draw_symbol(local_file, label_x, label_y, full_set_name)
+    def _calculate_symbol_position(
+        self,
+        label_x: float,
+        label_y: float,
+        symbol_width: float,
+        symbol_height: float,
+    ) -> tuple[float, float]:
+        """Calculate position for symbol in top-right corner of label.
+
+        Args:
+            label_x: X position of label
+            label_y: Y position of label (bottom)
+            symbol_width: Width of symbol after scaling
+            symbol_height: Height of symbol after scaling
+
+        Returns:
+            Tuple of (symbol_x, symbol_y) coordinates
+        """
+        label_top = label_y + self.template["label_height"]
+        text_y_pos = label_top - self.template["label_margin_y"]
+        text_top_y = text_y_pos + FONT_SIZE_ROW1
+        symbol_y = text_top_y - symbol_height
+        symbol_x = (
+            label_x + self.template["label_width"] - self.template["label_margin_x"] - symbol_width
+        )
+        return symbol_x, symbol_y
 
     def _get_mana_symbol_file(self, color: str) -> str | None:
         """
@@ -385,10 +365,6 @@ class PDFGenerator:
         Returns:
             SVG URI string or None if not found
         """
-        # Cache the symbology data to avoid repeated API calls
-        if not hasattr(self, "_symbology_cache"):
-            self._symbology_cache: dict[str, str] | None = None
-
         # Fetch symbology data if not cached
         if self._symbology_cache is None:
             try:
@@ -502,30 +478,14 @@ class PDFGenerator:
             intrinsic_height = 1
 
         # Calculate scale
-        # Use effective symbol width for narrow labels
-        effective_symbol_width = getattr(self, "effective_symbol_width", SET_SYMBOL_MAX_WIDTH)
         scale_from_height = target_height / intrinsic_height
-        scale_from_width = effective_symbol_width / intrinsic_width
+        scale_from_width = self.effective_symbol_width / intrinsic_width
         scale_factor = min(scale_from_height, scale_from_width)
         scaled_symbol_height = intrinsic_height * scale_factor
         scaled_width = intrinsic_width * scale_factor
 
-        logger.debug(
-            f"Scale factors: height {scale_from_height}, width {scale_from_width}; "
-            f"chosen scale: {scale_factor}, scaled width: {scaled_width}"
-        )
-
-        # Position symbol in top-right corner
-        # Y: align top of symbol with top of first text line
-        # Calculate label_top from label_y, then text_y same way as in _draw_label
-        # label_top = label_y + label_height (since label_y is bottom of label)
-        label_top = label_y + self.template["label_height"]
-        text_y_pos = label_top - self.template["label_margin_y"]
-        text_top_y = text_y_pos + FONT_SIZE_ROW1
-        symbol_y = text_top_y - scaled_symbol_height
-        # X: right edge of label minus margin minus symbol width
-        symbol_x = (
-            label_x + self.template["label_width"] - self.template["label_margin_x"] - scaled_width
+        symbol_x, symbol_y = self._calculate_symbol_position(
+            label_x, label_y, scaled_width, scaled_symbol_height
         )
 
         logger.debug(f"Drawing SVG symbol at ({symbol_x}, {symbol_y})")
@@ -556,24 +516,11 @@ class PDFGenerator:
         """
         try:
             image_reader = ImageReader(local_file)
-            # Use effective symbol width for narrow labels
-            effective_symbol_width = getattr(self, "effective_symbol_width", SET_SYMBOL_MAX_WIDTH)
-            symbol_width = min(target_height, effective_symbol_width)
+            symbol_width = min(target_height, self.effective_symbol_width)
             symbol_height = symbol_width
 
-            # Position symbol in top-right corner
-            # Y: align top of symbol with top of first text line
-            # Calculate label_top from label_y, then text_y same way as in _draw_label
-            label_top = label_y + self.template["label_height"]
-            text_y_pos = label_top - self.template["label_margin_y"]
-            text_top_y = text_y_pos + FONT_SIZE_ROW1
-            symbol_y = text_top_y - symbol_height
-            # X: right edge of label minus margin minus symbol width
-            symbol_x = (
-                label_x
-                + self.template["label_width"]
-                - self.template["label_margin_x"]
-                - symbol_width
+            symbol_x, symbol_y = self._calculate_symbol_position(
+                label_x, label_y, symbol_width, symbol_height
             )
 
             logger.debug(
@@ -755,11 +702,3 @@ class PDFGenerator:
             # Return labels without template on error
             self.buffer.seek(0)
             return self.buffer
-
-    def _cleanup(self) -> None:
-        """Clean up resources after PDF generation.
-
-        Note: Does not close the buffer as it may still be in use by StreamingResponse.
-        The buffer will be cleaned up automatically when no longer referenced.
-        """
-        logger.debug("PDFGenerator resources cleaned up")

@@ -156,6 +156,14 @@ class CacheManager:
 
     # Symbol cache methods
 
+    @staticmethod
+    def _sanitize_symbol_id(set_id: str) -> str:
+        """Sanitize set_id to prevent path traversal.
+
+        Only allows alphanumeric characters, hyphens, and underscores.
+        """
+        return "".join(c for c in set_id if c.isalnum() or c in "-_")
+
     def get_symbol(self, set_id: str) -> str | None:
         """
         Get cached symbol file path.
@@ -166,7 +174,11 @@ class CacheManager:
         Returns:
             Path to cached symbol file or None if not cached/invalid
         """
-        symbol_file = self.symbol_cache_dir / f"{set_id}.svg"
+        safe_id = self._sanitize_symbol_id(set_id)
+        if not safe_id:
+            logger.warning(f"Invalid symbol ID after sanitization: {set_id!r}")
+            return None
+        symbol_file = self.symbol_cache_dir / f"{safe_id}.svg"
 
         if not symbol_file.exists():
             return None
@@ -203,7 +215,11 @@ class CacheManager:
         Returns:
             Path to saved file or None on error
         """
-        symbol_file = self.symbol_cache_dir / f"{set_id}.svg"
+        safe_id = self._sanitize_symbol_id(set_id)
+        if not safe_id:
+            logger.warning(f"Invalid symbol ID after sanitization: {set_id!r}")
+            return None
+        symbol_file = self.symbol_cache_dir / f"{safe_id}.svg"
 
         try:
             symbol_file.write_bytes(content)
@@ -220,7 +236,10 @@ class CacheManager:
         Args:
             set_id: Set ID
         """
-        symbol_file = self.symbol_cache_dir / f"{set_id}.svg"
+        safe_id = self._sanitize_symbol_id(set_id)
+        if not safe_id:
+            return
+        symbol_file = self.symbol_cache_dir / f"{safe_id}.svg"
         try:
             if symbol_file.exists():
                 symbol_file.unlink()
