@@ -1,8 +1,8 @@
 """Helper functions for MTG Label Generator."""
 
 import time
-import xml.etree.ElementTree as ET
 
+import defusedxml.ElementTree as DefusedET
 import requests
 from reportlab.pdfgen import canvas
 
@@ -90,6 +90,11 @@ def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str)
 
     logger.info(f"Downloading symbol from {symbol_url} for {description}")
 
+    # Validate URL is from Scryfall to prevent SSRF
+    if not symbol_url.startswith("https://svgs.scryfall.io/"):
+        logger.warning(f"Rejected non-Scryfall symbol URL: {symbol_url}")
+        return None
+
     try:
         time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
         response = requests.get(symbol_url, timeout=30)
@@ -99,6 +104,17 @@ def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str)
 
     if response.status_code != 200:
         logger.error(f"Failed to download symbol, status: {response.status_code}")
+        return None
+
+    # Reject excessively large files (max 1MB for an SVG symbol)
+    max_size = 1024 * 1024
+    if len(response.content) > max_size:
+        logger.warning(f"Symbol file too large ({len(response.content)} bytes), rejecting")
+        return None
+
+    # Validate SVG content before saving
+    if not response.content.lstrip().startswith((b"<svg", b"<?xml")):
+        logger.warning("Downloaded content is not valid SVG, rejecting")
         return None
 
     cached_path = cache_manager.save_symbol(symbol_id, response.content)
@@ -146,12 +162,14 @@ def get_svg_intrinsic_dimensions(file_path: str) -> tuple[float, float] | None:
         Tuple of (width, height) if viewBox found, None otherwise
     """
     try:
-        tree = ET.parse(file_path)
-    except (ET.ParseError, FileNotFoundError, OSError) as e:
+        tree = DefusedET.parse(file_path)
+    except (DefusedET.ParseError, FileNotFoundError, OSError) as e:
         logger.error(f"Error parsing SVG file {file_path}: {e}")
         return None
 
     root = tree.getroot()
+    if root is None:
+        return None
     view_box = root.attrib.get("viewBox")
 
     if view_box:

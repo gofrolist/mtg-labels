@@ -136,7 +136,7 @@ class TestGetSymbolFile:
         set_data = {
             "id": "test-set-id",
             "name": "Test Set",
-            "icon_svg_uri": "https://example.com/symbol.svg",
+            "icon_svg_uri": "https://svgs.scryfall.io/card-symbols/symbol.svg",
         }
 
         with patch("src.services.helpers.requests.get", return_value=mock_response):
@@ -158,7 +158,7 @@ class TestGetSymbolFile:
         set_data = {
             "id": "test-set-id",
             "name": "Test Set",
-            "icon_svg_uri": "https://example.com/symbol.svg",
+            "icon_svg_uri": "https://svgs.scryfall.io/card-symbols/symbol.svg",
         }
 
         with patch(

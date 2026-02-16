@@ -18,6 +18,7 @@ dependencies = [
     "svglib>=1.5.1",
     "cachetools>=5.3.0",
     "pypdf>=3.17.0",
+    "defusedxml>=0.7.1",
 ]
 
 [dependency-groups]

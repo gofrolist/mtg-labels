@@ -91,7 +91,7 @@ class ScryfallClient:
                 self.logger.error(f"Failed to fetch sets, status code: {response.status_code}")
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Error fetching sets from Scryfall. Status: {response.status_code}",
+                    detail="Error fetching sets from Scryfall.",
                 )
 
             data = response.json()
@@ -244,10 +244,7 @@ class ScryfallClient:
                 )
                 raise HTTPException(
                     status_code=500,
-                    detail=(
-                        f"Error fetching card types catalog from Scryfall. "
-                        f"Status: {response.status_code}"
-                    ),
+                    detail="Error fetching card types catalog from Scryfall.",
                 )
 
             data = response.json()

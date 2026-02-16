@@ -367,11 +367,10 @@ class PDFGenerator:
         """
         # Fetch symbology data if not cached
         if self._symbology_cache is None:
+            symbology_url = "https://api.scryfall.com/symbology"
             try:
                 time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
-                response = requests.get(
-                    "https://api.scryfall.com/symbology", timeout=SCRYFALL_API_TIMEOUT
-                )
+                response = requests.get(symbology_url, timeout=SCRYFALL_API_TIMEOUT)
                 if response.status_code == 200:
                     data = response.json()
                     # Build a cache of symbol -> svg_uri
@@ -386,8 +385,12 @@ class PDFGenerator:
                             continue
                         symbol_text = symbol_obj.get("symbol", "")
                         svg_uri = symbol_obj.get("svg_uri")
-                        # svg_uri is nullable, so only cache if it exists
-                        if symbol_text and svg_uri:
+                        # svg_uri is nullable; only cache if it exists and is from Scryfall
+                        if (
+                            symbol_text
+                            and svg_uri
+                            and svg_uri.startswith("https://svgs.scryfall.io/")
+                        ):
                             self._symbology_cache[symbol_text] = svg_uri
                     logger.debug(f"Cached {len(self._symbology_cache)} symbols from symbology API")
                 else:

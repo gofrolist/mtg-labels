@@ -223,7 +223,7 @@ class TestPDFGenerator:
                 {
                     "object": "card_symbol",
                     "symbol": "{W}",
-                    "svg_uri": "https://example.com/w.svg",
+                    "svg_uri": "https://svgs.scryfall.io/card-symbols/W.svg",
                 }
             ]
         }
@@ -231,10 +231,10 @@ class TestPDFGenerator:
         with patch("requests.get", return_value=mock_response):
             # First call should fetch and cache
             result = generator._get_mana_symbol_uri_from_api("{W}", "White")
-            assert result == "https://example.com/w.svg"
+            assert result == "https://svgs.scryfall.io/card-symbols/W.svg"
             # Second call should use cache
             result2 = generator._get_mana_symbol_uri_from_api("{W}", "White")
-            assert result2 == "https://example.com/w.svg"
+            assert result2 == "https://svgs.scryfall.io/card-symbols/W.svg"
 
     def test_pdf_generator_get_mana_symbol_uri_from_api_multicolor_pw(self):
         """Test _get_mana_symbol_uri_from_api for multicolor with PW symbol."""
@@ -255,14 +255,14 @@ class TestPDFGenerator:
                 {
                     "object": "card_symbol",
                     "symbol": "{PW}",
-                    "svg_uri": "https://example.com/pw.svg",
+                    "svg_uri": "https://svgs.scryfall.io/card-symbols/PW.svg",
                 }
             ]
         }
 
         with patch("requests.get", return_value=mock_response):
             result = generator._get_mana_symbol_uri_from_api("{PW}", "Multicolor")
-            assert result == "https://example.com/pw.svg"
+            assert result == "https://svgs.scryfall.io/card-symbols/PW.svg"
 
     def test_pdf_generator_draw_raster_symbol(self, sample_set_data, tmp_path):
         """Test _draw_raster_symbol method (lines 598-634)."""

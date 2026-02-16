@@ -41,18 +41,31 @@ def create_app() -> FastAPI:
         title=APP_NAME,
         debug=DEBUG,
         version=__version__,
+        # Disable interactive docs in production
+        docs_url="/docs" if DEBUG else None,
+        redoc_url="/redoc" if DEBUG else None,
+        openapi_url="/openapi.json" if DEBUG else None,
     )
 
     # Setup error handlers
     setup_error_handlers(app)
+
+    # Security response headers
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
 
     # Configure CORS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Accept"],
     )
 
     # Mount static files (backend/static/)
@@ -160,6 +173,23 @@ def create_app() -> FastAPI:
         Raises:
             HTTPException: If no valid sets/card types are selected or invalid template
         """
+        # Validate view_mode
+        if view_mode not in ("sets", "types"):
+            raise HTTPException(
+                status_code=400, detail="Invalid view_mode. Must be 'sets' or 'types'."
+            )
+
+        # Limit input list sizes to prevent abuse
+        max_items = 500
+        if set_ids and len(set_ids) > max_items:
+            raise HTTPException(
+                status_code=400, detail=f"Too many set IDs. Maximum is {max_items}."
+            )
+        if card_type_ids and len(card_type_ids) > max_items:
+            raise HTTPException(
+                status_code=400, detail=f"Too many card type IDs. Maximum is {max_items}."
+            )
+
         # Handle case where no sets/card types are selected
         if view_mode == "types":
             if not card_type_ids or len(card_type_ids) == 0:
