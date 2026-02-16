@@ -71,9 +71,9 @@ export const PDFGenerator = memo(function PDFGenerator({
   }
 
   return (
-    <div className="space-y-4">
+    <>
       {error && (
-        <div className="px-4 py-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 rounded-lg text-red-700 dark:text-red-200">
+        <div className="px-4 py-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 rounded-lg text-red-700 dark:text-red-200 mb-2">
           {error}
         </div>
       )}
@@ -81,17 +81,17 @@ export const PDFGenerator = memo(function PDFGenerator({
       <button
         onClick={handleGenerate}
         disabled={loading || (viewMode === 'sets' ? selectedSetIds.length === 0 : selectedCardTypeIds.length === 0)}
-        className="w-full px-4 sm:px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] touch-manipulation"
+        className="px-3 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
       >
         {loading ? (
           <>
             <span className="animate-spin">⏳</span>
-            <span>Generating PDF...</span>
+            <span>Generating...</span>
           </>
         ) : (
-          <span>Generate PDF</span>
+          <>📄 Generate PDF</>
         )}
       </button>
-    </div>
+    </>
   )
 })

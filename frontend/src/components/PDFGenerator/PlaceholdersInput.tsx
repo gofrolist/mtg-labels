@@ -23,9 +23,9 @@ export const PlaceholdersInput = memo(function PlaceholdersInput({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor="placeholders-input" className="text-sm font-medium text-mtg-text">
-        Empty Labels at Start (0-{maxPlaceholders}):
+    <div className="flex items-center gap-2">
+      <label htmlFor="placeholders-input" className="text-sm text-mtg-text whitespace-nowrap">
+        Empty at start:
       </label>
       <input
         id="placeholders-input"
@@ -34,12 +34,9 @@ export const PlaceholdersInput = memo(function PlaceholdersInput({
         max={maxPlaceholders}
         value={placeholders}
         onChange={handleChange}
-        className="px-4 py-2 border border-mtg-border rounded-lg bg-mtg-card-bg text-mtg-text focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-16 px-2 py-1 border border-mtg-border rounded bg-mtg-card-bg text-mtg-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         aria-label={`Number of empty labels at start (0 to ${maxPlaceholders})`}
       />
-      <p className="text-xs text-mtg-text-muted">
-        Leave empty labels at the beginning of the first page
-      </p>
     </div>
   )
 })

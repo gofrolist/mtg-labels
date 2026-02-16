@@ -8,22 +8,22 @@ interface SearchBarProps {
 
 export const SearchBar = memo(function SearchBar({ value, onChange, onClear }: SearchBarProps) {
   return (
-    <div className="relative">
+    <div className="flex items-center">
+      <span className="px-2 py-2 bg-gray-700 border border-gray-600 rounded-l text-gray-300">
+        🔍
+      </span>
       <input
         type="text"
         placeholder="Search sets..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 sm:px-4 py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 border border-mtg-border rounded-lg bg-mtg-card-bg text-mtg-text placeholder-mtg-text-muted focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base min-h-[44px]"
+        className="px-3 py-2 border border-gray-600 border-l-0 rounded-r bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         aria-label="Search sets"
       />
-      <span className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-mtg-text-muted text-sm sm:text-base">
-        🔍
-      </span>
       {value && (
         <button
           onClick={onClear}
-          className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 text-mtg-text-muted hover:text-mtg-text min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="ml-2 px-2 py-2 text-gray-400 hover:text-white"
           aria-label="Clear search"
         >
           ✕
