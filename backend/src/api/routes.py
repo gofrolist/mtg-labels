@@ -23,7 +23,7 @@ from src.config import (
     logger,
 )
 from src.models.set_data import MTGSet
-from src.mtg_label_generator import __version__
+from src.mtg_labels import __version__
 from src.services.pdf_generator import PDFGenerator
 from src.services.scryfall_client import ScryfallClient
 

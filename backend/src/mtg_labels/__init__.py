@@ -1,6 +1,6 @@
-"""MTG Label Generator package.
+"""MTG Labels package.
 
-This package provides the MTG Label Generator application.
+This package provides the MTG Labels application.
 The actual implementation is in the parent src/ directory modules.
 """
 

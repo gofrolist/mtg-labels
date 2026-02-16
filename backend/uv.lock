@@ -524,7 +524,7 @@ wheels = [
 ]
 
 [[package]]
-name = "mtg-label-generator"
+name = "mtg-labels"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

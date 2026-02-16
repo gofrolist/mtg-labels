@@ -26,7 +26,7 @@ class TestIndexEndpoint:
         assert "Location" in response.headers
         # Default redirect URL if VERCEL_FRONTEND_URL not set
         location = response.headers["Location"]
-        assert "vercel.app" in location or "mtg-label-generator" in location
+        assert "vercel.app" in location or "mtg-labels" in location
 
 
 class TestApiSetsEndpoint:
