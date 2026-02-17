@@ -30,6 +30,7 @@ export async function generatePDF(
   setIds: string[],
   template: string,
   placeholders: number,
+  customTemplate?: Record<string, number>,
 ): Promise<Blob> {
   const formData = new FormData()
 
@@ -40,6 +41,10 @@ export async function generatePDF(
   formData.append('template', template)
   formData.append('placeholders', placeholders.toString())
   formData.append('view_mode', 'sets')
+
+  if (customTemplate) {
+    formData.append('custom_template', JSON.stringify(customTemplate))
+  }
 
   const response = await fetch(`${API_BASE_URL}/generate-pdf`, {
     method: 'POST',

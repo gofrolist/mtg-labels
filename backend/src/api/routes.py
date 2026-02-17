@@ -3,6 +3,7 @@
 This module defines the API routes and application setup.
 """
 
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -152,6 +153,7 @@ def create_app() -> FastAPI:
         card_type_ids: list[str] | None = Form(None),
         use_template: str | None = Form(None),
         template: str | None = Form(None),
+        custom_template: str | None = Form(None),
         placeholders: int = Form(0),
         view_mode: str = Form("sets"),
     ) -> StreamingResponse:
@@ -207,6 +209,56 @@ def create_app() -> FastAPI:
                     detail="Please select at least one set before generating the PDF.",
                 )
 
+        # Parse and validate custom template if provided
+        custom_template_config: dict[str, float] | None = None
+        if custom_template:
+            try:
+                parsed = json.loads(custom_template)
+                required_fields = [
+                    "page_width",
+                    "page_height",
+                    "labels_per_row",
+                    "label_rows",
+                    "label_width",
+                    "label_height",
+                    "left_margin",
+                    "top_margin",
+                    "horizontal_gap",
+                    "vertical_gap",
+                ]
+                missing = [f for f in required_fields if f not in parsed]
+                if missing:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Custom template missing fields: {', '.join(missing)}",
+                    )
+                custom_template_config = {
+                    "page_width": float(parsed["page_width"]),
+                    "page_height": float(parsed["page_height"]),
+                    "labels_per_row": float(parsed["labels_per_row"]),
+                    "label_rows": float(parsed["label_rows"]),
+                    "label_width": float(parsed["label_width"]),
+                    "label_height": float(parsed["label_height"]),
+                    "left_margin": float(parsed["left_margin"]),
+                    "top_margin": float(parsed["top_margin"]),
+                    "horizontal_gap": float(parsed["horizontal_gap"]),
+                    "vertical_gap": float(parsed["vertical_gap"]),
+                    "label_margin_x": float(parsed.get("label_margin_x", 7.2)),
+                    "label_margin_y": float(parsed.get("label_margin_y", 7.2)),
+                }
+                # Validate positive values
+                for field, value in custom_template_config.items():
+                    if field not in ("horizontal_gap", "vertical_gap") and value <= 0:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Custom template field '{field}' must be positive.",
+                        )
+                logger.info(f"Using custom template: {custom_template_config}")
+            except json.JSONDecodeError:
+                raise HTTPException(
+                    status_code=400, detail="Invalid JSON in custom_template field."
+                )
+
         # Validate and set template
         label_template = template or CURRENT_LABEL_TEMPLATE
         if label_template not in LABEL_TEMPLATES:
@@ -232,7 +284,7 @@ def create_app() -> FastAPI:
         # Calculate how many placeholders (empty labels) to insert at the start.
         # We clamp this to at most labels_per_page - 1 so the user can shift
         # labels within the first page of the sheet.
-        labels_config = LABEL_TEMPLATES[label_template]
+        labels_config = custom_template_config or LABEL_TEMPLATES[label_template]
         labels_per_page = int(labels_config["labels_per_row"] * labels_config["label_rows"])
         raw_placeholders = placeholders or 0
         placeholder_count = max(0, min(raw_placeholders, max(labels_per_page - 1, 0)))
@@ -310,6 +362,7 @@ def create_app() -> FastAPI:
             template_name=label_template,
             template_path=template_path,
             view_mode=view_mode,
+            template_config=custom_template_config,
         )
         pdf_buffer = pdf_generator.generate()
         filename = "mtg_labels.pdf" if not use_template_bool else "mtg_labels_with_template.pdf"

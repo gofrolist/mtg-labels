@@ -61,6 +61,7 @@ describe('PDF Generation Integration', () => {
         ['set-1', 'set-2'],
         'avery5160',
         0,
+        undefined,
       )
     })
 

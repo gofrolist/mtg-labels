@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { generatePDF } from '../../api/client'
 import { LABEL_TEMPLATES } from '../../constants/templates'
+import type { CustomTemplateDimensions } from '../../types'
+import { customTemplateToBackendFormat } from '../../utils/unitConversion'
 
 interface PDFGeneratorProps {
   selectedSetIds: string[]
   templateId: string
   placeholders: number
+  customTemplate?: CustomTemplateDimensions | null
+  useCustomTemplate?: boolean
   onGenerate?: () => void
 }
 
@@ -13,6 +17,8 @@ export function PDFGenerator({
   selectedSetIds,
   templateId,
   placeholders,
+  customTemplate,
+  useCustomTemplate,
   onGenerate,
 }: PDFGeneratorProps) {
   const [loading, setLoading] = useState(false)
@@ -24,9 +30,13 @@ export function PDFGenerator({
       return
     }
 
-    const template = LABEL_TEMPLATES[templateId] || LABEL_TEMPLATES.avery5160
-    if (placeholders < 0 || placeholders >= template.labels_per_page) {
-      setError(`Placeholders must be between 0 and ${template.labels_per_page - 1}.`)
+    const labelsPerPage =
+      useCustomTemplate && customTemplate
+        ? customTemplate.columns * customTemplate.rows
+        : (LABEL_TEMPLATES[templateId] || LABEL_TEMPLATES.avery5160).labels_per_page
+
+    if (placeholders < 0 || placeholders >= labelsPerPage) {
+      setError(`Placeholders must be between 0 and ${labelsPerPage - 1}.`)
       return
     }
 
@@ -34,7 +44,17 @@ export function PDFGenerator({
     setLoading(true)
 
     try {
-      const blob = await generatePDF(selectedSetIds, templateId, placeholders)
+      const backendCustomTemplate =
+        useCustomTemplate && customTemplate
+          ? customTemplateToBackendFormat(customTemplate)
+          : undefined
+
+      const blob = await generatePDF(
+        selectedSetIds,
+        templateId,
+        placeholders,
+        backendCustomTemplate,
+      )
 
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -64,7 +84,7 @@ export function PDFGenerator({
       <button
         onClick={handleGenerate}
         disabled={loading || selectedSetIds.length === 0}
-        className="px-3 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
+        className="px-3 py-2 bg-mtg-accent text-gray-900 rounded font-medium hover:bg-mtg-accent-hover disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
       >
         {loading ? (
           <>
@@ -72,7 +92,7 @@ export function PDFGenerator({
             <span>Generating...</span>
           </>
         ) : (
-          <>📄 Generate PDF</>
+          <>Generate PDF</>
         )}
       </button>
     </>

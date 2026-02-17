@@ -1,18 +1,25 @@
 import { getTemplate, getDefaultTemplate } from '../../constants/templates'
+import type { CustomTemplateDimensions } from '../../types'
 
 interface PlaceholdersInputProps {
   templateId: string
   placeholders: number
   onPlaceholdersChange: (value: number) => void
+  customTemplate?: CustomTemplateDimensions | null
+  useCustomTemplate?: boolean
 }
 
 export function PlaceholdersInput({
   templateId,
   placeholders,
   onPlaceholdersChange,
+  customTemplate,
+  useCustomTemplate,
 }: PlaceholdersInputProps) {
-  const template = getTemplate(templateId) || getDefaultTemplate()
-  const maxPlaceholders = template.labels_per_page - 1
+  const maxPlaceholders =
+    useCustomTemplate && customTemplate
+      ? customTemplate.columns * customTemplate.rows - 1
+      : (getTemplate(templateId) || getDefaultTemplate()).labels_per_page - 1
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)

@@ -56,6 +56,7 @@ describe('PDFGenerator', () => {
         ['set-1'],
         'avery5160',
         0,
+        undefined,
       )
     })
   })

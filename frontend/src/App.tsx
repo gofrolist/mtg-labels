@@ -8,11 +8,23 @@ import { ThemeToggle } from './components/ThemeToggle/ThemeToggle'
 import { PDFGenerator } from './components/PDFGenerator/PDFGenerator'
 import { TemplateSelector } from './components/TemplateSelector/TemplateSelector'
 import { PlaceholdersInput } from './components/PDFGenerator/PlaceholdersInput'
+import { TemplateCustomizer } from './components/TemplateCustomizer/TemplateCustomizer'
 import type { MTGSet } from './types'
 
 function App() {
   const { data: setsResponse, isLoading, error } = useApiSetsApiSetsGet()
-  const { selection, toggleSetSelection, setQuantity, setTemplate, setPlaceholders, selectAllSets, deselectAllSets, isAllSetsSelected } = useSelection()
+  const {
+    selection,
+    toggleSetSelection,
+    setQuantity,
+    setTemplate,
+    setPlaceholders,
+    selectAllSets,
+    deselectAllSets,
+    isAllSetsSelected,
+    setCustomTemplate,
+    setUseCustomTemplate,
+  } = useSelection()
 
   const sets: MTGSet[] = useMemo(() => setsResponse?.data ?? [], [setsResponse?.data])
 
@@ -88,10 +100,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-mtg-bg text-mtg-text transition-colors">
-      <nav className="sticky top-0 z-50 bg-gray-800 text-white shadow-lg">
+      <nav className="sticky top-0 z-50 bg-gradient-to-r from-mtg-nav-from to-mtg-nav-to text-white shadow-lg">
         <div className="container-fluid px-4">
           <div className="flex flex-wrap items-center justify-between gap-3 py-2">
-            <a href="#" className="text-xl font-bold">
+            <a href="#" className="text-xl font-bold text-mtg-accent">
               MTG Labels
             </a>
 
@@ -101,18 +113,25 @@ function App() {
                   selectedSetIds={selection.selectedSetIds}
                   templateId={selection.templateId}
                   placeholders={selection.placeholders}
+                  customTemplate={selection.customTemplate}
+                  useCustomTemplate={selection.useCustomTemplate}
                 />
                 <TemplateSelector
                   selectedTemplate={selection.templateId}
                   onTemplateChange={setTemplate}
                 />
+                {selection.selectedSetIds.length > 0 && (
+                  <span className="text-sm text-mtg-accent font-medium">
+                    {selection.selectedSetIds.length} sets selected
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-3 ml-auto">
                 {filteredSets.length > 0 && (
                   <button
                     onClick={handleSelectAllSets}
-                    className="px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors text-sm"
+                    className="px-3 py-2 bg-white/10 text-white rounded hover:bg-white/20 transition-colors text-sm"
                   >
                     {isAllSetsSelected(filteredSets.map((s) => s.id))
                       ? 'Deselect All'
@@ -131,6 +150,14 @@ function App() {
         </div>
       </nav>
 
+      <TemplateCustomizer
+        customTemplate={selection.customTemplate}
+        useCustomTemplate={selection.useCustomTemplate}
+        templateId={selection.templateId}
+        onCustomTemplateChange={setCustomTemplate}
+        onUseCustomTemplateChange={setUseCustomTemplate}
+      />
+
       <div className="container mt-4">
         <h1 className="mb-4 text-center">MTG Printable Label Generator</h1>
 
@@ -142,6 +169,8 @@ function App() {
             templateId={selection.templateId}
             placeholders={selection.placeholders}
             onPlaceholdersChange={setPlaceholders}
+            customTemplate={selection.customTemplate}
+            useCustomTemplate={selection.useCustomTemplate}
           />
         </div>
 

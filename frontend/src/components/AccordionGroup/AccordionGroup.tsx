@@ -10,16 +10,14 @@ interface AccordionGroupProps {
 
 export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onToggle, onSelectGroup, children }: AccordionGroupProps) {
   return (
-    <div className="border border-gray-300 rounded mb-2">
+    <div className="border border-mtg-border rounded mb-2">
       {/* Heading row with accordion button and Select Group button */}
       <div className="flex justify-between items-center w-full px-2 py-2">
         {/* Accordion header */}
         <h2 className="mb-0 flex-grow-1">
           <button
             onClick={onToggle}
-            className={`w-full text-left px-3 py-2 rounded transition-colors ${
-              isOpen ? 'bg-gray-100' : 'bg-white'
-            } hover:bg-gray-50`}
+            className={`w-full text-left px-3 py-2 rounded transition-colors bg-mtg-card-bg hover:opacity-80`}
             aria-expanded={isOpen}
           >
             {title}
@@ -43,7 +41,7 @@ export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onTo
 
       {/* Collapsible content */}
       {isOpen && (
-        <div className="px-4 py-2 bg-white">
+        <div className="px-4 py-2 bg-mtg-card-bg">
           {children}
         </div>
       )}

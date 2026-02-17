@@ -74,6 +74,7 @@ class PDFGenerator:
         template_name: str | None = None,
         template_path: str | None = None,
         view_mode: str = "sets",
+        template_config: dict[str, float] | None = None,
     ) -> None:
         """
         Initialize PDFGenerator with selected sets or card types.
@@ -83,16 +84,21 @@ class PDFGenerator:
             template_name: Name of label template to use (defaults to CURRENT_LABEL_TEMPLATE)
             template_path: Optional path to template PDF file for debugging overlay
             view_mode: View mode - "sets" or "types" (default: "sets")
+            template_config: Optional custom template dimensions dict (all values in points).
+                When provided, used directly instead of looking up from LABEL_TEMPLATES.
         """
         self.selected_sets = selected_sets
         self.view_mode = view_mode
-        template_key = template_name or CURRENT_LABEL_TEMPLATE
-        if template_key not in LABEL_TEMPLATES:
-            logger.warning(
-                f"Invalid template '{template_key}', using default '{CURRENT_LABEL_TEMPLATE}'"
-            )
-            template_key = CURRENT_LABEL_TEMPLATE
-        self.template = LABEL_TEMPLATES[template_key]
+        if template_config is not None:
+            self.template = template_config
+        else:
+            template_key = template_name or CURRENT_LABEL_TEMPLATE
+            if template_key not in LABEL_TEMPLATES:
+                logger.warning(
+                    f"Invalid template '{template_key}', using default '{CURRENT_LABEL_TEMPLATE}'"
+                )
+                template_key = CURRENT_LABEL_TEMPLATE
+            self.template = LABEL_TEMPLATES[template_key]
         self.template_path = template_path
         self.buffer = io.BytesIO()
         self.canvas = canvas.Canvas(

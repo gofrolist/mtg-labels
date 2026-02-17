@@ -8,6 +8,10 @@
   --mtg-text: #212529;
   --mtg-text-muted: #6c757d;
   --mtg-border: #dee2e6;
+  --mtg-accent: #d4af37;
+  --mtg-accent-hover: #c4a030;
+  --mtg-nav-from: #1a1a2e;
+  --mtg-nav-to: #16213e;
 }
 
 .dark {
@@ -16,6 +20,10 @@
   --mtg-text: #e0e0e0;
   --mtg-text-muted: #9e9e9e;
   --mtg-border: #333333;
+  --mtg-accent: #d4af37;
+  --mtg-accent-hover: #e5c04a;
+  --mtg-nav-from: #0f0f1a;
+  --mtg-nav-to: #0d1526;
 }
 
 body {

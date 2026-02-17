@@ -313,3 +313,76 @@ class TestGeneratePdfEndpoint:
             # Verify PDFGenerator was called without template_path (None)
             call_args = mock_pdf_gen.call_args
             assert call_args[1]["template_path"] is None
+
+    @patch("src.api.routes.PDFGenerator")
+    def test_generate_pdf_with_custom_template(self, mock_pdf_gen, client):
+        """Test PDF generation with custom_template JSON field."""
+        import json
+
+        mock_generator_instance = Mock()
+        mock_buffer = BytesIO(b"%PDF-1.4 fake pdf content")
+        mock_generator_instance.generate.return_value = mock_buffer
+        mock_pdf_gen.return_value = mock_generator_instance
+
+        custom_template = json.dumps(
+            {
+                "page_width": 612,
+                "page_height": 792,
+                "labels_per_row": 2,
+                "label_rows": 5,
+                "label_width": 250,
+                "label_height": 144,
+                "left_margin": 31,
+                "top_margin": 36,
+                "horizontal_gap": 10,
+                "vertical_gap": 0,
+            }
+        )
+
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "card_type_ids": ["White:Creature"],
+                "view_mode": "types",
+                "custom_template": custom_template,
+            },
+        )
+
+        assert response.status_code == 200
+        # Verify PDFGenerator was called with template_config
+        call_args = mock_pdf_gen.call_args
+        assert call_args[1]["template_config"] is not None
+        assert call_args[1]["template_config"]["page_width"] == 612
+        assert call_args[1]["template_config"]["labels_per_row"] == 2
+
+    def test_generate_pdf_with_invalid_custom_template_json(self, client):
+        """Test PDF generation with invalid custom_template JSON."""
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "card_type_ids": ["White:Creature"],
+                "view_mode": "types",
+                "custom_template": "not-valid-json",
+            },
+        )
+
+        assert response.status_code == 400
+        response_json = response.json()
+        assert "Invalid JSON" in response_json["error"]["detail"]
+
+    def test_generate_pdf_with_missing_custom_template_fields(self, client):
+        """Test PDF generation with missing required fields in custom_template."""
+        import json
+
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "card_type_ids": ["White:Creature"],
+                "view_mode": "types",
+                "custom_template": json.dumps({"page_width": 612}),
+            },
+        )
+
+        assert response.status_code == 400
+        response_json = response.json()
+        assert "missing fields" in response_json["error"]["detail"]

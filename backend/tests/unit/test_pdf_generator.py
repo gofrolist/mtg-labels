@@ -289,3 +289,56 @@ class TestPDFGenerator:
         with patch("src.services.pdf_generator.ImageReader", side_effect=Exception("Error")):
             # Should not raise, just log error
             generator._draw_raster_symbol("/nonexistent.png", 0, 0, 50)
+
+    def test_pdf_generator_with_custom_template_config(self, sample_set_data):
+        """Test PDFGenerator with inline template_config dict."""
+        custom_config = {
+            "page_width": 612,
+            "page_height": 792,
+            "labels_per_row": 2,
+            "label_rows": 5,
+            "label_width": 250,
+            "label_height": 144,
+            "label_margin_x": 7.2,
+            "label_margin_y": 7.2,
+            "left_margin": 31,
+            "top_margin": 36,
+            "horizontal_gap": 10,
+            "vertical_gap": 0,
+        }
+        generator = PDFGenerator(sample_set_data, template_config=custom_config)
+
+        assert generator.template == custom_config
+
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            result = generator.generate()
+
+        assert result is not None
+        pdf_content = result.read()
+        assert pdf_content.startswith(b"%PDF")
+
+    def test_pdf_generator_custom_config_overrides_template_name(self, sample_set_data):
+        """Test that template_config takes precedence over template_name."""
+        custom_config = {
+            "page_width": 595.2,
+            "page_height": 841.8,
+            "labels_per_row": 3,
+            "label_rows": 7,
+            "label_width": 180,
+            "label_height": 108.75,
+            "label_margin_x": 7.2,
+            "label_margin_y": 7.2,
+            "left_margin": 20.551,
+            "top_margin": 52,
+            "horizontal_gap": 7.087,
+            "vertical_gap": 0,
+        }
+        generator = PDFGenerator(
+            sample_set_data,
+            template_name="avery5160",
+            template_config=custom_config,
+        )
+
+        # Should use custom config, not avery5160
+        assert generator.template["page_width"] == 595.2
+        assert generator.template["label_rows"] == 7

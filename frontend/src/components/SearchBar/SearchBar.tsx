@@ -7,7 +7,7 @@ interface SearchBarProps {
 export function SearchBar({ value, onChange, onClear }: SearchBarProps) {
   return (
     <div className="flex items-center">
-      <span className="px-2 py-2 bg-gray-700 border border-gray-600 rounded-l text-gray-300">
+      <span className="px-2 py-2 bg-white/10 border border-white/20 rounded-l text-gray-300">
         🔍
       </span>
       <input
@@ -15,7 +15,7 @@ export function SearchBar({ value, onChange, onClear }: SearchBarProps) {
         placeholder="Search sets..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-3 py-2 border border-gray-600 border-l-0 rounded-r bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        className="px-3 py-2 border border-white/20 border-l-0 rounded-r bg-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-mtg-accent text-sm"
         aria-label="Search sets"
       />
       {value && (

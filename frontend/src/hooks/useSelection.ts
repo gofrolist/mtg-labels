@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { SelectionState } from '../types'
+import type { CustomTemplateDimensions, SelectionState } from '../types'
 import { getStorageItem, setStorageItem, isStorageAvailable } from '../utils/localStorage'
 import { DEFAULT_TEMPLATE_ID } from '../constants/templates'
 
@@ -10,6 +10,8 @@ const initialState: SelectionState = {
   quantities: {},
   templateId: DEFAULT_TEMPLATE_ID,
   placeholders: 0,
+  customTemplate: null,
+  useCustomTemplate: false,
 }
 
 export function useSelection() {
@@ -71,6 +73,14 @@ export function useSelection() {
     return setIds.length > 0 && setIds.every((id) => selection.selectedSetIds.includes(id))
   }, [selection.selectedSetIds])
 
+  const setCustomTemplate = useCallback((customTemplate: CustomTemplateDimensions | null) => {
+    setSelection((prev) => ({ ...prev, customTemplate }))
+  }, [])
+
+  const setUseCustomTemplate = useCallback((useCustomTemplate: boolean) => {
+    setSelection((prev) => ({ ...prev, useCustomTemplate }))
+  }, [])
+
   return {
     selection,
     toggleSetSelection,
@@ -80,5 +90,7 @@ export function useSelection() {
     selectAllSets,
     deselectAllSets,
     isAllSetsSelected,
+    setCustomTemplate,
+    setUseCustomTemplate,
   }
 }
