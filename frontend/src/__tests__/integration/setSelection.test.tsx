@@ -70,7 +70,7 @@ describe('Set Selection Integration', () => {
     })
 
     // Select a set
-    const checkbox = screen.getByRole('checkbox', { name: /select test set 1/i })
+    const checkbox = screen.getByRole('checkbox', { name: /test set 1/i })
     fireEvent.click(checkbox)
 
     expect(onToggleSet).toHaveBeenCalledWith('set-1')

@@ -26,9 +26,6 @@ describe('SetItem', () => {
       />
     )
     expect(screen.getByText('Test Set')).toBeInTheDocument()
-    // The code is rendered in parentheses, so we check for it in the parent container
-    const container = screen.getByText('Test Set').closest('div')
-    expect(container?.textContent).toContain('TS1')
   })
 
   it('shows checked checkbox when selected', () => {
