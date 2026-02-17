@@ -18,7 +18,13 @@ const mockSets: MTGSet[] = [
 ]
 
 // Test wrapper component that manages accordion state
-function SetListWrapper({ groupedSets, selectedSetIds, quantities, onToggleSet, onQuantityChange }: any) {
+function SetListWrapper({ groupedSets, selectedSetIds, quantities, onToggleSet, onQuantityChange }: {
+  groupedSets: Record<string, MTGSet[]>
+  selectedSetIds: string[]
+  quantities: Record<string, number>
+  onToggleSet: (setId: string) => void
+  onQuantityChange: (setId: string, quantity: number) => void
+}) {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
 
   const handleToggleGroup = (groupName: string) => {
