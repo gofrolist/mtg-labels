@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev test check run clean pre-commit
+.PHONY: help install dev test check run clean pre-commit openapi-export
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -29,3 +29,6 @@ clean: ## Clean temporary files
 
 pre-commit: ## Run pre-commit hooks
 	uv run pre-commit run --all-files
+
+openapi-export: ## Export OpenAPI spec to frontend/openapi.json
+	uv run python -c "import json, sys, io; _o = sys.stdout; sys.stdout = io.StringIO(); from main import app; spec = app.openapi(); sys.stdout = _o; print(json.dumps(spec, indent=2))" > ../frontend/openapi.json

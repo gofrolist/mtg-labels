@@ -23,6 +23,7 @@ from src.config import (
     VERCEL_FRONTEND_URL,
     logger,
 )
+from src.models.set_data import MTGSetResponse
 from src.mtg_labels import __version__
 from src.services.pdf_generator import PDFGenerator
 from src.services.scryfall_client import ScryfallClient
@@ -44,7 +45,7 @@ def create_app() -> FastAPI:
         # Disable interactive docs in production
         docs_url="/docs" if DEBUG else None,
         redoc_url="/redoc" if DEBUG else None,
-        openapi_url="/openapi.json" if DEBUG else None,
+        openapi_url="/openapi.json",
     )
 
     # Setup error handlers
@@ -75,7 +76,7 @@ def create_app() -> FastAPI:
 
     # Register routes
 
-    @app.get("/")
+    @app.get("/", include_in_schema=False)
     async def root_redirect(request: Request):
         """
         Redirect root path to Vercel frontend.
@@ -124,7 +125,7 @@ def create_app() -> FastAPI:
         return RedirectResponse(url=VERCEL_FRONTEND_URL, status_code=301)
 
     @app.get("/api/sets")
-    async def api_sets() -> list[dict]:
+    async def api_sets() -> list[MTGSetResponse]:
         """
         API endpoint to get filtered sets.
 
@@ -133,7 +134,7 @@ def create_app() -> FastAPI:
         """
         all_sets = scryfall_client.fetch_sets()
         filtered = scryfall_client.filter_sets(all_sets)
-        return filtered
+        return [MTGSetResponse(**s) for s in filtered]
 
     @app.get("/api/card-types")
     async def api_card_types() -> dict[str, list[str]]:
@@ -145,7 +146,7 @@ def create_app() -> FastAPI:
         """
         return scryfall_client.get_card_types_by_color()
 
-    @app.post("/generate-pdf")
+    @app.post("/generate-pdf", include_in_schema=False)
     async def generate_pdf(
         set_ids: list[str] | None = Form(None),
         card_type_ids: list[str] | None = Form(None),

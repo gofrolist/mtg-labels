@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { PDFGenerator } from './PDFGenerator'
-import { generatePDF } from '../../services/api'
+import { generatePDF } from '../../api/client'
 
-vi.mock('../../services/api')
+vi.mock('../../api/client')
 
 describe('PDFGenerator', () => {
   beforeEach(() => {

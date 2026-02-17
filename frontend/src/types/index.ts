@@ -1,14 +1,5 @@
-// MTG Set type definition
-export interface MTGSet {
-  id: string
-  name: string
-  code: string
-  set_type: string
-  card_count: number
-  released_at: string | null
-  icon_svg_uri: string | null
-  scryfall_uri: string | null
-}
+// Re-export API types from generated models
+export type { MTGSetResponse as MTGSet } from '../api/model'
 
 // Card Type type definition
 export interface CardType {

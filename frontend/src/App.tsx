@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useSets } from './hooks/useSets'
+import { useApiSetsApiSetsGet } from './api/queries/default/default'
+import { useApiCardTypesApiCardTypesGet } from './api/queries/default/default'
 import { useSelection } from './hooks/useSelection'
-import { useCardTypes } from './hooks/useCardTypes'
 import { groupSetsByType, filterSetsByQuery } from './utils/grouping'
 import { SetList } from './components/SetList/SetList'
 import { SearchBar } from './components/SearchBar/SearchBar'
@@ -9,11 +9,14 @@ import { ThemeToggle } from './components/ThemeToggle/ThemeToggle'
 import { PDFGenerator } from './components/PDFGenerator/PDFGenerator'
 import { TemplateSelector } from './components/TemplateSelector/TemplateSelector'
 import { PlaceholdersInput } from './components/PDFGenerator/PlaceholdersInput'
+import type { MTGSet } from './types'
 
 function App() {
-  const { sets, loading: setsLoading, error: setsError } = useSets()
-  const { loading: typesLoading, error: typesError } = useCardTypes()
+  const { data: setsResponse, isLoading: setsLoading, error: setsError } = useApiSetsApiSetsGet()
+  const { isLoading: typesLoading, error: typesError } = useApiCardTypesApiCardTypesGet()
   const { selection, toggleSetSelection, setQuantity, setViewMode, setTemplate, setPlaceholders, selectAllSets, deselectAllSets, isAllSetsSelected } = useSelection()
+
+  const sets: MTGSet[] = setsResponse?.data ?? []
 
   const [searchQuery, setSearchQuery] = useState('')
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
@@ -27,11 +30,6 @@ function App() {
   const groupedSets = useMemo(() => {
     return groupSetsByType(filteredSets)
   }, [filteredSets])
-
-  // Filter card types based on search query (for future Types view)
-  // const filteredCardTypes = useMemo(() => {
-  //   return filterCardTypesByQuery(cardTypes, searchQuery)
-  // }, [cardTypes, searchQuery])
 
   // Auto-expand groups that contain selected sets
   useEffect(() => {
@@ -104,6 +102,7 @@ function App() {
     }
   }
 
+  const errorMessage = (setsError as Error | null)?.message || (typesError as Error | null)?.message
 
   return (
     <div className="min-h-screen bg-mtg-bg text-mtg-text transition-colors">
@@ -200,10 +199,10 @@ function App() {
             <div className="text-center py-12">
               <div className="text-mtg-text-muted">Loading...</div>
             </div>
-          ) : setsError || typesError ? (
+          ) : errorMessage ? (
             <div className="text-center py-12">
               <div className="text-red-600">
-                {setsError || typesError || 'Failed to load data'}
+                {errorMessage}
               </div>
             </div>
           ) : selection.viewMode === 'sets' ? (

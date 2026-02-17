@@ -1,0 +1,132 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MTG Label Generator",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/sets": {
+      "get": {
+        "summary": "Api Sets",
+        "description": "API endpoint to get filtered sets.\n\nReturns:\n    List of filtered set dictionaries",
+        "operationId": "api_sets_api_sets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MTGSetResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Api Sets Api Sets Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/card-types": {
+      "get": {
+        "summary": "Api Card Types",
+        "description": "API endpoint to get card types organized by color.\n\nReturns:\n    Dictionary mapping color names to lists of card types",
+        "operationId": "api_card_types_api_card_types_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response Api Card Types Api Card Types Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MTGSetResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "set_type": {
+            "type": "string",
+            "title": "Set Type"
+          },
+          "card_count": {
+            "type": "integer",
+            "title": "Card Count"
+          },
+          "released_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Released At"
+          },
+          "icon_svg_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Svg Uri"
+          },
+          "scryfall_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scryfall Uri"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "code",
+          "set_type",
+          "card_count",
+          "released_at",
+          "icon_svg_uri",
+          "scryfall_uri"
+        ],
+        "title": "MTGSetResponse",
+        "description": "Response model for an MTG set."
+      }
+    }
+  }
+}

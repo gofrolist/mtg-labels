@@ -1,5 +1,5 @@
 import { useState, memo } from 'react'
-import { generatePDF } from '../../services/api'
+import { generatePDF } from '../../api/client'
 import { LABEL_TEMPLATES } from '../../constants/templates'
 
 interface PDFGeneratorProps {
