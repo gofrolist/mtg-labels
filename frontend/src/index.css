@@ -1,6 +1,20 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-mtg-bg: var(--mtg-bg);
+  --color-mtg-card-bg: var(--mtg-card-bg);
+  --color-mtg-text: var(--mtg-text);
+  --color-mtg-text-muted: var(--mtg-text-muted);
+  --color-mtg-border: var(--mtg-border);
+  --color-mtg-accent: var(--mtg-accent);
+  --color-mtg-accent-hover: var(--mtg-accent-hover);
+  --color-mtg-nav-from: var(--mtg-nav-from);
+  --color-mtg-nav-to: var(--mtg-nav-to);
+  --color-mtg-section-bg: var(--mtg-section-bg);
+  --color-mtg-section-header-bg: var(--mtg-section-header-bg);
+  --color-mtg-input-bg: var(--mtg-input-bg);
+  --color-mtg-hover-bg: var(--mtg-hover-bg);
+}
 
 :root {
   --mtg-bg: #f8f9fa;

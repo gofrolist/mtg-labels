@@ -120,11 +120,9 @@ function App() {
                   selectedTemplate={selection.templateId}
                   onTemplateChange={setTemplate}
                 />
-                {selection.selectedSetIds.length > 0 && (
-                  <span className="text-sm text-white/80 font-medium">
-                    {selection.selectedSetIds.length} sets selected
-                  </span>
-                )}
+                <span className="text-sm text-white/70">
+                  {selection.selectedSetIds.length} sets selected
+                </span>
               </div>
 
               <div className="flex items-center gap-3 ml-auto">
