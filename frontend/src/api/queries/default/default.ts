@@ -53,19 +53,19 @@ export type apiSetsApiSetsGetResponse = (apiSetsApiSetsGetResponseSuccess)
 export const getApiSetsApiSetsGetUrl = () => {
 
 
-
+  
 
   return `/api/sets`
 }
 
 export const apiSetsApiSetsGet = async ( options?: RequestInit): Promise<apiSetsApiSetsGetResponse> => {
-
+  
   return customFetch<apiSetsApiSetsGetResponse>(getApiSetsApiSetsGetUrl(),
-  {
+  {      
     ...options,
     method: 'GET'
-
-
+    
+    
   }
 );}
 
@@ -79,7 +79,7 @@ export const getApiSetsApiSetsGetQueryKey = () => {
     ] as const;
     }
 
-
+    
 export const getApiSetsApiSetsGetQueryOptions = <TData = Awaited<ReturnType<typeof apiSetsApiSetsGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof apiSetsApiSetsGet>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -87,13 +87,13 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getApiSetsApiSetsGetQueryKey();
 
-
+  
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof apiSetsApiSetsGet>>> = ({ signal }) => apiSetsApiSetsGet({ signal, ...requestOptions });
 
+      
 
-
-
+      
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof apiSetsApiSetsGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
@@ -132,7 +132,7 @@ export function useApiSetsApiSetsGet<TData = Awaited<ReturnType<typeof apiSetsAp
 
 export function useApiSetsApiSetsGet<TData = Awaited<ReturnType<typeof apiSetsApiSetsGet>>, TError = unknown>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof apiSetsApiSetsGet>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
+ , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getApiSetsApiSetsGetQueryOptions(options)
@@ -167,19 +167,19 @@ export type apiCardTypesApiCardTypesGetResponse = (apiCardTypesApiCardTypesGetRe
 export const getApiCardTypesApiCardTypesGetUrl = () => {
 
 
-
+  
 
   return `/api/card-types`
 }
 
 export const apiCardTypesApiCardTypesGet = async ( options?: RequestInit): Promise<apiCardTypesApiCardTypesGetResponse> => {
-
+  
   return customFetch<apiCardTypesApiCardTypesGetResponse>(getApiCardTypesApiCardTypesGetUrl(),
-  {
+  {      
     ...options,
     method: 'GET'
-
-
+    
+    
   }
 );}
 
@@ -193,7 +193,7 @@ export const getApiCardTypesApiCardTypesGetQueryKey = () => {
     ] as const;
     }
 
-
+    
 export const getApiCardTypesApiCardTypesGetQueryOptions = <TData = Awaited<ReturnType<typeof apiCardTypesApiCardTypesGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof apiCardTypesApiCardTypesGet>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -201,13 +201,13 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getApiCardTypesApiCardTypesGetQueryKey();
 
-
+  
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof apiCardTypesApiCardTypesGet>>> = ({ signal }) => apiCardTypesApiCardTypesGet({ signal, ...requestOptions });
 
+      
 
-
-
+      
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof apiCardTypesApiCardTypesGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
@@ -246,7 +246,7 @@ export function useApiCardTypesApiCardTypesGet<TData = Awaited<ReturnType<typeof
 
 export function useApiCardTypesApiCardTypesGet<TData = Awaited<ReturnType<typeof apiCardTypesApiCardTypesGet>>, TError = unknown>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof apiCardTypesApiCardTypesGet>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
+ , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getApiCardTypesApiCardTypesGetQueryOptions(options)
@@ -255,3 +255,7 @@ export function useApiCardTypesApiCardTypesGet<TData = Awaited<ReturnType<typeof
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+
+
+

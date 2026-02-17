@@ -3,8 +3,9 @@ repos:
     rev: v6.0.0
     hooks:
       - id: end-of-file-fixer
-        exclude: '(tsconfig\.tsbuildinfo|\.tsbuildinfo)$'
+        exclude: '(\.tsbuildinfo$|frontend/src/api/)'
       - id: trailing-whitespace
+        exclude: 'frontend/src/api/'
       - id: check-merge-conflict
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
