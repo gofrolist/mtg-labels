@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "weekly"
   - package-ecosystem: "uv"
-    directory: "backend/"
+    directory: "/backend"
     schedule:
       interval: "weekly"
   - package-ecosystem: "bun"
