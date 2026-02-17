@@ -6,19 +6,19 @@ help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 install: ## Install dependencies
-	npm install
+	bun install
 
 dev: ## Start Vite dev server
-	npm run dev
+	bun run dev
 
 test: ## Run tests
-	npm test
+	bun run test
 
 lint: ## Run ESLint
-	npm run lint
+	bun run lint
 
 check: lint ## Lint + type-check
-	npm run build
+	bun run build
 
 clean: ## Clean build artifacts
 	rm -rf dist node_modules/.vite
