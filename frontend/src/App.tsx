@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useApiSetsApiSetsGet } from './api/queries/default/default'
 import { useApiCardTypesApiCardTypesGet } from './api/queries/default/default'
 import { useSelection } from './hooks/useSelection'
@@ -16,10 +16,10 @@ function App() {
   const { isLoading: typesLoading, error: typesError } = useApiCardTypesApiCardTypesGet()
   const { selection, toggleSetSelection, setQuantity, setViewMode, setTemplate, setPlaceholders, selectAllSets, deselectAllSets, isAllSetsSelected } = useSelection()
 
-  const sets: MTGSet[] = setsResponse?.data ?? []
+  const sets: MTGSet[] = useMemo(() => setsResponse?.data ?? [], [setsResponse?.data])
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
+  const [manualOpenGroups, setManualOpenGroups] = useState<Set<string> | null>(null)
 
   // Filter sets based on search query
   const filteredSets = useMemo(() => {
@@ -31,8 +31,9 @@ function App() {
     return groupSetsByType(filteredSets)
   }, [filteredSets])
 
-  // Auto-expand groups that contain selected sets
-  useEffect(() => {
+  // Derive open groups: auto-expand groups containing selected sets
+  const openGroups = useMemo(() => {
+    if (manualOpenGroups !== null) return manualOpenGroups
     if (selection.viewMode === 'sets' && selection.selectedSetIds.length > 0) {
       const groupsToOpen = new Set<string>()
       for (const [groupName, groupSets] of Object.entries(groupedSets)) {
@@ -40,9 +41,10 @@ function App() {
           groupsToOpen.add(groupName)
         }
       }
-      setOpenGroups(groupsToOpen)
+      return groupsToOpen
     }
-  }, [groupedSets, selection.selectedSetIds, selection.viewMode])
+    return new Set<string>()
+  }, [manualOpenGroups, groupedSets, selection.selectedSetIds, selection.viewMode])
 
   // Calculate total labels
   const { totalLabels } = useMemo(() => {
@@ -63,15 +65,14 @@ function App() {
   }, [selection])
 
   const handleToggleGroup = (groupName: string) => {
-    setOpenGroups((prev) => {
-      const next = new Set(prev)
-      if (next.has(groupName)) {
-        next.delete(groupName)
-      } else {
-        next.add(groupName)
-      }
-      return next
-    })
+    const prev = openGroups
+    const next = new Set(prev)
+    if (next.has(groupName)) {
+      next.delete(groupName)
+    } else {
+      next.add(groupName)
+    }
+    setManualOpenGroups(next)
   }
 
   const handleSelectAllSets = () => {
