@@ -22,4 +22,4 @@ MTG Label Generator — a web app for generating printable Avery label sheets fo
 ## Repo-wide
 
 - Pre-commit hooks: ruff lint, ruff format, pyright, end-of-file-fixer, trailing-whitespace, check-merge-conflict
-- Python 3.13+, Node 22
+- Python 3.13+, Bun (frontend package manager)
