@@ -10,7 +10,7 @@ class MTGSetResponse(BaseModel):
     name: str
     code: str
     set_type: str
-    card_count: int
-    released_at: str | None
-    icon_svg_uri: str | None
-    scryfall_uri: str | None
+    card_count: int = 0
+    released_at: str | None = None
+    icon_svg_uri: str | None = None
+    scryfall_uri: str | None = None

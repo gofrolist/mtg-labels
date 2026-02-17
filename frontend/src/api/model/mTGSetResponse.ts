@@ -13,8 +13,8 @@ export interface MTGSetResponse {
   name: string;
   code: string;
   set_type: string;
-  card_count: number;
-  released_at: string | null;
-  icon_svg_uri: string | null;
-  scryfall_uri: string | null;
+  card_count?: number;
+  released_at?: string | null;
+  icon_svg_uri?: string | null;
+  scryfall_uri?: string | null;
 }

@@ -77,7 +77,8 @@
           },
           "card_count": {
             "type": "integer",
-            "title": "Card Count"
+            "title": "Card Count",
+            "default": 0
           },
           "released_at": {
             "anyOf": [
@@ -118,11 +119,7 @@
           "id",
           "name",
           "code",
-          "set_type",
-          "card_count",
-          "released_at",
-          "icon_svg_uri",
-          "scryfall_uri"
+          "set_type"
         ],
         "title": "MTGSetResponse",
         "description": "Response model for an MTG set."
