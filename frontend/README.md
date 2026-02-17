@@ -4,24 +4,27 @@ React frontend for the MTG Label Generator application, deployed to Vercel.
 
 ## Tech Stack
 
-- **React 18** - UI framework
+- **React 19** - UI framework
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
-- **Tailwind CSS** - Styling
+- **Tailwind CSS 4** - Styling
 - **Vitest** - Testing framework
 - **React Testing Library** - Component testing
+- **TanStack Query** - Server state management
+- **Orval** - API client code generation
+- **Bun** - Package manager and runtime
 
 ## Development
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Bun
 
 ### Setup
 
 1. Install dependencies:
 ```bash
-npm install
+bun install
 ```
 
 2. Create `.env` file (copy from `.env.example`):
@@ -37,7 +40,7 @@ VITE_API_BASE_URL=http://localhost:8080
 ### Running Locally
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 The app will be available at `http://localhost:5173`
@@ -45,7 +48,7 @@ The app will be available at `http://localhost:5173`
 ### Building
 
 ```bash
-npm run build
+bun run build
 ```
 
 Output will be in the `dist/` directory.
@@ -54,19 +57,19 @@ Output will be in the `dist/` directory.
 
 ```bash
 # Run tests
-npm test
+bun run test
 
 # Run tests with coverage
-npm run test:coverage
+bun run test:coverage
 
-# Run tests in UI mode
-npm run test:ui
+# Run tests in watch mode
+bun run test:watch
 ```
 
 ### Linting
 
 ```bash
-npm run lint
+bun run lint
 ```
 
 ## Deployment
@@ -76,7 +79,7 @@ This frontend is configured for deployment to Vercel.
 ### Vercel Configuration
 
 - Configuration file: `vercel.json`
-- Build command: `npm run build`
+- Build command: `bun run build`
 - Output directory: `dist`
 - Framework: Vite
 
@@ -94,7 +97,7 @@ This frontend is configured for deployment to Vercel.
 
 1. Install Vercel CLI:
 ```bash
-npm i -g vercel
+bun install --global vercel
 ```
 
 2. Deploy:
@@ -114,9 +117,9 @@ See `.github/workflows/frontend-deploy.yml` for the CI/CD configuration.
 ```
 frontend/
 ├── src/
+│   ├── api/            # Generated API client (orval)
 │   ├── components/     # React components
 │   ├── hooks/          # Custom React hooks
-│   ├── services/       # API services
 │   ├── utils/          # Utility functions
 │   ├── types/          # TypeScript types
 │   ├── constants/      # Constants and configuration
@@ -124,18 +127,20 @@ frontend/
 │   └── main.tsx        # Entry point
 ├── public/             # Static assets
 ├── dist/               # Build output
+├── openapi.json        # OpenAPI spec (generated from backend)
+├── orval.config.ts     # Orval code generation config
 ├── vercel.json         # Vercel configuration
 └── package.json        # Dependencies
 ```
 
 ## Features
 
-- ✅ View and select MTG sets
-- ✅ Search and filter sets
-- ✅ Generate PDF labels
-- ✅ Responsive design (mobile, tablet, desktop)
-- ✅ Light and dark theme support
-- ✅ State persistence (localStorage)
+- View and select MTG sets
+- Search and filter sets
+- Generate PDF labels
+- Responsive design (mobile, tablet, desktop)
+- Light and dark theme support
+- State persistence (localStorage)
 
 ## Browser Support
 
