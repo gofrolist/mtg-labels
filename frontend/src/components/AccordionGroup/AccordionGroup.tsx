@@ -12,12 +12,12 @@ export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onTo
   return (
     <div className="border border-mtg-border rounded-lg mb-2 overflow-hidden">
       {/* Heading row with accordion button and Select Group button */}
-      <div className="flex justify-between items-center w-full px-2 py-2 bg-gray-50 dark:bg-[#2a2a2a]">
+      <div className="flex justify-between items-center w-full px-2 py-2 bg-mtg-section-bg">
         {/* Accordion header */}
         <h2 className="mb-0 flex-grow-1">
           <button
             onClick={onToggle}
-            className="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50 font-medium"
+            className="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-gray-100 hover:bg-mtg-hover-bg font-medium"
             aria-expanded={isOpen}
           >
             <span className={`inline-block transition-transform mr-2 text-xs ${isOpen ? 'rotate-90' : ''}`}>&#9654;</span>

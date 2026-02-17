@@ -108,7 +108,7 @@ export function TemplateCustomizer({
   }
 
   const inputClasses =
-    'w-full px-2 py-1 border rounded bg-mtg-card-bg text-mtg-text text-sm focus:outline-none focus:ring-2 focus:ring-mtg-accent dark:bg-[#1e1e1e] dark:border-gray-600'
+    'w-full px-2 py-1 border border-mtg-border rounded bg-mtg-input-bg text-mtg-text text-sm focus:outline-none focus:ring-2 focus:ring-mtg-accent'
 
   const numField = (
     label: string,
@@ -192,8 +192,8 @@ export function TemplateCustomizer({
                 </div>
 
                 {/* Page Size card with unit selector in header */}
-                <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
-                  <div className="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+                <div className="rounded-lg border border-mtg-border bg-mtg-section-bg overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-mtg-section-header-bg border-b border-mtg-border">
                     <span className="text-sm font-medium text-mtg-text">
                       📄 Page Size
                     </span>
@@ -201,7 +201,7 @@ export function TemplateCustomizer({
                       <select
                         value={template.unit}
                         onChange={e => handleUnitChange(e.target.value as TemplateMeasurementUnit)}
-                        className="px-2 py-0.5 text-xs border border-mtg-border rounded bg-mtg-card-bg text-mtg-text dark:bg-[#1e1e1e] dark:border-gray-600"
+                        className="px-2 py-0.5 text-xs border border-mtg-border rounded bg-mtg-input-bg text-mtg-text"
                       >
                         <option value="in">in</option>
                         <option value="mm">mm</option>
@@ -232,8 +232,8 @@ export function TemplateCustomizer({
                 </div>
 
                 {/* Margins card */}
-                <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
-                  <div className="px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+                <div className="rounded-lg border border-mtg-border bg-mtg-section-bg overflow-hidden">
+                  <div className="px-3 py-2 bg-mtg-section-header-bg border-b border-mtg-border">
                     <span className="text-sm font-medium text-mtg-text">
                       📐 Margins ({template.unit})
                     </span>
@@ -245,8 +245,8 @@ export function TemplateCustomizer({
                 </div>
 
                 {/* Grid Layout card */}
-                <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
-                  <div className="px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+                <div className="rounded-lg border border-mtg-border bg-mtg-section-bg overflow-hidden">
+                  <div className="px-3 py-2 bg-mtg-section-header-bg border-b border-mtg-border">
                     <span className="text-sm font-medium text-mtg-text">
                       🔲 Grid Layout
                     </span>
@@ -276,8 +276,8 @@ export function TemplateCustomizer({
                 </div>
 
                 {/* Label Size card */}
-                <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
-                  <div className="px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+                <div className="rounded-lg border border-mtg-border bg-mtg-section-bg overflow-hidden">
+                  <div className="px-3 py-2 bg-mtg-section-header-bg border-b border-mtg-border">
                     <span className="text-sm font-medium text-mtg-text">
                       🏷️ Label Size ({template.unit})
                     </span>
@@ -320,8 +320,8 @@ export function TemplateCustomizer({
               </div>
 
               {/* RIGHT: Preview card */}
-              <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden self-start">
-                <div className="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+              <div className="rounded-lg border border-mtg-border bg-mtg-section-bg overflow-hidden self-start">
+                <div className="flex items-center justify-between px-3 py-2 bg-mtg-section-header-bg border-b border-mtg-border">
                   <span className="text-sm font-medium text-mtg-text">
                     Preview ({template.columns} x {template.rows} ={' '}
                     {template.columns * template.rows} labels)

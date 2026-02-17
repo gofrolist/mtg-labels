@@ -16,7 +16,7 @@ export function SavedTemplatesList({ templates, onLoad, onDelete }: SavedTemplat
       {templates.map(t => (
         <span
           key={t.id}
-          className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 border border-mtg-border text-sm group"
+          className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-mtg-section-bg border border-mtg-border text-sm group"
         >
           <button
             onClick={() => onLoad(t.id)}

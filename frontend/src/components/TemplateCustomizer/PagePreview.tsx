@@ -30,7 +30,7 @@ export function PagePreview({ template, fullscreen }: PagePreviewProps) {
 
   return (
     <div
-      className="relative bg-white border border-gray-300 dark:border-gray-600 mx-auto"
+      className="relative bg-white border border-mtg-border mx-auto"
       style={{ width: scaledW, height: scaledH }}
     >
       {/* Grid area */}
@@ -55,7 +55,7 @@ export function PagePreview({ template, fullscreen }: PagePreviewProps) {
           {Array.from({ length: template.columns * template.rows }).map((_, i) => (
             <div
               key={i}
-              className="border border-dashed border-[#d4af37]/40 bg-[#d4af37]/10 dark:bg-[#d4af37]/5 dark:border-[#d4af37]/30"
+              className="border border-dashed border-mtg-accent/40 bg-mtg-accent/10"
             />
           ))}
         </div>

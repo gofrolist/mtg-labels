@@ -18,7 +18,7 @@ export const SetItem = memo(function SetItem({ set, isSelected, quantity, onTogg
   }
 
   return (
-    <div className="flex items-center hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded px-1 py-0.5 transition-colors">
+    <div className="flex items-center hover:bg-mtg-hover-bg rounded px-1 py-0.5 transition-colors">
       <input
         type="checkbox"
         id={`set-${set.id}`}

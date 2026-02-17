@@ -12,6 +12,10 @@
   --mtg-accent-hover: #c4a030;
   --mtg-nav-from: #1a1a2e;
   --mtg-nav-to: #16213e;
+  --mtg-section-bg: #f9fafb;
+  --mtg-section-header-bg: #f3f4f6;
+  --mtg-input-bg: #ffffff;
+  --mtg-hover-bg: rgba(0, 0, 0, 0.04);
 }
 
 .dark {
@@ -24,6 +28,10 @@
   --mtg-accent-hover: #e5c04a;
   --mtg-nav-from: #0f0f1a;
   --mtg-nav-to: #0d1526;
+  --mtg-section-bg: #2a2a2a;
+  --mtg-section-header-bg: #333333;
+  --mtg-input-bg: #1e1e1e;
+  --mtg-hover-bg: rgba(255, 255, 255, 0.06);
 }
 
 body {
