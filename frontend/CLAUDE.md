@@ -33,4 +33,4 @@ ESLint + Prettier. Single quotes, no semicolons, tab width 2, print width 100, t
 
 ## Testing
 
-Vitest + React Testing Library + jsdom. Tests co-located in `src/__tests__/`. Setup in `src/test/setup.ts`.
+Vitest + React Testing Library + jsdom. Tests co-located in `src/__tests__/`. Setup in `src/__tests__/setup.ts`.
