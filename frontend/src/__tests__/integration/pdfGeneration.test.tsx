@@ -33,10 +33,8 @@ describe('PDF Generation Integration', () => {
     render(
       <PDFGenerator
         selectedSetIds={['set-1', 'set-2']}
-        selectedCardTypeIds={[]}
         templateId="avery5160"
         placeholders={0}
-        viewMode="sets"
         onGenerate={onGenerate}
       />
     )
@@ -61,10 +59,8 @@ describe('PDF Generation Integration', () => {
     await waitFor(() => {
       expect(generatePDF).toHaveBeenCalledWith(
         ['set-1', 'set-2'],
-        null,
         'avery5160',
         0,
-        'sets'
       )
     })
 
@@ -77,15 +73,11 @@ describe('PDF Generation Integration', () => {
   })
 
   it('shows error when placeholders are invalid', async () => {
-    // Don't set up DOM mocks for this test since we're just testing error display
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
-        selectedCardTypeIds={[]}
         templateId="avery5160"
         placeholders={100}
-        viewMode="sets"
-        onGenerate={vi.fn()}
       />
     )
 

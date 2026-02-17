@@ -1,7 +1,6 @@
-import { memo } from 'react'
 import { useTheme } from '../../hooks/useTheme'
 
-export const ThemeToggle = memo(function ThemeToggle() {
+export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()
 
   return (
@@ -13,4 +12,4 @@ export const ThemeToggle = memo(function ThemeToggle() {
       {theme === 'light' ? '🌙' : '☀️'}
     </button>
   )
-})
+}

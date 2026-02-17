@@ -1,4 +1,3 @@
-import { memo } from 'react'
 import { LABEL_TEMPLATES } from '../../constants/templates'
 
 interface TemplateSelectorProps {
@@ -6,7 +5,7 @@ interface TemplateSelectorProps {
   onTemplateChange: (templateId: string) => void
 }
 
-export const TemplateSelector = memo(function TemplateSelector({ selectedTemplate, onTemplateChange }: TemplateSelectorProps) {
+export function TemplateSelector({ selectedTemplate, onTemplateChange }: TemplateSelectorProps) {
   return (
     <select
       id="template-select"
@@ -22,4 +21,4 @@ export const TemplateSelector = memo(function TemplateSelector({ selectedTemplat
       ))}
     </select>
   )
-})
+}

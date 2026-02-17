@@ -31,7 +31,6 @@ describe('useSelection', () => {
   it('initializes with default state', () => {
     const { result } = renderHook(() => useSelection())
     expect(result.current.selection.selectedSetIds).toEqual([])
-    expect(result.current.selection.viewMode).toBe('sets')
   })
 
   it('toggles set selection', () => {

@@ -1,12 +1,10 @@
-import { memo } from 'react'
-
 interface SearchBarProps {
   value: string
   onChange: (value: string) => void
   onClear: () => void
 }
 
-export const SearchBar = memo(function SearchBar({ value, onChange, onClear }: SearchBarProps) {
+export function SearchBar({ value, onChange, onClear }: SearchBarProps) {
   return (
     <div className="flex items-center">
       <span className="px-2 py-2 bg-gray-700 border border-gray-600 rounded-l text-gray-300">
@@ -31,4 +29,4 @@ export const SearchBar = memo(function SearchBar({ value, onChange, onClear }: S
       )}
     </div>
   )
-})
+}

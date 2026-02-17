@@ -14,26 +14,19 @@ describe('PDFGenerator', () => {
     render(
       <PDFGenerator
         selectedSetIds={[]}
-        selectedCardTypeIds={[]}
         templateId="avery5160"
         placeholders={0}
-        viewMode="sets"
-        onGenerate={vi.fn()}
       />
     )
     expect(screen.getByRole('button', { name: /generate pdf/i })).toBeInTheDocument()
   })
 
   it('shows error when placeholders are invalid', async () => {
-    const onGenerate = vi.fn()
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
-        selectedCardTypeIds={[]}
         templateId="avery5160"
         placeholders={100}
-        viewMode="sets"
-        onGenerate={onGenerate}
       />
     )
     const button = screen.getByRole('button', { name: /generate pdf/i })
@@ -47,15 +40,11 @@ describe('PDFGenerator', () => {
     const mockBlob = new Blob(['pdf content'], { type: 'application/pdf' })
     vi.mocked(generatePDF).mockResolvedValue(mockBlob)
 
-    const onGenerate = vi.fn()
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
-        selectedCardTypeIds={[]}
         templateId="avery5160"
         placeholders={0}
-        viewMode="sets"
-        onGenerate={onGenerate}
       />
     )
 
@@ -65,10 +54,8 @@ describe('PDFGenerator', () => {
     await waitFor(() => {
       expect(generatePDF).toHaveBeenCalledWith(
         ['set-1'],
-        null,
         'avery5160',
         0,
-        'sets'
       )
     })
   })
@@ -84,11 +71,8 @@ describe('PDFGenerator', () => {
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
-        selectedCardTypeIds={[]}
         templateId="avery5160"
         placeholders={0}
-        viewMode="sets"
-        onGenerate={vi.fn()}
       />
     )
 

@@ -1,5 +1,4 @@
-import { memo } from 'react'
-import { LABEL_TEMPLATES } from '../../constants/templates'
+import { getTemplate, getDefaultTemplate } from '../../constants/templates'
 
 interface PlaceholdersInputProps {
   templateId: string
@@ -7,12 +6,12 @@ interface PlaceholdersInputProps {
   onPlaceholdersChange: (value: number) => void
 }
 
-export const PlaceholdersInput = memo(function PlaceholdersInput({
+export function PlaceholdersInput({
   templateId,
   placeholders,
   onPlaceholdersChange,
 }: PlaceholdersInputProps) {
-  const template = LABEL_TEMPLATES[templateId] || LABEL_TEMPLATES.avery5160
+  const template = getTemplate(templateId) || getDefaultTemplate()
   const maxPlaceholders = template.labels_per_page - 1
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,4 +38,4 @@ export const PlaceholdersInput = memo(function PlaceholdersInput({
       />
     </div>
   )
-})
+}

@@ -1,39 +1,29 @@
-import { useState, memo } from 'react'
+import { useState } from 'react'
 import { generatePDF } from '../../api/client'
 import { LABEL_TEMPLATES } from '../../constants/templates'
 
 interface PDFGeneratorProps {
   selectedSetIds: string[]
-  selectedCardTypeIds: string[]
   templateId: string
   placeholders: number
-  viewMode: 'sets' | 'types'
   onGenerate?: () => void
 }
 
-export const PDFGenerator = memo(function PDFGenerator({
+export function PDFGenerator({
   selectedSetIds,
-  selectedCardTypeIds,
   templateId,
   placeholders,
-  viewMode,
   onGenerate,
 }: PDFGeneratorProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleGenerate = async () => {
-    // Validate selection
-    if (viewMode === 'sets' && selectedSetIds.length === 0) {
+    if (selectedSetIds.length === 0) {
       setError('Please select at least one set before generating the PDF.')
       return
     }
-    if (viewMode === 'types' && selectedCardTypeIds.length === 0) {
-      setError('Please select at least one card type before generating the PDF.')
-      return
-    }
 
-    // Validate placeholders
     const template = LABEL_TEMPLATES[templateId] || LABEL_TEMPLATES.avery5160
     if (placeholders < 0 || placeholders >= template.labels_per_page) {
       setError(`Placeholders must be between 0 and ${template.labels_per_page - 1}.`)
@@ -44,15 +34,8 @@ export const PDFGenerator = memo(function PDFGenerator({
     setLoading(true)
 
     try {
-      const blob = await generatePDF(
-        viewMode === 'sets' ? selectedSetIds : null,
-        viewMode === 'types' ? selectedCardTypeIds : null,
-        templateId,
-        placeholders,
-        viewMode
-      )
+      const blob = await generatePDF(selectedSetIds, templateId, placeholders)
 
-      // Create download link
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -80,7 +63,7 @@ export const PDFGenerator = memo(function PDFGenerator({
 
       <button
         onClick={handleGenerate}
-        disabled={loading || (viewMode === 'sets' ? selectedSetIds.length === 0 : selectedCardTypeIds.length === 0)}
+        disabled={loading || selectedSetIds.length === 0}
         className="px-3 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
       >
         {loading ? (
@@ -94,4 +77,4 @@ export const PDFGenerator = memo(function PDFGenerator({
       </button>
     </>
   )
-})
+}

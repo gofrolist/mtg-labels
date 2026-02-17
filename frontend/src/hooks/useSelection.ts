@@ -7,16 +7,11 @@ const SELECTION_STORAGE_KEY = 'selection-state'
 
 const initialState: SelectionState = {
   selectedSetIds: [],
-  selectedCardTypeIds: [],
   quantities: {},
   templateId: DEFAULT_TEMPLATE_ID,
   placeholders: 0,
-  viewMode: 'sets',
 }
 
-/**
- * Custom hook for managing selection state with localStorage persistence.
- */
 export function useSelection() {
   const [selection, setSelection] = useState<SelectionState>(() => {
     if (isStorageAvailable()) {
@@ -28,7 +23,6 @@ export function useSelection() {
     return initialState
   })
 
-  // Persist to localStorage whenever selection changes
   useEffect(() => {
     if (isStorageAvailable()) {
       setStorageItem(SELECTION_STORAGE_KEY, selection)
@@ -43,18 +37,6 @@ export function useSelection() {
         selectedSetIds: isSelected
           ? prev.selectedSetIds.filter((id) => id !== setId)
           : [...prev.selectedSetIds, setId],
-      }
-    })
-  }, [])
-
-  const toggleCardTypeSelection = useCallback((cardTypeId: string) => {
-    setSelection((prev) => {
-      const isSelected = prev.selectedCardTypeIds.includes(cardTypeId)
-      return {
-        ...prev,
-        selectedCardTypeIds: isSelected
-          ? prev.selectedCardTypeIds.filter((id) => id !== cardTypeId)
-          : [...prev.selectedCardTypeIds, cardTypeId],
       }
     })
   }, [])
@@ -77,36 +59,12 @@ export function useSelection() {
     setSelection((prev) => ({ ...prev, placeholders: Math.max(0, placeholders) }))
   }, [])
 
-  const setViewMode = useCallback((viewMode: 'sets' | 'types') => {
-    setSelection((prev) => ({ ...prev, viewMode }))
-  }, [])
-
   const selectAllSets = useCallback((setIds: string[]) => {
-    setSelection((prev) => ({
-      ...prev,
-      selectedSetIds: setIds,
-    }))
+    setSelection((prev) => ({ ...prev, selectedSetIds: setIds }))
   }, [])
 
   const deselectAllSets = useCallback(() => {
-    setSelection((prev) => ({
-      ...prev,
-      selectedSetIds: [],
-    }))
-  }, [])
-
-  const selectAllCardTypes = useCallback((cardTypeIds: string[]) => {
-    setSelection((prev) => ({
-      ...prev,
-      selectedCardTypeIds: cardTypeIds,
-    }))
-  }, [])
-
-  const deselectAllCardTypes = useCallback(() => {
-    setSelection((prev) => ({
-      ...prev,
-      selectedCardTypeIds: [],
-    }))
+    setSelection((prev) => ({ ...prev, selectedSetIds: [] }))
   }, [])
 
   const isAllSetsSelected = useCallback((setIds: string[]) => {
@@ -116,15 +74,11 @@ export function useSelection() {
   return {
     selection,
     toggleSetSelection,
-    toggleCardTypeSelection,
     setQuantity,
     setTemplate,
     setPlaceholders,
-    setViewMode,
     selectAllSets,
     deselectAllSets,
-    selectAllCardTypes,
-    deselectAllCardTypes,
     isAllSetsSelected,
   }
 }

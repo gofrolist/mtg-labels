@@ -29,10 +29,9 @@ export const SetItem = memo(function SetItem({ set, isSelected, quantity, onTogg
         className="w-4 h-4 mr-2 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer flex-shrink-0"
       />
       <label
-        className="flex items-center cursor-pointer flex-1 min-w-0 truncate"
+        className="flex items-center cursor-pointer flex-1 min-w-0 truncate max-w-[280px]"
         htmlFor={`set-${set.id}`}
         title={set.name}
-        style={{ maxWidth: '280px' }}
       >
         {set.icon_svg_uri && (
           <img

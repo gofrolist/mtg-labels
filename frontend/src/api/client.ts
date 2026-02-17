@@ -27,27 +27,19 @@ export async function customFetch<T>(url: string, init?: RequestInit): Promise<T
 }
 
 export async function generatePDF(
-  setIds: string[] | null,
-  cardTypeIds: string[] | null,
+  setIds: string[],
   template: string,
   placeholders: number,
-  viewMode: 'sets' | 'types',
 ): Promise<Blob> {
   const formData = new FormData()
 
-  if (viewMode === 'types' && cardTypeIds && cardTypeIds.length > 0) {
-    for (const id of cardTypeIds) {
-      formData.append('card_type_ids', id)
-    }
-  } else if (viewMode === 'sets' && setIds && setIds.length > 0) {
-    for (const id of setIds) {
-      formData.append('set_ids', id)
-    }
+  for (const id of setIds) {
+    formData.append('set_ids', id)
   }
 
   formData.append('template', template)
   formData.append('placeholders', placeholders.toString())
-  formData.append('view_mode', viewMode)
+  formData.append('view_mode', 'sets')
 
   const response = await fetch(`${API_BASE_URL}/generate-pdf`, {
     method: 'POST',
