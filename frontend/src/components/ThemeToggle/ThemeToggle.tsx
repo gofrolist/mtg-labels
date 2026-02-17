@@ -6,7 +6,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="px-4 py-2 rounded-lg bg-mtg-card-bg border border-mtg-border hover:bg-opacity-80 transition-colors"
+      className="px-3 py-2 rounded-lg bg-transparent border border-white/20 hover:bg-white/10 transition-colors"
       aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
     >
       {theme === 'light' ? '🌙' : '☀️'}

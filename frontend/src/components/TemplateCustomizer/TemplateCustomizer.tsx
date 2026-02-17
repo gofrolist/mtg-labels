@@ -107,6 +107,9 @@ export function TemplateCustomizer({
     if (loaded) onCustomTemplateChange(loaded)
   }
 
+  const inputClasses =
+    'w-full px-2 py-1 border rounded bg-mtg-card-bg text-mtg-text text-sm focus:outline-none focus:ring-2 focus:ring-mtg-accent dark:bg-[#1e1e1e] dark:border-gray-600'
+
   const numField = (
     label: string,
     value: number,
@@ -124,199 +127,216 @@ export function TemplateCustomizer({
           const v = opts?.integer ? parseInt(e.target.value, 10) : parseFloat(e.target.value)
           if (!isNaN(v)) onChange(v)
         }}
-        className="w-full px-2 py-1 border border-mtg-border rounded bg-mtg-card-bg text-mtg-text text-sm focus:outline-none focus:ring-2 focus:ring-mtg-accent"
+        className={inputClasses}
       />
     </div>
   )
 
   return (
-    <div className="border-b border-mtg-border bg-mtg-card-bg">
-      {/* Toggle bar */}
-      <div className="container-fluid px-4">
-        <div className="flex items-center justify-between py-2">
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="flex items-center gap-2 text-sm text-mtg-text hover:text-mtg-accent transition-colors"
-          >
-            <span className={`transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9654;</span>
-            Template Customizer
-          </button>
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useCustomTemplate}
-              onChange={e => handleToggle(e.target.checked)}
-              className="accent-mtg-accent"
-            />
-            <span className="text-mtg-text">Use Custom Template</span>
-          </label>
+    <div className="border-b border-mtg-border">
+      {/* Accordion header */}
+      <div className="bg-gradient-to-r from-mtg-nav-from to-mtg-nav-to">
+        <div className="container-fluid px-4">
+          <div className="flex items-center justify-between py-2">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="flex items-center gap-2 text-sm text-mtg-accent font-medium hover:text-mtg-accent-hover transition-colors"
+            >
+              <span className={`transition-transform text-xs ${isOpen ? 'rotate-90' : ''}`}>&#9654;</span>
+              Template Customizer
+              {useCustomTemplate && (
+                <span className="ml-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-mtg-accent text-gray-900 rounded-full">
+                  Custom Active
+                </span>
+              )}
+            </button>
+            {/* Toggle switch */}
+            <label className="relative inline-flex items-center cursor-pointer gap-2">
+              <input
+                type="checkbox"
+                checked={useCustomTemplate}
+                onChange={e => handleToggle(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-mtg-accent rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-mtg-accent" />
+              <span className="text-sm text-white/80">Custom</span>
+            </label>
+          </div>
         </div>
       </div>
 
       {/* Collapsible panel */}
       {isOpen && (
-        <div className="container-fluid px-4 pb-4">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6">
-            {/* Controls */}
-            <div className="space-y-4">
-              {/* Preset loader */}
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="text-sm text-mtg-text-muted">Load from preset:</label>
-                <select
-                  onChange={e => handlePresetLoad(e.target.value)}
-                  className="px-2 py-1 border border-mtg-border rounded bg-mtg-card-bg text-mtg-text text-sm"
-                  defaultValue=""
-                >
-                  <option value="" disabled>
-                    Select preset...
-                  </option>
-                  {Object.values(LABEL_TEMPLATES).map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Unit selector + page size */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-mtg-text-muted">Unit:</label>
+        <div className="bg-mtg-card-bg">
+          <div className="container-fluid px-4 py-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* LEFT: Controls */}
+              <div className="space-y-4">
+                {/* Preset loader */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="text-sm text-mtg-text-muted">Load from preset:</label>
                   <select
-                    value={template.unit}
-                    onChange={e => handleUnitChange(e.target.value as TemplateMeasurementUnit)}
-                    className="px-2 py-1 border border-mtg-border rounded bg-mtg-card-bg text-mtg-text text-sm"
+                    onChange={e => handlePresetLoad(e.target.value)}
+                    className={inputClasses + ' w-auto'}
+                    defaultValue=""
                   >
-                    <option value="in">Inches</option>
-                    <option value="mm">Millimeters</option>
-                    <option value="cm">Centimeters</option>
+                    <option value="" disabled>
+                      Select preset...
+                    </option>
+                    {Object.values(LABEL_TEMPLATES).map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                {/* Page Size card with unit selector in header */}
+                <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+                    <span className="text-sm font-medium text-mtg-text">
+                      📄 Page Size
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={template.unit}
+                        onChange={e => handleUnitChange(e.target.value as TemplateMeasurementUnit)}
+                        className="px-2 py-0.5 text-xs border border-mtg-border rounded bg-mtg-card-bg text-mtg-text dark:bg-[#1e1e1e] dark:border-gray-600"
+                      >
+                        <option value="in">in</option>
+                        <option value="mm">mm</option>
+                        <option value="cm">cm</option>
+                      </select>
+                      <button
+                        onClick={() => handlePageSize('letter')}
+                        className="px-2 py-0.5 text-xs border border-mtg-border rounded hover:bg-mtg-accent hover:text-gray-900 transition-colors text-mtg-text"
+                      >
+                        Letter
+                      </button>
+                      <button
+                        onClick={() => handlePageSize('a4')}
+                        className="px-2 py-0.5 text-xs border border-mtg-border rounded hover:bg-mtg-accent hover:text-gray-900 transition-colors text-mtg-text"
+                      >
+                        A4
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 p-3">
+                    {numField('Width', template.pageWidth, v => update({ pageWidth: v }), {
+                      min: 1,
+                    })}
+                    {numField('Height', template.pageHeight, v => update({ pageHeight: v }), {
+                      min: 1,
+                    })}
+                  </div>
+                </div>
+
+                {/* Margins card */}
+                <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+                    <span className="text-sm font-medium text-mtg-text">
+                      📐 Margins ({template.unit})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 p-3">
+                    {numField('Left', template.marginLeft, v => update({ marginLeft: v }))}
+                    {numField('Top', template.marginTop, v => update({ marginTop: v }))}
+                  </div>
+                </div>
+
+                {/* Grid Layout card */}
+                <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+                    <span className="text-sm font-medium text-mtg-text">
+                      🔲 Grid Layout
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 p-3">
+                    {numField('Columns', template.columns, v => update({ columns: v }), {
+                      min: 1,
+                      step: 1,
+                      integer: true,
+                    })}
+                    {numField('Rows', template.rows, v => update({ rows: v }), {
+                      min: 1,
+                      step: 1,
+                      integer: true,
+                    })}
+                    {numField(
+                      `H Gap (${template.unit})`,
+                      template.horizontalGap,
+                      v => update({ horizontalGap: v }),
+                    )}
+                    {numField(
+                      `V Gap (${template.unit})`,
+                      template.verticalGap,
+                      v => update({ verticalGap: v }),
+                    )}
+                  </div>
+                </div>
+
+                {/* Label Size card */}
+                <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+                    <span className="text-sm font-medium text-mtg-text">
+                      🏷️ Label Size ({template.unit})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 p-3">
+                    {numField('Width', template.labelWidth, v => update({ labelWidth: v }), {
+                      min: 0.1,
+                    })}
+                    {numField('Height', template.labelHeight, v => update({ labelHeight: v }), {
+                      min: 0.1,
+                    })}
+                  </div>
+                </div>
+
+                {/* Save */}
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-mtg-text-muted">Page:</label>
+                  <input
+                    type="text"
+                    placeholder="Template name..."
+                    value={saveName}
+                    onChange={e => setSaveName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSave()}
+                    className={inputClasses + ' flex-1'}
+                  />
                   <button
-                    onClick={() => handlePageSize('letter')}
-                    className="px-2 py-1 text-xs border border-mtg-border rounded hover:bg-mtg-accent hover:text-gray-900 transition-colors text-mtg-text"
+                    onClick={handleSave}
+                    disabled={!saveName.trim()}
+                    className="px-3 py-1 text-sm bg-mtg-accent text-gray-900 rounded-lg hover:bg-mtg-accent-hover disabled:opacity-50 transition-colors"
                   >
-                    US Letter
-                  </button>
-                  <button
-                    onClick={() => handlePageSize('a4')}
-                    className="px-2 py-1 text-xs border border-mtg-border rounded hover:bg-mtg-accent hover:text-gray-900 transition-colors text-mtg-text"
-                  >
-                    A4
+                    Save
                   </button>
                 </div>
-              </div>
 
-              {/* Page size */}
-              <fieldset className="border border-mtg-border rounded p-3">
-                <legend className="text-sm font-medium text-mtg-text px-1">
-                  Page Size ({template.unit})
-                </legend>
-                <div className="grid grid-cols-2 gap-3">
-                  {numField('Width', template.pageWidth, v => update({ pageWidth: v }), {
-                    min: 1,
-                  })}
-                  {numField('Height', template.pageHeight, v => update({ pageHeight: v }), {
-                    min: 1,
-                  })}
-                </div>
-              </fieldset>
-
-              {/* Margins */}
-              <fieldset className="border border-mtg-border rounded p-3">
-                <legend className="text-sm font-medium text-mtg-text px-1">
-                  Margins ({template.unit})
-                </legend>
-                <div className="grid grid-cols-2 gap-3">
-                  {numField('Left', template.marginLeft, v => update({ marginLeft: v }))}
-                  {numField('Top', template.marginTop, v => update({ marginTop: v }))}
-                </div>
-              </fieldset>
-
-              {/* Grid */}
-              <fieldset className="border border-mtg-border rounded p-3">
-                <legend className="text-sm font-medium text-mtg-text px-1">Grid Layout</legend>
-                <div className="grid grid-cols-2 gap-3">
-                  {numField('Columns', template.columns, v => update({ columns: v }), {
-                    min: 1,
-                    step: 1,
-                    integer: true,
-                  })}
-                  {numField('Rows', template.rows, v => update({ rows: v }), {
-                    min: 1,
-                    step: 1,
-                    integer: true,
-                  })}
-                  {numField(
-                    `H Gap (${template.unit})`,
-                    template.horizontalGap,
-                    v => update({ horizontalGap: v }),
-                  )}
-                  {numField(
-                    `V Gap (${template.unit})`,
-                    template.verticalGap,
-                    v => update({ verticalGap: v }),
-                  )}
-                </div>
-              </fieldset>
-
-              {/* Label size */}
-              <fieldset className="border border-mtg-border rounded p-3">
-                <legend className="text-sm font-medium text-mtg-text px-1">
-                  Label Size ({template.unit})
-                </legend>
-                <div className="grid grid-cols-2 gap-3">
-                  {numField('Width', template.labelWidth, v => update({ labelWidth: v }), {
-                    min: 0.1,
-                  })}
-                  {numField('Height', template.labelHeight, v => update({ labelHeight: v }), {
-                    min: 0.1,
-                  })}
-                </div>
-              </fieldset>
-
-              {/* Save */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Template name..."
-                  value={saveName}
-                  onChange={e => setSaveName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSave()}
-                  className="flex-1 px-2 py-1 border border-mtg-border rounded bg-mtg-card-bg text-mtg-text text-sm"
+                {/* Saved templates */}
+                <SavedTemplatesList
+                  templates={savedTemplates}
+                  onLoad={handleLoadSaved}
+                  onDelete={deleteTemplate}
                 />
-                <button
-                  onClick={handleSave}
-                  disabled={!saveName.trim()}
-                  className="px-3 py-1 text-sm bg-mtg-accent text-gray-900 rounded hover:bg-mtg-accent-hover disabled:opacity-50 transition-colors"
-                >
-                  Save
-                </button>
               </div>
 
-              {/* Saved templates */}
-              <SavedTemplatesList
-                templates={savedTemplates}
-                onLoad={handleLoadSaved}
-                onDelete={deleteTemplate}
-              />
-            </div>
-
-            {/* Preview */}
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-xs text-mtg-text-muted">
-                Preview ({template.columns} x {template.rows} ={' '}
-                {template.columns * template.rows} labels)
-              </span>
-              <PagePreview template={template} />
-              <button
-                onClick={() => setShowFullPreview(true)}
-                className="text-xs text-mtg-accent hover:underline"
-              >
-                Fullscreen Preview
-              </button>
+              {/* RIGHT: Preview card */}
+              <div className="rounded-lg border border-mtg-border bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden self-start">
+                <div className="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-[#333] border-b border-mtg-border">
+                  <span className="text-sm font-medium text-mtg-text">
+                    Preview ({template.columns} x {template.rows} ={' '}
+                    {template.columns * template.rows} labels)
+                  </span>
+                  <button
+                    onClick={() => setShowFullPreview(true)}
+                    className="text-xs text-mtg-accent hover:text-mtg-accent-hover transition-colors"
+                  >
+                    Fullscreen
+                  </button>
+                </div>
+                <div className="flex justify-center p-4">
+                  <PagePreview template={template} />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -338,7 +358,7 @@ export function TemplateCustomizer({
               </span>
               <button
                 onClick={() => setShowFullPreview(false)}
-                className="text-mtg-text-muted hover:text-mtg-text"
+                className="text-mtg-text-muted hover:text-mtg-text transition-colors"
               >
                 Close
               </button>

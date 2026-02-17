@@ -40,7 +40,7 @@ export function PlaceholdersInput({
         max={maxPlaceholders}
         value={placeholders}
         onChange={handleChange}
-        className="w-16 px-2 py-1 border border-mtg-border rounded bg-mtg-card-bg text-mtg-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        className="w-16 px-2 py-1 border border-mtg-border rounded bg-mtg-card-bg text-mtg-text focus:outline-none focus:ring-2 focus:ring-mtg-accent text-sm"
         aria-label={`Number of empty labels at start (0 to ${maxPlaceholders})`}
       />
     </div>

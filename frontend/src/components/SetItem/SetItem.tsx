@@ -18,7 +18,7 @@ export const SetItem = memo(function SetItem({ set, isSelected, quantity, onTogg
   }
 
   return (
-    <div className="flex items-center">
+    <div className="flex items-center hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded px-1 py-0.5 transition-colors">
       <input
         type="checkbox"
         id={`set-${set.id}`}
@@ -26,7 +26,7 @@ export const SetItem = memo(function SetItem({ set, isSelected, quantity, onTogg
         value={set.id}
         checked={isSelected}
         onChange={onToggle}
-        className="w-4 h-4 mr-2 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+        className="w-4 h-4 mr-2 accent-mtg-accent rounded focus:ring-2 focus:ring-mtg-accent cursor-pointer flex-shrink-0"
       />
       <label
         className="flex items-center cursor-pointer flex-1 min-w-0 truncate max-w-[280px]"

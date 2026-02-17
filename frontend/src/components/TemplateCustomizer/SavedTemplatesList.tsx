@@ -12,29 +12,28 @@ export function SavedTemplatesList({ templates, onLoad, onDelete }: SavedTemplat
   }
 
   return (
-    <ul className="space-y-1">
+    <div className="flex flex-wrap gap-2">
       {templates.map(t => (
-        <li
+        <span
           key={t.id}
-          className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-mtg-card-bg border border-mtg-border text-sm"
+          className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 border border-mtg-border text-sm group"
         >
-          <span className="text-mtg-text truncate">{t.name}</span>
-          <div className="flex gap-1 shrink-0">
-            <button
-              onClick={() => onLoad(t.id)}
-              className="px-2 py-1 text-xs bg-mtg-accent text-gray-900 rounded hover:bg-mtg-accent-hover transition-colors"
-            >
-              Load
-            </button>
-            <button
-              onClick={() => onDelete(t.id)}
-              className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-            >
-              Delete
-            </button>
-          </div>
-        </li>
+          <button
+            onClick={() => onLoad(t.id)}
+            className="text-mtg-text hover:text-mtg-accent transition-colors truncate max-w-[150px]"
+            title={`Load "${t.name}"`}
+          >
+            {t.name}
+          </button>
+          <button
+            onClick={() => onDelete(t.id)}
+            className="text-gray-400 hover:text-red-500 transition-colors ml-0.5 text-xs leading-none"
+            aria-label={`Delete "${t.name}"`}
+          >
+            ✕
+          </button>
+        </span>
       ))}
-    </ul>
+    </div>
   )
 }

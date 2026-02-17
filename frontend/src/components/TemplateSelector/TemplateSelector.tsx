@@ -11,7 +11,7 @@ export function TemplateSelector({ selectedTemplate, onTemplateChange }: Templat
       id="template-select"
       value={selectedTemplate}
       onChange={(e) => onTemplateChange(e.target.value)}
-      className="px-3 py-2 border border-mtg-border rounded bg-mtg-card-bg text-mtg-text focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[200px] sm:min-w-[250px]"
+      className="px-3 py-2 border border-white/20 rounded bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-mtg-accent text-sm min-w-[200px] sm:min-w-[250px] [&>option]:text-gray-900"
       aria-label="Select label template"
     >
       {Object.values(LABEL_TEMPLATES).map((template) => (

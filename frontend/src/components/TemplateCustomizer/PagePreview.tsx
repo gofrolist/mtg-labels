@@ -55,7 +55,7 @@ export function PagePreview({ template, fullscreen }: PagePreviewProps) {
           {Array.from({ length: template.columns * template.rows }).map((_, i) => (
             <div
               key={i}
-              className="border border-blue-300 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-700"
+              className="border border-dashed border-[#d4af37]/40 bg-[#d4af37]/10 dark:bg-[#d4af37]/5 dark:border-[#d4af37]/30"
             />
           ))}
         </div>

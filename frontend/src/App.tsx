@@ -121,7 +121,7 @@ function App() {
                   onTemplateChange={setTemplate}
                 />
                 {selection.selectedSetIds.length > 0 && (
-                  <span className="text-sm text-mtg-accent font-medium">
+                  <span className="text-sm text-white/80 font-medium">
                     {selection.selectedSetIds.length} sets selected
                   </span>
                 )}
@@ -159,7 +159,7 @@ function App() {
       />
 
       <div className="container mt-4">
-        <h1 className="mb-4 text-center">MTG Printable Label Generator</h1>
+        <h1 className="mb-4 text-center text-2xl font-bold tracking-tight">MTG Printable Label Generator</h1>
 
         <div className="flex flex-wrap items-center gap-3 mb-4 justify-center">
           <span className="px-3 py-2 text-sm text-mtg-text-muted">
