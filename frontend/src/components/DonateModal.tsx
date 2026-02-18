@@ -47,7 +47,7 @@ export function DonateModal({ onClose }: DonateModalProps) {
           <div className="flex flex-col items-center gap-2">
             <span className="text-sm font-medium text-mtg-text-muted">Venmo</span>
             <a
-              href="https://venmo.com/evasilenko"
+              href="https://venmo.com/code?user_id=1935186853888000274"
               target="_blank"
               rel="noopener noreferrer"
               className="block"
