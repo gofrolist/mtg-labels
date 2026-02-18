@@ -27,8 +27,9 @@ export function DonateModal({ onClose }: DonateModalProps) {
           Your PDF is being generated. If you find this tool useful, consider supporting its
           development!
         </p>
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center gap-5">
+          <div className="flex flex-col items-center gap-2">
+            <h4 className="text-sm font-semibold text-mtg-text">Venmo</h4>
             <a
               href="https://venmo.com/code?user_id=1935186853888000274"
               target="_blank"
@@ -38,24 +39,27 @@ export function DonateModal({ onClose }: DonateModalProps) {
               <img
                 src="/venmo-qr.png"
                 alt="Donate with Venmo @evasilenko"
-                className="w-40 rounded"
+                className="w-56 rounded"
               />
             </a>
-            <span className="text-xs text-mtg-text-muted">Venmo @evasilenko</span>
+            <span className="text-xs text-mtg-text-muted">@evasilenko</span>
           </div>
-          <form action="https://www.paypal.com/donate" method="post" target="_top">
-            <input type="hidden" name="business" value="3ABRQKUCLUGXN" />
-            <input type="hidden" name="no_recurring" value="0" />
-            <input type="hidden" name="item_name" value="for buying more MTG cards :)" />
-            <input type="hidden" name="currency_code" value="USD" />
-            <button type="submit" className="border-0 bg-transparent p-0 cursor-pointer">
-              <img
-                src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif"
-                alt="Donate with PayPal"
-                title="PayPal - The safer, easier way to pay online!"
-              />
-            </button>
-          </form>
+          <div className="flex flex-col items-center gap-2">
+            <h4 className="text-sm font-semibold text-mtg-text">PayPal</h4>
+            <form action="https://www.paypal.com/donate" method="post" target="_top">
+              <input type="hidden" name="business" value="3ABRQKUCLUGXN" />
+              <input type="hidden" name="no_recurring" value="0" />
+              <input type="hidden" name="item_name" value="for buying more MTG cards :)" />
+              <input type="hidden" name="currency_code" value="USD" />
+              <button type="submit" className="border-0 bg-transparent p-0 cursor-pointer">
+                <img
+                  src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif"
+                  alt="Donate with PayPal"
+                  title="PayPal - The safer, easier way to pay online!"
+                />
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
