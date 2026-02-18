@@ -122,7 +122,8 @@ export function TemplateCustomizer({
 
   const handleSave = () => {
     if (!saveName.trim()) return
-    saveTemplate(saveName.trim(), template)
+    const saved = saveTemplate(saveName.trim(), template)
+    onTemplateChange('saved:' + saved.id)
     setSaveName('')
   }
 
