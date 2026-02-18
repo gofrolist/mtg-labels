@@ -4,7 +4,7 @@ import { LABEL_TEMPLATES, DEFAULT_TEMPLATE_ID } from '../../constants/templates'
 import { fromPoints, convertValue } from '../../utils/unitConversion'
 import { useCustomTemplates } from '../../hooks/useCustomTemplates'
 import { PagePreview } from './PagePreview'
-import { PlaceholdersInput } from '../PDFGenerator/PlaceholdersInput'
+import { PlaceholdersInput } from './PlaceholdersInput'
 
 interface TemplateCustomizerProps {
   isOpen: boolean
