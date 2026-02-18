@@ -431,7 +431,7 @@ export function TemplateCustomizer({
                 </h3>
                 <button
                   onClick={() => setShowFullPreview(true)}
-                  className="h-9 flex items-center px-2 py-0 text-xs font-medium bg-mtg-accent text-gray-900 rounded hover:bg-mtg-accent-hover transition-colors"
+                  className="hidden lg:flex h-9 items-center px-3 py-0 text-sm font-medium bg-mtg-accent text-gray-900 rounded hover:bg-mtg-accent-hover transition-colors"
                 >
                   Fullscreen
                 </button>
