@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useApiSetsApiSetsGet } from './api/queries/default/default'
@@ -10,7 +10,11 @@ import { LABEL_TEMPLATES } from './constants/templates'
 import { Header } from './components/Layout/Header'
 import { Footer } from './components/Layout/Footer'
 import { SetList } from './components/SetList/SetList'
-import { TemplateCustomizer } from './components/TemplateCustomizer/TemplateCustomizer'
+const TemplateCustomizer = lazy(() =>
+  import('./components/TemplateCustomizer/TemplateCustomizer').then((m) => ({
+    default: m.TemplateCustomizer,
+  })),
+)
 import { ErrorDisplay } from './components/ErrorDisplay'
 import { LoadingSkeleton } from './components/LoadingSkeleton'
 import type { MTGSet } from './types'
@@ -115,20 +119,22 @@ function App() {
       />
 
       <main className="container mx-auto px-4 py-4 flex-1 min-h-[50vh]">
-        <TemplateCustomizer
-          isOpen={templateCustomizerOpen}
-          customTemplate={selection.customTemplate}
-          useCustomTemplate={selection.useCustomTemplate}
-          useCustomQuantity={selection.useCustomQuantity}
-          templateId={selection.templateId}
-          placeholders={selection.placeholders}
-          customTemplatesApi={customTemplatesApi}
-          onCustomTemplateChange={setCustomTemplate}
-          onUseCustomTemplateChange={setUseCustomTemplate}
-          onUseCustomQuantityChange={setUseCustomQuantity}
-          onPlaceholdersChange={setPlaceholders}
-          onTemplateChange={setTemplate}
-        />
+        <Suspense fallback={null}>
+          <TemplateCustomizer
+            isOpen={templateCustomizerOpen}
+            customTemplate={selection.customTemplate}
+            useCustomTemplate={selection.useCustomTemplate}
+            useCustomQuantity={selection.useCustomQuantity}
+            templateId={selection.templateId}
+            placeholders={selection.placeholders}
+            customTemplatesApi={customTemplatesApi}
+            onCustomTemplateChange={setCustomTemplate}
+            onUseCustomTemplateChange={setUseCustomTemplate}
+            onUseCustomQuantityChange={setUseCustomQuantity}
+            onPlaceholdersChange={setPlaceholders}
+            onTemplateChange={setTemplate}
+          />
+        </Suspense>
 
         <div className="flex items-center justify-between mb-4 min-h-9">
           <span className="text-sm text-mtg-text-muted">

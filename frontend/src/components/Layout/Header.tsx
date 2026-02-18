@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { ThemeToggle } from '../ThemeToggle/ThemeToggle'
 import { SearchBar } from '../SearchBar/SearchBar'
 import { TemplateNavButton } from '../TemplateCustomizer/TemplateNavButton'
 import { PDFGenerator } from '../PDFGenerator/PDFGenerator'
-import { DonateModal } from '../DonateModal'
+
+const DonateModal = lazy(() =>
+  import('../DonateModal').then((m) => ({ default: m.DonateModal })),
+)
 import type { CustomTemplateDimensions } from '../../types'
 
 interface HeaderProps {
@@ -128,7 +131,11 @@ export function Header({
         </div>
       </nav>
 
-      {showDonateModal && <DonateModal onClose={() => setShowDonateModal(false)} />}
+      {showDonateModal && (
+        <Suspense fallback={null}>
+          <DonateModal onClose={() => setShowDonateModal(false)} />
+        </Suspense>
+      )}
     </>
   )
 }
