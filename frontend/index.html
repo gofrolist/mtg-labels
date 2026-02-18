@@ -8,6 +8,16 @@
     <link rel="preconnect" href="https://mtg-labels.fly.dev" crossorigin />
     <link rel="dns-prefetch" href="https://mtg-labels.fly.dev" />
     <title>MTG Label Generator</title>
+    <script>
+      // Prefetch API data while JS bundles load (production only)
+      if (location.hostname !== 'localhost') {
+        window.__prefetch = {
+          sets: fetch('https://mtg-labels.fly.dev/api/sets')
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .catch(function() { return null; })
+        };
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
