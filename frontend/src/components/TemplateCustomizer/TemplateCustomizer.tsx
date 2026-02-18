@@ -50,7 +50,7 @@ export function TemplateCustomizer({
     height: number
   } | null>(null)
   const previewContainerRef = useRef<HTMLDivElement>(null)
-  const { templates: savedTemplates, saveTemplate, deleteTemplate, loadTemplate } =
+  const { templates: savedTemplates, saveTemplate, updateTemplate, deleteTemplate, loadTemplate } =
     useCustomTemplates()
 
   const effectivePresetId = templateId ?? DEFAULT_TEMPLATE_ID
@@ -121,9 +121,19 @@ export function TemplateCustomizer({
   }
 
   const handleSave = () => {
-    if (!saveName.trim()) return
-    const saved = saveTemplate(saveName.trim(), template)
-    onTemplateChange('saved:' + saved.id)
+    const name = saveName.trim()
+    if (!name) return
+    const existing = savedTemplates.find(
+      (t) => t.name.toLowerCase() === name.toLowerCase(),
+    )
+    if (existing) {
+      if (!window.confirm(`Template "${existing.name}" already exists. Overwrite?`)) return
+      updateTemplate(existing.id, template)
+      onTemplateChange('saved:' + existing.id)
+    } else {
+      const saved = saveTemplate(name, template)
+      onTemplateChange('saved:' + saved.id)
+    }
     setSaveName('')
   }
 

@@ -27,6 +27,13 @@ export function useCustomTemplates() {
     [templates],
   )
 
+  const updateTemplate = useCallback(
+    (id: string, template: CustomTemplateDimensions) => {
+      persist(templates.map(t => (t.id === id ? { ...t, template } : t)))
+    },
+    [templates],
+  )
+
   const deleteTemplate = useCallback(
     (id: string) => {
       persist(templates.filter(t => t.id !== id))
@@ -42,5 +49,5 @@ export function useCustomTemplates() {
     [templates],
   )
 
-  return { templates, saveTemplate, deleteTemplate, loadTemplate }
+  return { templates, saveTemplate, updateTemplate, deleteTemplate, loadTemplate }
 }
