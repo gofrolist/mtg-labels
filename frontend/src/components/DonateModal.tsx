@@ -55,7 +55,7 @@ export function DonateModal({ onClose }: DonateModalProps) {
               <img
                 src="/venmo-qr.png"
                 alt="Donate with Venmo @evasilenko"
-                className="w-36 h-36 rounded"
+                className="w-36 rounded"
               />
             </a>
             <span className="text-xs text-mtg-text-muted">@evasilenko</span>
