@@ -113,7 +113,8 @@ export const LABEL_TEMPLATES: Record<string, LabelTemplate> = {
 
 export const DEFAULT_TEMPLATE_ID = 'avery5160'
 
-export function getTemplate(id: string): LabelTemplate | undefined {
+export function getTemplate(id: string | null): LabelTemplate | undefined {
+  if (!id) return undefined
   return LABEL_TEMPLATES[id]
 }
 

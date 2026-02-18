@@ -51,7 +51,7 @@ export interface SavedCustomTemplate {
 export interface SelectionState {
   selectedSetIds: string[]
   quantities: Record<string, number> // Map of set ID to quantity (1-100)
-  templateId: string
+  templateId: string | null
   placeholders: number // Number of empty labels at start (0 to labels_per_page - 1)
   customTemplate: CustomTemplateDimensions | null
   useCustomTemplate: boolean

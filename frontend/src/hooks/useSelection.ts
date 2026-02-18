@@ -44,6 +44,24 @@ export function useSelection() {
     })
   }, [])
 
+  const selectSets = useCallback((ids: string[]) => {
+    setSelection((prev) => {
+      const existing = new Set(prev.selectedSetIds)
+      for (const id of ids) existing.add(id)
+      return { ...prev, selectedSetIds: [...existing] }
+    })
+  }, [])
+
+  const deselectSets = useCallback((ids: string[]) => {
+    setSelection((prev) => {
+      const toRemove = new Set(ids)
+      return {
+        ...prev,
+        selectedSetIds: prev.selectedSetIds.filter((id) => !toRemove.has(id)),
+      }
+    })
+  }, [])
+
   const setQuantity = useCallback((itemId: string, quantity: number) => {
     setSelection((prev) => ({
       ...prev,
@@ -54,7 +72,7 @@ export function useSelection() {
     }))
   }, [])
 
-  const setTemplate = useCallback((templateId: string) => {
+  const setTemplate = useCallback((templateId: string | null) => {
     setSelection((prev) => ({ ...prev, templateId }))
   }, [])
 
@@ -89,6 +107,8 @@ export function useSelection() {
   return {
     selection,
     toggleSetSelection,
+    selectSets,
+    deselectSets,
     setQuantity,
     setTemplate,
     setPlaceholders,
