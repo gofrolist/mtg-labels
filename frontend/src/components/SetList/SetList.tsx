@@ -26,7 +26,7 @@ export function SetList({
   onSelectGroup,
 }: SetListProps) {
   return (
-    <form id="sets-form">
+    <div>
       {Object.entries(groupedSets).map(([groupName, sets]) => (
         <div key={groupName} id={`accordion-${groupName}`} className="mb-2">
           <AccordionGroup
@@ -38,7 +38,6 @@ export function SetList({
               onSelectGroup(groupName, setIds)
             } : undefined}
           >
-            {/* Bootstrap-style grid: row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-1 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
               {sets.map((set) => (
                 <div key={set.id} className="col">
@@ -56,6 +55,6 @@ export function SetList({
           </AccordionGroup>
         </div>
       ))}
-    </form>
+    </div>
   )
 }
