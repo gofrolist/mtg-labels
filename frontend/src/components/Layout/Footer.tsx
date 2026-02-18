@@ -13,7 +13,7 @@ export function Footer() {
               href="https://company.wizards.com/en/legal/fancontentpolicy"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-mtg-accent hover:underline"
+              className="text-mtg-accent underline"
             >
               View the full Fan Content Policy
             </a>
@@ -25,7 +25,7 @@ export function Footer() {
               href="https://scryfall.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-mtg-accent hover:underline"
+              className="text-mtg-accent underline"
             >
               Scryfall
             </a>{' '}
@@ -34,7 +34,7 @@ export function Footer() {
               href="https://scryfall.com/docs/api#use-of-scryfall-data"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-mtg-accent hover:underline"
+              className="text-mtg-accent underline"
             >
               guidelines
             </a>
