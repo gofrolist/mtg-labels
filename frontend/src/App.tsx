@@ -67,10 +67,11 @@ function App() {
     return totalSlots > 0 ? Math.ceil(totalSlots / labelsPerPage) : 0
   }, [selection.placeholders, totalLabels, labelsPerPage])
 
-  const { templates: savedTemplates } = useCustomTemplates()
+  const customTemplatesApi = useCustomTemplates()
   const templateBadgeLabel = selection.useCustomTemplate
     ? selection.templateId?.startsWith('saved:')
-      ? savedTemplates.find((t) => t.id === selection.templateId!.slice(6))?.name ?? 'custom'
+      ? customTemplatesApi.templates.find((t) => t.id === selection.templateId!.slice(6))?.name ??
+        'custom'
       : 'custom'
     : selection.templateId
       ? LABEL_TEMPLATES[selection.templateId]?.name
@@ -119,6 +120,7 @@ function App() {
           useCustomQuantity={selection.useCustomQuantity}
           templateId={selection.templateId}
           placeholders={selection.placeholders}
+          customTemplatesApi={customTemplatesApi}
           onCustomTemplateChange={setCustomTemplate}
           onUseCustomTemplateChange={setUseCustomTemplate}
           onUseCustomQuantityChange={setUseCustomQuantity}

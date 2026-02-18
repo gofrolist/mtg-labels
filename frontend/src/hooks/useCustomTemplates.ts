@@ -51,3 +51,5 @@ export function useCustomTemplates() {
 
   return { templates, saveTemplate, updateTemplate, deleteTemplate, loadTemplate }
 }
+
+export type CustomTemplatesApi = ReturnType<typeof useCustomTemplates>

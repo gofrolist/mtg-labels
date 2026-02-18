@@ -3,7 +3,7 @@ import type { CustomTemplateDimensions, TemplateMeasurementUnit } from '../../ty
 import { LABEL_TEMPLATES, DEFAULT_TEMPLATE_ID } from '../../constants/templates'
 import { convertValue } from '../../utils/unitConversion'
 import { round2, presetToCustom, getPresetUnit } from '../../utils/templateUtils'
-import { useCustomTemplates } from '../../hooks/useCustomTemplates'
+import type { CustomTemplatesApi } from '../../hooks/useCustomTemplates'
 import { PagePreview } from './PagePreview'
 import { PlaceholdersInput } from './PlaceholdersInput'
 import { NumField, inputClasses } from './NumField'
@@ -15,6 +15,7 @@ interface TemplateCustomizerProps {
   useCustomQuantity: boolean
   templateId: string | null
   placeholders: number
+  customTemplatesApi: CustomTemplatesApi
   onCustomTemplateChange: (template: CustomTemplateDimensions | null) => void
   onUseCustomTemplateChange: (value: boolean) => void
   onUseCustomQuantityChange: (value: boolean) => void
@@ -37,6 +38,7 @@ export function TemplateCustomizer({
   useCustomQuantity,
   templateId,
   placeholders,
+  customTemplatesApi,
   onCustomTemplateChange,
   onUseCustomTemplateChange,
   onUseCustomQuantityChange,
@@ -51,7 +53,7 @@ export function TemplateCustomizer({
   } | null>(null)
   const previewContainerRef = useRef<HTMLDivElement>(null)
   const { templates: savedTemplates, saveTemplate, updateTemplate, deleteTemplate, loadTemplate } =
-    useCustomTemplates()
+    customTemplatesApi
 
   const effectivePresetId = templateId ?? DEFAULT_TEMPLATE_ID
   const template =
