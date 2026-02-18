@@ -114,7 +114,7 @@ function App() {
         useCustomTemplate={selection.useCustomTemplate}
       />
 
-      <div className="container mx-auto px-4 py-4 flex-1">
+      <div className="container mx-auto px-4 py-4 flex-1 min-h-[50vh]">
         <TemplateCustomizer
           isOpen={templateCustomizerOpen}
           customTemplate={selection.customTemplate}
@@ -130,27 +130,23 @@ function App() {
           onTemplateChange={setTemplate}
         />
 
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-mtg-text-muted">
-              {totalLabels} labels / {pageCount} {pageCount === 1 ? 'page' : 'pages'}
-              {searchQuery.trim() && (
-                <span className="ml-2">
-                  ({filteredSets.length} {filteredSets.length === 1 ? 'set' : 'sets'} found)
-                </span>
-              )}
-            </span>
-          </div>
-          {filteredSets.length > 0 && (
-            <button
-              onClick={handleSelectAllSets}
-              className="h-9 px-3 py-0 flex items-center border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors text-sm"
-            >
-              {isAllSetsSelected(filteredSets.map((s) => s.id))
-                ? 'Deselect All'
-                : 'Select All'}
-            </button>
-          )}
+        <div className="flex items-center justify-between mb-4 min-h-9">
+          <span className="text-sm text-mtg-text-muted">
+            {totalLabels} labels / {pageCount} {pageCount === 1 ? 'page' : 'pages'}
+            {searchQuery.trim() && (
+              <span className="ml-2">
+                ({filteredSets.length} {filteredSets.length === 1 ? 'set' : 'sets'} found)
+              </span>
+            )}
+          </span>
+          <button
+            onClick={handleSelectAllSets}
+            className={`h-9 px-3 py-0 flex items-center border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors text-sm ${filteredSets.length === 0 ? 'invisible' : ''}`}
+          >
+            {isAllSetsSelected(filteredSets.map((s) => s.id))
+              ? 'Deselect All'
+              : 'Select All'}
+          </button>
         </div>
 
         {isLoading ? (
