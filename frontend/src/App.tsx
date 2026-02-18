@@ -114,7 +114,7 @@ function App() {
         useCustomTemplate={selection.useCustomTemplate}
       />
 
-      <div className="container mx-auto px-4 py-4 flex-1 min-h-[50vh]">
+      <main className="container mx-auto px-4 py-4 flex-1 min-h-[50vh]">
         <TemplateCustomizer
           isOpen={templateCustomizerOpen}
           customTemplate={selection.customTemplate}
@@ -168,7 +168,7 @@ function App() {
             onSelectGroup={handleSelectGroup}
           />
         )}
-      </div>
+      </main>
 
       <Footer />
       <Analytics />
