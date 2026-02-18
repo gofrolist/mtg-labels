@@ -6,6 +6,7 @@ interface SetListProps {
   groupedSets: Record<string, MTGSet[]>
   selectedSetIds: string[]
   quantities: Record<string, number>
+  useCustomQuantity: boolean
   onToggleSet: (setId: string) => void
   onQuantityChange: (setId: string, quantity: number) => void
   openGroups?: Set<string>
@@ -17,6 +18,7 @@ export function SetList({
   groupedSets,
   selectedSetIds,
   quantities,
+  useCustomQuantity,
   onToggleSet,
   onQuantityChange,
   openGroups = new Set(),
@@ -24,9 +26,9 @@ export function SetList({
   onSelectGroup,
 }: SetListProps) {
   return (
-    <form>
+    <form id="sets-form">
       {Object.entries(groupedSets).map(([groupName, sets]) => (
-        <div key={groupName} className="mb-2">
+        <div key={groupName} id={`accordion-${groupName}`} className="mb-2">
           <AccordionGroup
             title={groupName}
             isOpen={openGroups.has(groupName)}
@@ -44,6 +46,7 @@ export function SetList({
                     set={set}
                     isSelected={selectedSetIds.includes(set.id)}
                     quantity={quantities[set.id] || 1}
+                    showQuantityInput={useCustomQuantity}
                     onToggle={() => onToggleSet(set.id)}
                     onQuantityChange={(quantity) => onQuantityChange(set.id, quantity)}
                   />

@@ -33,6 +33,7 @@ describe('SetList', () => {
         groupedSets={{ expansion: mockSets }}
         selectedSetIds={[]}
         quantities={{}}
+        useCustomQuantity={false}
         onToggleSet={vi.fn()}
         onQuantityChange={vi.fn()}
         openGroups={new Set(['expansion'])}
@@ -49,6 +50,7 @@ describe('SetList', () => {
         groupedSets={{ expansion: mockSets }}
         selectedSetIds={[]}
         quantities={{}}
+        useCustomQuantity={false}
         onToggleSet={vi.fn()}
         onQuantityChange={vi.fn()}
       />

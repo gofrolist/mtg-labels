@@ -8,7 +8,7 @@ interface SavedTemplatesListProps {
 
 export function SavedTemplatesList({ templates, onLoad, onDelete }: SavedTemplatesListProps) {
   if (templates.length === 0) {
-    return <p className="text-sm text-mtg-text-muted">No saved templates yet.</p>
+    return null
   }
 
   return (

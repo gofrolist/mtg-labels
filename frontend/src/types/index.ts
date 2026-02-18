@@ -55,6 +55,7 @@ export interface SelectionState {
   placeholders: number // Number of empty labels at start (0 to labels_per_page - 1)
   customTemplate: CustomTemplateDimensions | null
   useCustomTemplate: boolean
+  useCustomQuantity: boolean // When false, all sets use quantity 1
 }
 
 // Theme Preference

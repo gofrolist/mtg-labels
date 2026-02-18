@@ -14,22 +14,26 @@ describe('PDFGenerator', () => {
     render(
       <PDFGenerator
         selectedSetIds={[]}
+        quantities={{}}
+        useCustomQuantity={false}
         templateId="avery5160"
         placeholders={0}
       />
     )
-    expect(screen.getByRole('button', { name: /generate pdf/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /pdf/i })).toBeInTheDocument()
   })
 
   it('shows error when placeholders are invalid', async () => {
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
+        quantities={{}}
+        useCustomQuantity={false}
         templateId="avery5160"
         placeholders={100}
       />
     )
-    const button = screen.getByRole('button', { name: /generate pdf/i })
+    const button = screen.getByRole('button', { name: /pdf/i })
     fireEvent.click(button)
     await waitFor(() => {
       expect(screen.getByText(/placeholders must be/i)).toBeInTheDocument()
@@ -43,12 +47,14 @@ describe('PDFGenerator', () => {
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
+        quantities={{}}
+        useCustomQuantity={false}
         templateId="avery5160"
         placeholders={0}
       />
     )
 
-    const button = screen.getByRole('button', { name: /generate pdf/i })
+    const button = screen.getByRole('button', { name: /pdf/i })
     fireEvent.click(button)
 
     await waitFor(() => {
@@ -72,12 +78,14 @@ describe('PDFGenerator', () => {
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
+        quantities={{}}
+        useCustomQuantity={false}
         templateId="avery5160"
         placeholders={0}
       />
     )
 
-    const button = screen.getByRole('button', { name: /generate pdf/i })
+    const button = screen.getByRole('button', { name: /pdf/i })
     fireEvent.click(button)
 
     await waitFor(() => {

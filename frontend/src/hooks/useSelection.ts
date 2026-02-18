@@ -12,6 +12,7 @@ const initialState: SelectionState = {
   placeholders: 0,
   customTemplate: null,
   useCustomTemplate: false,
+  useCustomQuantity: false,
 }
 
 export function useSelection() {
@@ -81,6 +82,10 @@ export function useSelection() {
     setSelection((prev) => ({ ...prev, useCustomTemplate }))
   }, [])
 
+  const setUseCustomQuantity = useCallback((useCustomQuantity: boolean) => {
+    setSelection((prev) => ({ ...prev, useCustomQuantity }))
+  }, [])
+
   return {
     selection,
     toggleSetSelection,
@@ -92,5 +97,6 @@ export function useSelection() {
     isAllSetsSelected,
     setCustomTemplate,
     setUseCustomTemplate,
+    setUseCustomQuantity,
   }
 }

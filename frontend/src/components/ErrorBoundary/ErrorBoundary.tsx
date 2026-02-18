@@ -70,13 +70,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <div className="flex gap-2 justify-center">
               <button
                 onClick={this.handleReset}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="h-9 px-4 py-0 flex items-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Try Again
               </button>
               <button
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-mtg-card-bg border border-mtg-border text-mtg-text rounded-lg hover:bg-opacity-80 transition-colors"
+                className="h-9 px-4 py-0 flex items-center bg-mtg-card-bg border border-mtg-border text-mtg-text rounded-lg hover:bg-opacity-80 transition-colors"
               >
                 Reload Page
               </button>

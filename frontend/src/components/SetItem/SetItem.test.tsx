@@ -21,6 +21,7 @@ describe('SetItem', () => {
         set={mockSet}
         isSelected={false}
         quantity={1}
+        showQuantityInput={false}
         onToggle={vi.fn()}
         onQuantityChange={vi.fn()}
       />
@@ -34,6 +35,7 @@ describe('SetItem', () => {
         set={mockSet}
         isSelected={true}
         quantity={1}
+        showQuantityInput={false}
         onToggle={vi.fn()}
         onQuantityChange={vi.fn()}
       />
@@ -49,6 +51,7 @@ describe('SetItem', () => {
         set={mockSet}
         isSelected={false}
         quantity={1}
+        showQuantityInput={false}
         onToggle={onToggle}
         onQuantityChange={vi.fn()}
       />
@@ -57,12 +60,13 @@ describe('SetItem', () => {
     expect(onToggle).toHaveBeenCalledTimes(1)
   })
 
-  it('shows quantity input when selected', () => {
+  it('shows quantity input when selected and showQuantityInput is true', () => {
     render(
       <SetItem
         set={mockSet}
         isSelected={true}
         quantity={5}
+        showQuantityInput={true}
         onToggle={vi.fn()}
         onQuantityChange={vi.fn()}
       />
@@ -78,6 +82,7 @@ describe('SetItem', () => {
         set={mockSet}
         isSelected={true}
         quantity={1}
+        showQuantityInput={true}
         onToggle={vi.fn()}
         onQuantityChange={onQuantityChange}
       />

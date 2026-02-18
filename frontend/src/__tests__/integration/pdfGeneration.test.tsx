@@ -33,6 +33,8 @@ describe('PDF Generation Integration', () => {
     render(
       <PDFGenerator
         selectedSetIds={['set-1', 'set-2']}
+        quantities={{}}
+        useCustomQuantity={false}
         templateId="avery5160"
         placeholders={0}
         onGenerate={onGenerate}
@@ -53,7 +55,7 @@ describe('PDF Generation Integration', () => {
     appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => node)
     removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation((node: Node) => node)
 
-    const button = screen.getByRole('button', { name: /generate pdf/i })
+    const button = screen.getByRole('button', { name: /pdf/i })
     fireEvent.click(button)
 
     await waitFor(() => {
@@ -77,12 +79,14 @@ describe('PDF Generation Integration', () => {
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
+        quantities={{}}
+        useCustomQuantity={false}
         templateId="avery5160"
         placeholders={100}
       />
     )
 
-    const button = screen.getByRole('button', { name: /generate pdf/i })
+    const button = screen.getByRole('button', { name: /pdf/i })
     fireEvent.click(button)
 
     await waitFor(() => {

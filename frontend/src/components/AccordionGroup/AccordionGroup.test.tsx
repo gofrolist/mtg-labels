@@ -38,6 +38,7 @@ describe('AccordionGroup', () => {
         <div>Content</div>
       </AccordionGroup>
     )
-    expect(screen.queryByText('Content')).not.toBeInTheDocument()
+    const collapse = document.getElementById('collapse-Test Group')
+    expect(collapse).toHaveAttribute('aria-hidden', 'true')
   })
 })

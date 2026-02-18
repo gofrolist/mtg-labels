@@ -18,10 +18,11 @@ const mockSets: MTGSet[] = [
 ]
 
 // Test wrapper component that manages accordion state
-function SetListWrapper({ groupedSets, selectedSetIds, quantities, onToggleSet, onQuantityChange }: {
+function SetListWrapper({ groupedSets, selectedSetIds, quantities, useCustomQuantity, onToggleSet, onQuantityChange }: {
   groupedSets: Record<string, MTGSet[]>
   selectedSetIds: string[]
   quantities: Record<string, number>
+  useCustomQuantity: boolean
   onToggleSet: (setId: string) => void
   onQuantityChange: (setId: string, quantity: number) => void
 }) {
@@ -44,6 +45,7 @@ function SetListWrapper({ groupedSets, selectedSetIds, quantities, onToggleSet, 
       groupedSets={groupedSets}
       selectedSetIds={selectedSetIds}
       quantities={quantities}
+      useCustomQuantity={useCustomQuantity}
       onToggleSet={onToggleSet}
       onQuantityChange={onQuantityChange}
       openGroups={openGroups}
@@ -62,6 +64,7 @@ describe('Set Selection Integration', () => {
         groupedSets={{ expansion: mockSets }}
         selectedSetIds={[]}
         quantities={{}}
+        useCustomQuantity={false}
         onToggleSet={onToggleSet}
         onQuantityChange={onQuantityChange}
       />

@@ -6,6 +6,8 @@ import { customTemplateToBackendFormat } from '../../utils/unitConversion'
 
 interface PDFGeneratorProps {
   selectedSetIds: string[]
+  quantities: Record<string, number>
+  useCustomQuantity: boolean
   templateId: string
   placeholders: number
   customTemplate?: CustomTemplateDimensions | null
@@ -15,6 +17,8 @@ interface PDFGeneratorProps {
 
 export function PDFGenerator({
   selectedSetIds,
+  quantities,
+  useCustomQuantity,
   templateId,
   placeholders,
   customTemplate,
@@ -23,6 +27,7 @@ export function PDFGenerator({
 }: PDFGeneratorProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showDonateModal, setShowDonateModal] = useState(false)
 
   const handleGenerate = async () => {
     if (selectedSetIds.length === 0) {
@@ -49,8 +54,16 @@ export function PDFGenerator({
           ? customTemplateToBackendFormat(customTemplate)
           : undefined
 
+      const expandedSetIds: string[] = []
+      for (const id of selectedSetIds) {
+        const qty = useCustomQuantity ? (quantities[id] ?? 1) : 1
+        for (let i = 0; i < qty; i++) {
+          expandedSetIds.push(id)
+        }
+      }
+
       const blob = await generatePDF(
-        selectedSetIds,
+        expandedSetIds,
         templateId,
         placeholders,
         backendCustomTemplate,
@@ -65,6 +78,7 @@ export function PDFGenerator({
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
 
+      setShowDonateModal(true)
       onGenerate?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate PDF. Please try again.')
@@ -84,17 +98,72 @@ export function PDFGenerator({
       <button
         onClick={handleGenerate}
         disabled={loading || selectedSetIds.length === 0}
-        className="px-4 py-2 bg-mtg-accent text-gray-900 rounded-lg font-semibold hover:bg-mtg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+        className="h-9 px-4 py-0 flex items-center gap-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
       >
         {loading ? (
           <>
             <span className="animate-spin">⏳</span>
-            <span>Generating...</span>
+            <span>Generating PDF…</span>
           </>
         ) : (
-          <>Generate PDF</>
+          <>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="currentColor"
+              viewBox="0 0 16 16"
+              aria-hidden
+            >
+              <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z" />
+              <path d="M4.603 14.087a.8.8 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.7 7.7 0 0 1 1.482-.645 20 20 0 0 0 1.062-2.227 7.3 7.3 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.188-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a11 11 0 0 0 .98 1.686 5.8 5.8 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.86.86 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.7 5.7 0 0 1-.911-.95 11.7 11.7 0 0 0-1.997.406 11.3 11.3 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.8.8 0 0 1-.58.029m1.379-1.901q-.25.115-.459.238c-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361q.016.032.026.044l.035-.012c.137-.056.355-.235.635-.572a8 8 0 0 0 .45-.606m1.64-1.33a13 13 0 0 1 1.01-.193 12 12 0 0 1-.51-.858 21 21 0 0 1-.5 1.05zm2.446.45q.226.245.435.41c.24.19.407.253.498.256a.1.1 0 0 0 .07-.015.3.3 0 0 0 .094-.125.44.44 0 0 0 .059-.2.1.1 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a4 4 0 0 0-.612-.053zM8.078 7.8a7 7 0 0 0 .2-.828q.046-.282.038-.465a.6.6 0 0 0-.032-.198.5.5 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822q.036.167.09.346z" />
+            </svg>
+            PDF
+          </>
         )}
       </button>
+
+      {showDonateModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+          onClick={() => setShowDonateModal(false)}
+        >
+          <div
+            className="mx-4 w-full max-w-[500px] rounded-lg bg-mtg-card-bg border border-mtg-border shadow-xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold text-lg text-mtg-text">Thank You!</h3>
+              <button
+                type="button"
+                onClick={() => setShowDonateModal(false)}
+                className="text-mtg-text-muted hover:text-mtg-text p-1"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-center text-mtg-text mb-4 leading-relaxed">
+              Your PDF is being generated. If you find this tool useful, consider supporting its development!
+            </p>
+            <div className="flex justify-center">
+              <form action="https://www.paypal.com/donate" method="post" target="_top">
+                <input type="hidden" name="business" value="3ABRQKUCLUGXN" />
+                <input type="hidden" name="no_recurring" value="0" />
+                <input type="hidden" name="item_name" value="for buying more MTG cards :)" />
+                <input type="hidden" name="currency_code" value="USD" />
+                <button type="submit" className="border-0 bg-transparent p-0 cursor-pointer">
+                  <img
+                    src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif"
+                    alt="Donate with PayPal"
+                    title="PayPal - The safer, easier way to pay online!"
+                  />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

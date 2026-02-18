@@ -9,23 +9,33 @@ interface AccordionGroupProps {
 }
 
 export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onToggle, onSelectGroup, children }: AccordionGroupProps) {
-  return (
-    <div className="border border-mtg-border rounded-lg mb-2 overflow-hidden">
-      {/* Heading row with accordion button and Select Group button */}
-      <div className="flex justify-between items-center w-full px-2 py-2 bg-mtg-section-bg">
-        {/* Accordion header */}
-        <h2 className="mb-0 flex-grow-1">
-          <button
-            onClick={onToggle}
-            className="w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-gray-100 hover:bg-mtg-hover-bg font-medium"
-            aria-expanded={isOpen}
-          >
-            <span className={`inline-block transition-transform mr-2 text-xs ${isOpen ? 'rotate-90' : ''}`}>&#9654;</span>
-            {title}
-          </button>
-        </h2>
+  const headingId = `heading-${title}`
+  const collapseId = `collapse-${title}`
 
-        {/* Select Group button */}
+  return (
+    <div className="accordion-item border border-mtg-border rounded-lg overflow-hidden">
+      {/* Heading row: title + Select Group */}
+      <div
+        id={headingId}
+        className="flex justify-between items-center w-full pl-4 pr-2 py-2 bg-mtg-section-bg cursor-pointer"
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
+        aria-controls={collapseId}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
+      >
+        <div className="flex items-center min-w-0 flex-1">
+          <span className="font-medium truncate">{title}</span>
+        </div>
+
+        <span className={`inline-block transition-transform duration-200 mx-2 text-xs shrink-0 ${isOpen ? 'rotate-90' : ''}`}>&#9654;</span>
+
         {onSelectGroup && (
           <button
             type="button"
@@ -33,19 +43,26 @@ export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onTo
               e.stopPropagation()
               onSelectGroup()
             }}
-            className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors min-w-[140px] ml-2"
+            className="h-9 px-3 py-0 flex items-center text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors min-w-[100px] shrink-0"
           >
             Select Group
           </button>
         )}
       </div>
 
-      {/* Collapsible content */}
-      {isOpen && (
-        <div className="px-4 py-2 bg-mtg-card-bg border-t border-mtg-border">
-          {children}
+      {/* Collapsible content — same grid animation as TemplateCustomizer */}
+      <div
+        id={collapseId}
+        className="grid transition-[grid-template-rows] duration-200 ease-out overflow-hidden"
+        style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
+        aria-hidden={!isOpen}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="px-4 py-2 bg-mtg-card-bg border-t border-mtg-border">
+            {children}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 })

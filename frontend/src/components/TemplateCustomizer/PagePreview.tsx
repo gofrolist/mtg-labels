@@ -4,9 +4,11 @@ import { toPoints } from '../../utils/unitConversion'
 interface PagePreviewProps {
   template: CustomTemplateDimensions
   fullscreen?: boolean
+  /** When provided, scale preview to fit this container (width, height in px). */
+  containerSize?: { width: number; height: number }
 }
 
-export function PagePreview({ template, fullscreen }: PagePreviewProps) {
+export function PagePreview({ template, fullscreen, containerSize }: PagePreviewProps) {
   const u = template.unit
   const pageW = toPoints(template.pageWidth, u)
   const pageH = toPoints(template.pageHeight, u)
@@ -18,9 +20,9 @@ export function PagePreview({ template, fullscreen }: PagePreviewProps) {
   const vGap = toPoints(template.verticalGap, u)
 
   // Scale to fit container
-  const maxWidth = fullscreen ? 500 : 280
-  const maxHeight = fullscreen ? 700 : 400
-  const scale = Math.min(maxWidth / pageW, maxHeight / pageH)
+  const maxWidth = fullscreen ? 500 : containerSize ? containerSize.width : 280
+  const maxHeight = fullscreen ? 700 : containerSize ? containerSize.height : 400
+  const scale = Math.min(maxWidth / pageW, maxHeight / pageH, fullscreen ? 2 : Infinity)
 
   const scaledW = pageW * scale
   const scaledH = pageH * scale
@@ -35,7 +37,7 @@ export function PagePreview({ template, fullscreen }: PagePreviewProps) {
 
   return (
     <div
-      className="relative bg-amber-50 border border-gray-300 mx-auto shadow-sm"
+      className="relative bg-white shadow-lg mx-auto"
       style={{ width: scaledW, height: scaledH }}
     >
       {/* Grid area */}
@@ -60,11 +62,11 @@ export function PagePreview({ template, fullscreen }: PagePreviewProps) {
           {Array.from({ length: template.columns * template.rows }).map((_, i) => (
             <div
               key={i}
-              className="border border-dashed border-gray-300 bg-amber-50 flex items-center justify-center"
+              className="border border-dashed border-gray-300 bg-[#d4af37]/10 flex items-center justify-center overflow-hidden"
             >
               {showNumbers && (
                 <span
-                  className="text-gray-400 select-none"
+                  className="text-gray-500 select-none"
                   style={{ fontSize: Math.max(fontSize, 6) }}
                 >
                   {i + 1}
