@@ -241,6 +241,7 @@ export function TemplateCustomizer({
                 <select
                   value={templateId ?? ''}
                   onChange={(e) => handleTemplateSelect(e.target.value)}
+                  aria-label="Load template"
                   className={inputClasses + ' flex-1'}
                 >
                   <option value="" disabled>
@@ -286,6 +287,7 @@ export function TemplateCustomizer({
                     value={saveName}
                     onChange={(e) => setSaveName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    aria-label="Save template as"
                     className={inputClasses + ' !h-full'}
                   />
                 </div>
@@ -320,6 +322,7 @@ export function TemplateCustomizer({
                         const v = parseFloat(e.target.value)
                         if (!isNaN(v)) update({ pageWidth: v })
                       }}
+                      aria-label="Page width"
                       className={inputClasses}
                     />
                   </div>
@@ -334,6 +337,7 @@ export function TemplateCustomizer({
                         const v = parseFloat(e.target.value)
                         if (!isNaN(v)) update({ pageHeight: v })
                       }}
+                      aria-label="Page height"
                       className={inputClasses}
                     />
                   </div>
@@ -344,6 +348,7 @@ export function TemplateCustomizer({
                       onChange={(e) =>
                         handleUnitChange(e.target.value as TemplateMeasurementUnit)
                       }
+                      aria-label="Measurement unit"
                       className="h-9 px-2.5 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm shrink-0"
                     >
                       <option value="in">in</option>
@@ -354,6 +359,7 @@ export function TemplateCustomizer({
                 <div>
                   <label className="text-xs text-mtg-text-muted block mb-1.5">Quick Size</label>
                   <select
+                    aria-label="Quick page size"
                     value={
                       template.unit === 'in' &&
                       Math.abs(template.pageWidth - 8.5) < 0.1 &&
