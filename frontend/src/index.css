@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-mtg-bg: var(--mtg-bg);
   --color-mtg-card-bg: var(--mtg-card-bg);
