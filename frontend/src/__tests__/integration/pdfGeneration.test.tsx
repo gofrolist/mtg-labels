@@ -29,7 +29,7 @@ describe('PDF Generation Integration', () => {
     const mockBlob = new Blob(['pdf content'], { type: 'application/pdf' })
     vi.mocked(generatePDF).mockResolvedValue(mockBlob)
 
-    const onGenerate = vi.fn()
+    const onSuccess = vi.fn()
     render(
       <PDFGenerator
         selectedSetIds={['set-1', 'set-2']}
@@ -37,7 +37,7 @@ describe('PDF Generation Integration', () => {
         useCustomQuantity={false}
         templateId="avery5160"
         placeholders={0}
-        onGenerate={onGenerate}
+        onSuccess={onSuccess}
       />
     )
 
