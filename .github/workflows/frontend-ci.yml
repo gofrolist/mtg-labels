@@ -4,11 +4,13 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
+      - '.github/workflows/frontend-deploy.yml'
   push:
     branches: [ main ]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
+      - '.github/workflows/frontend-deploy.yml'
 
 defaults:
   run:
