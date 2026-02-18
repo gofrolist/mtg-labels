@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import type { CustomTemplateDimensions, TemplateMeasurementUnit } from '../../types'
 import { LABEL_TEMPLATES, DEFAULT_TEMPLATE_ID } from '../../constants/templates'
 import { convertValue } from '../../utils/unitConversion'
@@ -45,6 +45,9 @@ export function TemplateCustomizer({
   onPlaceholdersChange,
   onTemplateChange,
 }: TemplateCustomizerProps) {
+  const loadTemplateId = useId()
+  const unitId = useId()
+  const quickSizeId = useId()
   const [saveName, setSaveName] = useState('')
   const [showFullPreview, setShowFullPreview] = useState(false)
   const [previewContainerSize, setPreviewContainerSize] = useState<{
@@ -236,12 +239,12 @@ export function TemplateCustomizer({
           {/* Load template */}
           <div className="flex flex-wrap items-end gap-4 mb-6">
             <div className="min-w-[200px] flex-1">
-              <label className="block text-sm text-mtg-text mb-2">Load template</label>
+              <label htmlFor={loadTemplateId} className="block text-sm text-mtg-text mb-2">Load template</label>
               <div className="flex gap-2">
                 <select
+                  id={loadTemplateId}
                   value={templateId ?? ''}
                   onChange={(e) => handleTemplateSelect(e.target.value)}
-                  aria-label="Load template"
                   className={inputClasses + ' flex-1'}
                 >
                   <option value="" disabled>
@@ -342,13 +345,13 @@ export function TemplateCustomizer({
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-mtg-text-muted block mb-1.5">Unit</label>
+                    <label htmlFor={unitId} className="text-xs text-mtg-text-muted block mb-1.5">Unit</label>
                     <select
+                      id={unitId}
                       value={template.unit}
                       onChange={(e) =>
                         handleUnitChange(e.target.value as TemplateMeasurementUnit)
                       }
-                      aria-label="Measurement unit"
                       className="h-9 px-2.5 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm shrink-0"
                     >
                       <option value="in">in</option>
@@ -357,9 +360,9 @@ export function TemplateCustomizer({
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-mtg-text-muted block mb-1.5">Quick Size</label>
+                  <label htmlFor={quickSizeId} className="text-xs text-mtg-text-muted block mb-1.5">Quick Size</label>
                   <select
-                    aria-label="Quick page size"
+                    id={quickSizeId}
                     value={
                       template.unit === 'in' &&
                       Math.abs(template.pageWidth - 8.5) < 0.1 &&
