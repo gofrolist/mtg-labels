@@ -65,9 +65,12 @@ export function PDFGenerator({
         }
       }
 
+      const backendTemplateId =
+        templateId && LABEL_TEMPLATES[templateId] ? templateId : 'avery5160'
+
       const blob = await generatePDF(
         expandedSetIds,
-        templateId ?? 'avery5160',
+        backendTemplateId,
         placeholders,
         backendCustomTemplate,
       )
