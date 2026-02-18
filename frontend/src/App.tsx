@@ -7,7 +7,9 @@ import { SetList } from './components/SetList/SetList'
 import { SearchBar } from './components/SearchBar/SearchBar'
 import { ThemeToggle } from './components/ThemeToggle/ThemeToggle'
 import { PDFGenerator } from './components/PDFGenerator/PDFGenerator'
-import { TemplateCustomizer, TemplateCustomizerNavButton } from './components/TemplateCustomizer/TemplateCustomizer'
+import { TemplateCustomizer } from './components/TemplateCustomizer/TemplateCustomizer'
+import { TemplateNavButton } from './components/TemplateCustomizer/TemplateNavButton'
+import { useCustomTemplates } from './hooks/useCustomTemplates'
 import type { MTGSet } from './types'
 
 function App() {
@@ -25,6 +27,8 @@ function App() {
     setUseCustomTemplate,
     setUseCustomQuantity,
   } = useSelection()
+
+  const { templates: savedTemplates } = useCustomTemplates()
 
   const sets: MTGSet[] = useMemo(() => setsResponse?.data ?? [], [setsResponse?.data])
 
@@ -72,7 +76,7 @@ function App() {
     if (selection.useCustomTemplate && selection.customTemplate) {
       return selection.customTemplate.columns * selection.customTemplate.rows
     }
-    const t = LABEL_TEMPLATES[selection.templateId] || LABEL_TEMPLATES.avery5160
+    const t = (selection.templateId ? LABEL_TEMPLATES[selection.templateId] : null) ?? LABEL_TEMPLATES.avery5160
     return t.labels_per_page
   }, [selection.useCustomTemplate, selection.customTemplate, selection.templateId])
 
@@ -117,6 +121,14 @@ function App() {
     }
   }
 
+  const templateBadgeLabel = selection.useCustomTemplate
+    ? selection.templateId?.startsWith('saved:')
+      ? savedTemplates.find(t => t.id === selection.templateId!.slice(6))?.name ?? 'custom'
+      : 'custom'
+    : selection.templateId
+      ? LABEL_TEMPLATES[selection.templateId]?.name
+      : undefined
+
   return (
     <div className="min-h-screen flex flex-col bg-mtg-bg text-mtg-text transition-colors">
       {/* Header — v0 style: logo + theme left, sets count + Generate PDF right */}
@@ -141,11 +153,10 @@ function App() {
           <div className="flex items-center gap-2 min-h-[40px]">
             {/* Template — visible when >= 880px; below that it moves to hamburger */}
             <div className="hidden min-[880px]:block">
-              <TemplateCustomizerNavButton
+              <TemplateNavButton
                 isOpen={templateCustomizerOpen}
                 onToggle={() => setTemplateCustomizerOpen((o) => !o)}
-                templateId={selection.templateId}
-                useCustomTemplate={selection.useCustomTemplate}
+                badgeLabel={templateBadgeLabel}
               />
             </div>
 
@@ -199,11 +210,10 @@ function App() {
                   />
                 </div>
                 <div className="w-full min-w-0 [&_button]:w-full [&_button]:justify-start">
-                  <TemplateCustomizerNavButton
+                  <TemplateNavButton
                     isOpen={templateCustomizerOpen}
                     onToggle={() => setTemplateCustomizerOpen((o) => !o)}
-                    templateId={selection.templateId}
-                    useCustomTemplate={selection.useCustomTemplate}
+                    badgeLabel={templateBadgeLabel}
                   />
                 </div>
               </div>
@@ -215,7 +225,6 @@ function App() {
       <div className="container mx-auto px-4 py-4 flex-1">
         <TemplateCustomizer
           isOpen={templateCustomizerOpen}
-          onToggle={() => setTemplateCustomizerOpen((o) => !o)}
           customTemplate={selection.customTemplate}
           useCustomTemplate={selection.useCustomTemplate}
           useCustomQuantity={selection.useCustomQuantity}
