@@ -280,7 +280,7 @@ export function TemplateCustomizer({
                 )}
               </div>
             </div>
-            <div className="flex items-end gap-2 min-w-0 flex-1">
+            <div className="flex items-end gap-2 min-w-[200px] flex-1">
               <div className="flex-1 min-w-[120px]">
                 <label className="block text-sm text-mtg-text mb-2">Save as</label>
                 <div className="flex h-9">
