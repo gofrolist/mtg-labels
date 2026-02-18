@@ -6,7 +6,7 @@ import { round2, presetToCustom, getPresetUnit } from '../../utils/templateUtils
 import { useCustomTemplates } from '../../hooks/useCustomTemplates'
 import { PagePreview } from './PagePreview'
 import { PlaceholdersInput } from './PlaceholdersInput'
-import { NumField } from './NumField'
+import { NumField, inputClasses } from './NumField'
 
 interface TemplateCustomizerProps {
   isOpen: boolean
@@ -29,9 +29,6 @@ const PAGE_SIZES: Record<
   letter: { width: 8.5, height: 11, unit: 'in', label: 'Letter (8.5" x 11")' },
   a4: { width: 210, height: 297, unit: 'mm', label: 'A4 (210 x 297 mm)' },
 }
-
-const inputClasses =
-  'w-full h-9 px-2.5 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm focus:outline-none focus:ring-2 focus:ring-mtg-accent'
 
 export function TemplateCustomizer({
   isOpen,

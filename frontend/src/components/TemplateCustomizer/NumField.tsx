@@ -7,7 +7,7 @@ interface NumFieldProps {
   integer?: boolean
 }
 
-const inputClasses =
+export const inputClasses =
   'w-full h-9 px-2.5 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm focus:outline-none focus:ring-2 focus:ring-mtg-accent'
 
 export function NumField({ label, value, onChange, min = 0, step = 0.01, integer }: NumFieldProps) {
