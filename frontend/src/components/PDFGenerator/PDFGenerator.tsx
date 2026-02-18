@@ -75,16 +75,20 @@ export function PDFGenerator({
         backendCustomTemplate,
       )
 
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = 'mtg_labels.pdf'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-
       onSuccess?.()
+
+      // Delay download so the donate modal renders before mobile navigates away
+      const url = URL.createObjectURL(blob)
+      setTimeout(() => {
+        const link = document.createElement('a')
+        link.href = url
+        link.download = 'mtg_labels.pdf'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        // Delay revoke so mobile browser can finish opening the file
+        setTimeout(() => URL.revokeObjectURL(url), 5000)
+      }, 300)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate PDF. Please try again.')
     } finally {

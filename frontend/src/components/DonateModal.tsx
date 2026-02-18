@@ -24,7 +24,7 @@ export function DonateModal({ onClose }: DonateModalProps) {
           </button>
         </div>
         <p className="text-center text-mtg-text mb-4 leading-relaxed">
-          Your PDF is being generated. If you find this tool useful, consider supporting its
+          Your PDF has been generated! If you find this tool useful, consider supporting its
           development!
         </p>
         <div className="flex flex-col items-center gap-5">
