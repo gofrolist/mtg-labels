@@ -194,7 +194,8 @@ function App() {
                     value={searchQuery}
                     onChange={setSearchQuery}
                     onClear={() => setSearchQuery('')}
-                    variant="navFull"
+                    variant="nav"
+                    className="w-full min-w-0"
                   />
                 </div>
                 <div className="w-full min-w-0 [&_button]:w-full [&_button]:justify-start">
