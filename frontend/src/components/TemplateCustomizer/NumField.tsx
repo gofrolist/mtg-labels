@@ -20,6 +20,7 @@ export function NumField({ label, value, onChange, min = 0, step = 0.01, integer
       <input
         id={id}
         type="number"
+        inputMode={integer ? 'numeric' : 'decimal'}
         value={value}
         min={min}
         step={step}

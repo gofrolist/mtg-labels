@@ -318,6 +318,7 @@ export function TemplateCustomizer({
                     <label className="text-xs text-mtg-text-muted block mb-1.5">Width</label>
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={template.pageWidth}
                       min={1}
                       step={0.01}
@@ -333,6 +334,7 @@ export function TemplateCustomizer({
                     <label className="text-xs text-mtg-text-muted block mb-1.5">Height</label>
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={template.pageHeight}
                       min={1}
                       step={0.01}

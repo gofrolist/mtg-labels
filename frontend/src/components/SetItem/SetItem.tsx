@@ -48,6 +48,7 @@ export const SetItem = memo(function SetItem({ set, isSelected, quantity, showQu
       {isSelected && showQuantityInput && (
         <input
           type="number"
+          inputMode="numeric"
           min="1"
           max="100"
           value={quantity}

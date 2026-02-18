@@ -36,6 +36,7 @@ export function PlaceholdersInput({
       <input
         id="placeholders-input"
         type="number"
+        inputMode="numeric"
         min="0"
         max={maxPlaceholders}
         value={placeholders}
