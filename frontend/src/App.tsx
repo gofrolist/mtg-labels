@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useApiSetsApiSetsGet } from './api/queries/default/default'
 import { useSelection } from './hooks/useSelection'
 import { useOpenGroups } from './hooks/useOpenGroups'
@@ -173,6 +175,8 @@ function App() {
       </div>
 
       <Footer />
+      <Analytics />
+      <SpeedInsights />
     </div>
   )
 }
