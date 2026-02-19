@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --config frontend/vite.config.ts",
-    "build": "tsc -p frontend/tsconfig.json && vite build --config frontend/vite.config.ts",
-    "preview": "vite preview --config frontend/vite.config.ts"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",
