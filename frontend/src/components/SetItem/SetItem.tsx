@@ -9,12 +9,15 @@ interface SetItemProps {
   onToggle: () => void
   onQuantityChange: (quantity: number) => void
   iconSvg?: string
+  iconsLoaded?: boolean
 }
 
-export const SetItem = memo(function SetItem({ set, isSelected, quantity, showQuantityInput, onToggle, onQuantityChange, iconSvg }: SetItemProps) {
+export const SetItem = memo(function SetItem({ set, isSelected, quantity, showQuantityInput, onToggle, onQuantityChange, iconSvg, iconsLoaded }: SetItemProps) {
   const iconSrc = iconSvg
     ? `data:image/svg+xml,${encodeURIComponent(iconSvg)}`
-    : set.icon_svg_uri
+    : iconsLoaded
+      ? set.icon_svg_uri // icons loaded but this set wasn't cached — use fallback
+      : undefined // still loading — don't trigger Scryfall requests
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
     if (!isNaN(value) && value >= 1 && value <= 100) {

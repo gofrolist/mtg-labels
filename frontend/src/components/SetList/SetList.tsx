@@ -51,6 +51,7 @@ export function SetList({
                     onToggle={() => onToggleSet(set.id)}
                     onQuantityChange={(quantity) => onQuantityChange(set.id, quantity)}
                     iconSvg={setIconsMap?.[set.id]}
+                    iconsLoaded={setIconsMap !== undefined}
                   />
                 </div>
               ))}
