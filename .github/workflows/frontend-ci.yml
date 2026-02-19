@@ -1,10 +1,6 @@
 name: Frontend CI
 on:
   pull_request:
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-ci.yml'
-      - '.github/workflows/frontend-deploy.yml'
   push:
     branches: [ main ]
     paths:
@@ -12,14 +8,30 @@ on:
       - '.github/workflows/frontend-ci.yml'
       - '.github/workflows/frontend-deploy.yml'
 
-defaults:
-  run:
-    working-directory: frontend
-
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ github.event_name == 'push' || steps.filter.outputs.frontend == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/frontend-ci.yml'
+              - '.github/workflows/frontend-deploy.yml'
+
   frontend-ci:
     name: Frontend CI
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
     - uses: actions/checkout@v6
 
