@@ -1,4 +1,4 @@
-import { memo, ReactNode } from 'react'
+import { memo, ReactNode, useState } from 'react'
 
 interface AccordionGroupProps {
   title: string
@@ -9,6 +9,8 @@ interface AccordionGroupProps {
 }
 
 export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onToggle, onSelectGroup, children }: AccordionGroupProps) {
+  const [hasBeenOpened, setHasBeenOpened] = useState(isOpen)
+  if (isOpen && !hasBeenOpened) setHasBeenOpened(true)
   const headingId = `heading-${title}`
   const collapseId = `collapse-${title}`
 
@@ -59,7 +61,7 @@ export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onTo
       >
         <div className="min-h-0 overflow-hidden">
           <div className="px-4 py-2 bg-mtg-card-bg border-t border-mtg-border">
-            {children}
+            {hasBeenOpened ? children : null}
           </div>
         </div>
       </div>

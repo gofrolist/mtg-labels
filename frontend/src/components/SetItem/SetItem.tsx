@@ -8,9 +8,13 @@ interface SetItemProps {
   showQuantityInput: boolean
   onToggle: () => void
   onQuantityChange: (quantity: number) => void
+  iconSvg?: string
 }
 
-export const SetItem = memo(function SetItem({ set, isSelected, quantity, showQuantityInput, onToggle, onQuantityChange }: SetItemProps) {
+export const SetItem = memo(function SetItem({ set, isSelected, quantity, showQuantityInput, onToggle, onQuantityChange, iconSvg }: SetItemProps) {
+  const iconSrc = iconSvg
+    ? `data:image/svg+xml,${encodeURIComponent(iconSvg)}`
+    : set.icon_svg_uri
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
     if (!isNaN(value) && value >= 1 && value <= 100) {
@@ -34,10 +38,11 @@ export const SetItem = memo(function SetItem({ set, isSelected, quantity, showQu
         htmlFor={`set-${set.id}`}
         title={set.name}
       >
-        {set.icon_svg_uri && (
+        {iconSrc && (
           <img
-            src={set.icon_svg_uri}
+            src={iconSrc}
             alt="symbol"
+            loading="lazy"
             className="set-icon w-5 h-5 mr-1 flex-shrink-0"
           />
         )}

@@ -4,6 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useApiSetsApiSetsGet } from './api/queries/default/default'
 import { useSelection } from './hooks/useSelection'
 import { useOpenGroups } from './hooks/useOpenGroups'
+import { useSetIcons } from './hooks/useSetIcons'
 import { useCustomTemplates } from './hooks/useCustomTemplates'
 import { groupSetsByType, filterSetsByQuery } from './utils/grouping'
 import { LABEL_TEMPLATES } from './constants/templates'
@@ -21,6 +22,7 @@ import type { MTGSet } from './types'
 
 function App() {
   const { data: setsResponse, isLoading, error } = useApiSetsApiSetsGet()
+  const { data: setIconsMap } = useSetIcons()
   const {
     selection,
     toggleSetSelection,
@@ -172,6 +174,7 @@ function App() {
             openGroups={openGroups}
             onToggleGroup={toggleGroup}
             onSelectGroup={handleSelectGroup}
+            setIconsMap={setIconsMap}
           />
         )}
       </main>

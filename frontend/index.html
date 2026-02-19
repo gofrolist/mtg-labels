@@ -15,6 +15,9 @@
         window.__prefetch = {
           sets: fetch('https://mtg-labels.fly.dev/api/sets')
             .then(function(r) { return r.ok ? r.json() : null; })
+            .catch(function() { return null; }),
+          setIcons: fetch('https://mtg-labels.fly.dev/api/set-icons')
+            .then(function(r) { return r.ok ? r.json() : null; })
             .catch(function() { return null; })
         };
       }

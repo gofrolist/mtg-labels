@@ -12,6 +12,7 @@ interface SetListProps {
   openGroups?: Set<string>
   onToggleGroup?: (groupName: string) => void
   onSelectGroup?: (groupName: string, setIds: string[]) => void
+  setIconsMap?: Record<string, string>
 }
 
 export function SetList({
@@ -24,6 +25,7 @@ export function SetList({
   openGroups = new Set(),
   onToggleGroup = () => {},
   onSelectGroup,
+  setIconsMap,
 }: SetListProps) {
   return (
     <div>
@@ -48,6 +50,7 @@ export function SetList({
                     showQuantityInput={useCustomQuantity}
                     onToggle={() => onToggleSet(set.id)}
                     onQuantityChange={(quantity) => onQuantityChange(set.id, quantity)}
+                    iconSvg={setIconsMap?.[set.id]}
                   />
                 </div>
               ))}

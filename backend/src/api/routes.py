@@ -4,14 +4,19 @@ This module defines the API routes and application setup.
 """
 
 import json
+import threading
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 
 from src.api.dependencies import setup_error_handlers
+from src.cache.cache_manager import get_cache_manager
 from src.config import (
     _BACKEND_ROOT,
     APP_NAME,
@@ -26,11 +31,54 @@ from src.config import (
 )
 from src.models.set_data import MTGSetResponse
 from src.mtg_labels import __version__
+from src.services.helpers import download_and_cache_symbol
 from src.services.pdf_generator import PDFGenerator
 from src.services.scryfall_client import ScryfallClient
 
 # Global Scryfall client instance
 scryfall_client = ScryfallClient()
+
+
+def _preload_icon_cache() -> None:
+    """Preload SVG icon cache in background.
+
+    Iterates filtered sets and downloads any uncached icons.
+    Rate limiting is built into download_and_cache_symbol.
+    """
+    try:
+        all_sets = scryfall_client.fetch_sets()
+        filtered = scryfall_client.filter_sets(all_sets)
+        cache_manager = get_cache_manager()
+
+        downloaded = 0
+        skipped = 0
+        for s in filtered:
+            set_id = s.get("id")
+            symbol_url = s.get("icon_svg_uri")
+            if not set_id or not symbol_url:
+                continue
+
+            if cache_manager.get_symbol(set_id):
+                skipped += 1
+                continue
+
+            download_and_cache_symbol(set_id, symbol_url, f"set '{s.get('name')}'")
+            downloaded += 1
+
+        logger.info(
+            f"Icon cache preload complete: {downloaded} downloaded, {skipped} already cached"
+        )
+    except Exception as e:
+        logger.error(f"Icon cache preload failed: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    """Application lifespan: start background icon cache preload on startup."""
+    thread = threading.Thread(target=_preload_icon_cache, daemon=True)
+    thread.start()
+    logger.info("Started background icon cache preload")
+    yield
 
 
 def create_app() -> FastAPI:
@@ -43,6 +91,7 @@ def create_app() -> FastAPI:
         title=APP_NAME,
         debug=DEBUG,
         version=__version__,
+        lifespan=lifespan,
         # Disable interactive docs in production
         docs_url="/docs" if DEBUG else None,
         redoc_url="/redoc" if DEBUG else None,
@@ -51,6 +100,9 @@ def create_app() -> FastAPI:
 
     # Setup error handlers
     setup_error_handlers(app)
+
+    # GZip compression for large responses (e.g. /api/set-icons ~650KB → ~150KB)
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     # Security response headers
     @app.middleware("http")
@@ -146,6 +198,42 @@ def create_app() -> FastAPI:
             Dictionary mapping color names to lists of card types
         """
         return scryfall_client.get_card_types_by_color()
+
+    @app.get("/api/set-icons")
+    async def api_set_icons() -> Response:
+        """
+        API endpoint to get all cached set icon SVGs in a single response.
+
+        Returns a JSON dict mapping set_id → raw SVG string for all icons
+        that are already cached on disk. Missing icons are omitted.
+
+        Returns:
+            JSON response with Cache-Control headers
+        """
+        cache_manager = get_cache_manager()
+        all_sets = scryfall_client.fetch_sets()
+        filtered = scryfall_client.filter_sets(all_sets)
+
+        icons: dict[str, str] = {}
+        for s in filtered:
+            set_id = s.get("id")
+            if not set_id:
+                continue
+            cached_path = cache_manager.get_symbol(set_id)
+            if cached_path:
+                try:
+                    svg_content = Path(cached_path).read_text(encoding="utf-8")
+                    icons[set_id] = svg_content
+                except Exception as e:
+                    logger.warning(f"Failed to read cached symbol for {set_id}: {e}")
+
+        return Response(
+            content=json.dumps(icons),
+            media_type="application/json",
+            headers={
+                "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+            },
+        )
 
     @app.post("/generate-pdf", include_in_schema=False)
     async def generate_pdf(
