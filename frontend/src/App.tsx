@@ -42,6 +42,8 @@ function App() {
   const sets: MTGSet[] = useMemo(() => setsResponse?.data ?? [], [setsResponse?.data])
   const [searchQuery, setSearchQuery] = useState('')
   const [templateCustomizerOpen, setTemplateCustomizerOpen] = useState(false)
+  const [templateCustomizerMounted, setTemplateCustomizerMounted] = useState(false)
+  if (templateCustomizerOpen && !templateCustomizerMounted) setTemplateCustomizerMounted(true)
 
   const filteredSets = useMemo(() => filterSetsByQuery(sets, searchQuery), [sets, searchQuery])
   const groupedSets = useMemo(() => groupSetsByType(filteredSets), [filteredSets])
@@ -122,22 +124,24 @@ function App() {
       />
 
       <main className="container mx-auto px-4 py-4 flex-1 min-h-[50vh]">
-        <Suspense fallback={null}>
-          <TemplateCustomizer
-            isOpen={templateCustomizerOpen}
-            customTemplate={selection.customTemplate}
-            useCustomTemplate={selection.useCustomTemplate}
-            useCustomQuantity={selection.useCustomQuantity}
-            templateId={selection.templateId}
-            placeholders={selection.placeholders}
-            customTemplatesApi={customTemplatesApi}
-            onCustomTemplateChange={setCustomTemplate}
-            onUseCustomTemplateChange={setUseCustomTemplate}
-            onUseCustomQuantityChange={setUseCustomQuantity}
-            onPlaceholdersChange={setPlaceholders}
-            onTemplateChange={setTemplate}
-          />
-        </Suspense>
+        {templateCustomizerMounted && (
+          <Suspense fallback={null}>
+            <TemplateCustomizer
+              isOpen={templateCustomizerOpen}
+              customTemplate={selection.customTemplate}
+              useCustomTemplate={selection.useCustomTemplate}
+              useCustomQuantity={selection.useCustomQuantity}
+              templateId={selection.templateId}
+              placeholders={selection.placeholders}
+              customTemplatesApi={customTemplatesApi}
+              onCustomTemplateChange={setCustomTemplate}
+              onUseCustomTemplateChange={setUseCustomTemplate}
+              onUseCustomQuantityChange={setUseCustomQuantity}
+              onPlaceholdersChange={setPlaceholders}
+              onTemplateChange={setTemplate}
+            />
+          </Suspense>
+        )}
 
         <div className="flex items-center justify-between mb-4 min-h-9">
           <span className="text-sm text-mtg-text-muted">
