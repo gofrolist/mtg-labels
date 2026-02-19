@@ -180,7 +180,7 @@ function App() {
         )}
       </main>
 
-      <Footer />
+      {!isLoading && <Footer />}
       <Analytics />
       <SpeedInsights />
     </div>
