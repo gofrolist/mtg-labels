@@ -41,5 +41,9 @@ export function useOpenGroups(
     [openGroups],
   )
 
-  return { openGroups, toggleGroup }
+  const resetManualGroups = useCallback(() => {
+    setManualOpenGroups(null)
+  }, [])
+
+  return { openGroups, toggleGroup, resetManualGroups }
 }

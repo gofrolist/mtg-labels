@@ -45,7 +45,7 @@ function App() {
 
   const filteredSets = useMemo(() => filterSetsByQuery(sets, searchQuery), [sets, searchQuery])
   const groupedSets = useMemo(() => groupSetsByType(filteredSets), [filteredSets])
-  const { openGroups, toggleGroup } = useOpenGroups(
+  const { openGroups, toggleGroup, resetManualGroups } = useOpenGroups(
     searchQuery,
     groupedSets,
     selection.selectedSetIds,
@@ -87,6 +87,7 @@ function App() {
 
   const handleSelectAllSets = () => {
     const allSetIds = filteredSets.map((set) => set.id)
+    resetManualGroups()
     if (isAllSetsSelected(allSetIds)) {
       deselectAllSets()
     } else {
