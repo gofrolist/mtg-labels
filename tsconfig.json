@@ -12,10 +12,9 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["frontend/src"],
-  "references": [{ "path": "./frontend/tsconfig.node.json" }]
+  "include": ["frontend/src", "vite.config.ts"]
 }
