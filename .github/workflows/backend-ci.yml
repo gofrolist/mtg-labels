@@ -6,6 +6,8 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
+      - '.github/workflows/backend-build.yml'
+      - '.github/workflows/backend-deploy.yml'
 
 jobs:
   changes:
@@ -21,6 +23,8 @@ jobs:
             backend:
               - 'backend/**'
               - '.github/workflows/backend-ci.yml'
+              - '.github/workflows/backend-build.yml'
+              - '.github/workflows/backend-deploy.yml'
 
   test:
     name: tests & lint
