@@ -46,8 +46,7 @@ export async function generatePDF(
     formData.append('custom_template', JSON.stringify(customTemplate))
   }
 
-  const baseUrl = API_BASE_URL || ''
-  const response = await fetch(`${baseUrl}/generate-pdf`, {
+  const response = await fetch(`${API_BASE_URL || ''}/generate-pdf`, {
     method: 'POST',
     body: formData,
   })
