@@ -10,6 +10,9 @@ on:
       - 'frontend/**'
       - '.github/workflows/frontend-deploy.yml'
 
+permissions:
+  contents: read
+
 concurrency:
   group: frontend-deploy
   cancel-in-progress: true
@@ -23,15 +26,15 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Setup Bun
-      uses: oven-sh/setup-bun@v2
+      uses: oven-sh/setup-bun@3d267786b128fe76c2f16a390aa2448b815359f3 # v2
       with:
         bun-version: latest
 
     - name: Install Vercel CLI
-      run: npm install --global vercel@latest
+      run: npm install --global vercel@50.20.0
 
     - name: Pull Vercel Environment Information
       run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
