@@ -27,23 +27,31 @@ const prefetch = (
 ).__prefetch
 
 if (prefetch?.sets) {
-  prefetch.sets.then((data) => {
-    if (data && !queryClient.getQueryData(getApiSetsApiSetsGetQueryKey())) {
-      queryClient.setQueryData(getApiSetsApiSetsGetQueryKey(), {
-        data,
-        status: 200,
-        headers: new Headers(),
-      })
-    }
-  })
+  queryClient
+    .fetchQuery({
+      queryKey: getApiSetsApiSetsGetQueryKey(),
+      queryFn: async () => {
+        const data = await prefetch.sets
+        if (!data) throw new Error('prefetch failed')
+        return { data, status: 200, headers: new Headers() }
+      },
+      retry: false,
+    })
+    .catch(() => {})
 }
 
 if (prefetch?.setIcons) {
-  prefetch.setIcons.then((data) => {
-    if (data && !queryClient.getQueryData(SET_ICONS_QUERY_KEY)) {
-      queryClient.setQueryData(SET_ICONS_QUERY_KEY, data)
-    }
-  })
+  queryClient
+    .fetchQuery({
+      queryKey: SET_ICONS_QUERY_KEY,
+      queryFn: async () => {
+        const data = await prefetch.setIcons
+        if (!data) throw new Error('prefetch failed')
+        return data
+      },
+      retry: false,
+    })
+    .catch(() => {})
 }
 
 createRoot(document.getElementById('root')!).render(
