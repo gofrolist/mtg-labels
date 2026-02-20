@@ -29,9 +29,7 @@ export function SearchBar({ value, onChange, onClear, variant = 'default', class
         placeholder="Search sets..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full h-9 rounded text-sm transition-[padding] duration-150 focus:outline-none focus:ring-2 ${
-          hasValue ? 'pl-3' : 'pl-9'
-        } ${
+        className={`w-full h-9 pl-9 rounded text-sm focus:outline-none focus:ring-2 ${
           isNav
             ? 'pr-9 border border-white/20 bg-white/10 text-white placeholder-gray-400 focus:ring-white/50'
             : 'pr-9 border border-mtg-border bg-mtg-input-bg text-mtg-text placeholder-mtg-text-muted focus:ring-mtg-accent'
