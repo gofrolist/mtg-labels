@@ -14,23 +14,22 @@ export function SearchBar({ value, onChange, onClear, variant = 'default', class
     <div
       className={`relative flex items-center ${className ?? ''}`}
     >
-      {/* Search icon -- visible when empty, hidden when typing */}
-      <span
-        className={`absolute left-2.5 pointer-events-none transition-opacity duration-150 ${
-          hasValue ? 'opacity-0' : 'opacity-100'
-        } ${isNav ? 'text-gray-400' : 'text-mtg-text-muted'}`}
-        aria-hidden="true"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      </span>
+      {/* Search icon -- overlaps placeholder area, fades when typing */}
+      {!hasValue && (
+        <span
+          className={`absolute left-3 pointer-events-none ${isNav ? 'text-gray-400' : 'text-mtg-text-muted'}`}
+          aria-hidden="true"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
+      )}
 
       <input
         type="text"
         placeholder="Search sets..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={{ paddingLeft: hasValue ? '0.75rem' : '2.25rem', transition: 'padding-left 150ms ease' }}
-        className={`w-full h-9 rounded text-sm focus:outline-none focus:ring-2 ${
+        className={`w-full h-9 pl-3 rounded text-sm focus:outline-none focus:ring-2 ${
           isNav
             ? 'pr-9 border border-white/20 bg-white/10 text-white placeholder-gray-400 focus:ring-white/50'
             : 'pr-9 border border-mtg-border bg-mtg-input-bg text-mtg-text placeholder-mtg-text-muted focus:ring-mtg-accent'
