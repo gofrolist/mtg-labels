@@ -20,6 +20,7 @@ from src.cache.cache_manager import get_cache_manager
 from src.config import (
     _BACKEND_ROOT,
     APP_NAME,
+    CORS_ORIGIN_REGEX,
     CORS_ORIGINS,
     CURRENT_LABEL_TEMPLATE,
     DEBUG,
@@ -117,6 +118,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
+        allow_origin_regex=CORS_ORIGIN_REGEX,
         allow_credentials=True,
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Content-Type", "Accept"],

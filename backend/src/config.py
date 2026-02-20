@@ -26,8 +26,8 @@ _DEFAULT_CORS_ORIGINS = (
 CORS_ORIGINS_STR = os.getenv("CORS_ORIGINS", _DEFAULT_CORS_ORIGINS)
 CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_STR.split(",") if origin.strip()]
 
-# Note: FastAPI CORSMiddleware doesn't support wildcard patterns
-# To add additional origins, set CORS_ORIGINS environment variable with comma-separated URLs
+# Regex pattern for wildcard CORS origins (e.g., *.vusercontent.net for v0.app previews)
+CORS_ORIGIN_REGEX = r"https://.*\.vusercontent\.net"
 
 # --- Frontend Redirect Configuration ---
 # URL to redirect root path (/) to when frontend is hosted separately (e.g., on Vercel)
