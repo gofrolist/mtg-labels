@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://mtg-labels.fly.dev'
 
 export class ApiError extends Error {
   constructor(
@@ -46,7 +46,7 @@ export async function generatePDF(
     formData.append('custom_template', JSON.stringify(customTemplate))
   }
 
-  const response = await fetch(`${API_BASE_URL || ''}/generate-pdf`, {
+  const response = await fetch(`${API_BASE_URL}/generate-pdf`, {
     method: 'POST',
     body: formData,
   })
