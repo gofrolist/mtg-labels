@@ -42,6 +42,7 @@ export function SetList({
               const setIds = sets.map(s => s.id)
               onSelectGroup(groupName, setIds)
             } : undefined}
+            isGroupSelected={sets.length > 0 && sets.every(s => selectedSet.has(s.id))}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
               {sets.map((set) => (

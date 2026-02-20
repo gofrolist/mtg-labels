@@ -5,10 +5,11 @@ interface AccordionGroupProps {
   isOpen: boolean
   onToggle: () => void
   onSelectGroup?: () => void
+  isGroupSelected?: boolean
   children: ReactNode
 }
 
-export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onToggle, onSelectGroup, children }: AccordionGroupProps) {
+export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onToggle, onSelectGroup, isGroupSelected, children }: AccordionGroupProps) {
   const [hasBeenOpened, setHasBeenOpened] = useState(isOpen)
   if (isOpen && !hasBeenOpened) setHasBeenOpened(true)
   const headingId = `heading-${title}`
@@ -35,7 +36,7 @@ export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onTo
             onClick={onSelectGroup}
             className="h-9 mr-2 px-3 py-0 flex items-center text-sm border border-mtg-border rounded-lg hover:bg-mtg-hover-bg transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-mtg-accent"
           >
-            Select Group
+            {isGroupSelected ? 'Deselect Group' : 'Select Group'}
           </button>
         )}
       </div>
