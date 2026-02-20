@@ -37,7 +37,7 @@ export const SetItem = memo(function SetItem({ set, isSelected, quantity, showQu
         className="w-4 h-4 mr-2 accent-mtg-accent rounded focus:ring-2 focus:ring-mtg-accent cursor-pointer flex-shrink-0"
       />
       <label
-        className="flex items-center cursor-pointer flex-1 min-w-0 truncate max-w-[280px]"
+        className="flex items-center cursor-pointer flex-1 min-w-0"
         htmlFor={`set-${set.id}`}
         title={set.name}
       >

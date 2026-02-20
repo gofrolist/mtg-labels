@@ -1,6 +1,6 @@
 export function LoadingSkeleton() {
   return (
-    <div className="space-y-3 py-4" aria-label="Loading sets...">
+    <div className="flex flex-col gap-3 py-4" aria-label="Loading sets...">
       {Array.from({ length: 3 }).map((_, groupIdx) => (
         <div key={groupIdx} className="border border-mtg-border rounded-lg overflow-hidden">
           <div className="px-4 py-3 bg-mtg-section-bg">

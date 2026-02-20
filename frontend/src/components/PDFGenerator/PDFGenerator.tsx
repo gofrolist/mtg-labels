@@ -107,8 +107,8 @@ export function PDFGenerator({
       >
         {loading ? (
           <>
-            <span className="animate-spin">⏳</span>
-            <span>Generating PDF…</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <span>Generating PDF...</span>
           </>
         ) : (
           <>

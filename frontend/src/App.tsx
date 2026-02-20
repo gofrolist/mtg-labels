@@ -154,7 +154,7 @@ function App() {
           </span>
           <button
             onClick={handleSelectAllSets}
-            className={`h-9 px-3 py-0 flex items-center border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors text-sm ${filteredSets.length === 0 ? 'invisible' : ''}`}
+            className={`h-9 px-3 py-0 flex items-center border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors text-sm focus-visible:ring-2 focus-visible:ring-mtg-accent ${filteredSets.length === 0 ? 'invisible' : ''}`}
           >
             {isAllSetsSelected(filteredSets.map((s) => s.id))
               ? 'Deselect All'
@@ -167,6 +167,21 @@ function App() {
         ) : error ? (
           <div className="text-center py-12">
             <ErrorDisplay message={(error as Error).message} />
+          </div>
+        ) : filteredSets.length === 0 && searchQuery.trim() ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-text-muted mb-4" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <p className="text-lg font-medium text-mtg-text mb-1">No sets found</p>
+            <p className="text-sm text-mtg-text-muted mb-4">
+              No results for &ldquo;{searchQuery.trim()}&rdquo;
+            </p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="h-9 px-4 py-0 flex items-center gap-2 text-sm border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              Clear search
+            </button>
           </div>
         ) : (
           <SetList
