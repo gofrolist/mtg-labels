@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://mtg-labels.fly.dev'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 export class ApiError extends Error {
   constructor(
@@ -11,7 +11,9 @@ export class ApiError extends Error {
 }
 
 export async function customFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${url}`, init)
+  const fullUrl = `${API_BASE_URL}${url}`
+  console.log("[v0] customFetch:", fullUrl, "API_BASE_URL:", JSON.stringify(API_BASE_URL))
+  const response = await fetch(fullUrl, init)
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({ detail: response.statusText }))
     throw new ApiError(response.status, errorBody.detail ?? 'Request failed')

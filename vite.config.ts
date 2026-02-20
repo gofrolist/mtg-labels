@@ -13,6 +13,18 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    proxy: {
+      '/api': {
+        target: 'https://mtg-labels.fly.dev',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/generate-pdf': {
+        target: 'https://mtg-labels.fly.dev',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
   },
   build: {
     outDir: 'dist',
