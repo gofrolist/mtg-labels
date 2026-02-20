@@ -50,7 +50,7 @@ export function Header({
               MTG Labels
             </a>
             <ThemeToggle />
-            <div className="hidden min-[640px]:block">
+            <div className="hidden min-[640px]:block w-52">
               <SearchBar
                 value={searchQuery}
                 onChange={onSearchChange}
