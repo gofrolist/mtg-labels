@@ -95,6 +95,7 @@ function App() {
     } else {
       selectAllSets(allSetIds)
     }
+    resetManualGroups()
   }
 
   const handleSelectGroup = (_groupName: string, setIds: string[]) => {
@@ -104,6 +105,7 @@ function App() {
     } else {
       selectSets(setIds)
     }
+    resetManualGroups()
   }
 
   return (
