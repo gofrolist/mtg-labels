@@ -42,7 +42,7 @@ export const TypeItem = memo(function TypeItem({
       >
         <span className="truncate text-base">{typeName}</span>
       </label>
-      {isSelected && showQuantityInput && (
+      {showQuantityInput && (
         <input
           type="number"
           inputMode="numeric"
