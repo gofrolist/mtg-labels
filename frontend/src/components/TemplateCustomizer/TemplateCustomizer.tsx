@@ -49,6 +49,8 @@ export function TemplateCustomizer({
   const unitId = useId()
   const quickSizeId = useId()
   const [saveName, setSaveName] = useState('')
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
+  const [confirmOverwrite, setConfirmOverwrite] = useState<{ id: string; name: string } | null>(null)
   const [showFullPreview, setShowFullPreview] = useState(false)
   const [previewContainerSize, setPreviewContainerSize] = useState<{
     width: number
@@ -132,14 +134,20 @@ export function TemplateCustomizer({
       (t) => t.name.toLowerCase() === name.toLowerCase(),
     )
     if (existing) {
-      if (!window.confirm(`Template "${existing.name}" already exists. Overwrite?`)) return
-      updateTemplate(existing.id, template)
-      onTemplateChange('saved:' + existing.id)
-    } else {
-      const saved = saveTemplate(name, template)
-      onTemplateChange('saved:' + saved.id)
+      setConfirmOverwrite({ id: existing.id, name: existing.name })
+      return
     }
+    const saved = saveTemplate(name, template)
+    onTemplateChange('saved:' + saved.id)
     setSaveName('')
+  }
+
+  const handleConfirmOverwrite = () => {
+    if (!confirmOverwrite) return
+    updateTemplate(confirmOverwrite.id, template)
+    onTemplateChange('saved:' + confirmOverwrite.id)
+    setSaveName('')
+    setConfirmOverwrite(null)
   }
 
   const handleLoadSaved = (id: string) => {
@@ -161,11 +169,16 @@ export function TemplateCustomizer({
   }
 
   const handleDeleteSaved = (id: string) => {
-    deleteTemplate(id)
-    if (templateId === 'saved:' + id) {
-      onCustomTemplateChange(null)
-      onUseCustomTemplateChange(false)
-      onTemplateChange(DEFAULT_TEMPLATE_ID)
+    if (confirmingDeleteId === id) {
+      deleteTemplate(id)
+      setConfirmingDeleteId(null)
+      if (templateId === 'saved:' + id) {
+        onCustomTemplateChange(null)
+        onUseCustomTemplateChange(false)
+        onTemplateChange(DEFAULT_TEMPLATE_ID)
+      }
+    } else {
+      setConfirmingDeleteId(id)
     }
   }
 
@@ -191,11 +204,11 @@ export function TemplateCustomizer({
 
   return (
     <div
-      className="border border-mtg-border rounded-lg mb-4 overflow-hidden grid transition-[grid-template-rows] duration-200 ease-out"
+      className="overflow-hidden grid transition-[grid-template-rows] duration-200 ease-out bg-mtg-card-bg border-b border-mtg-border"
       style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
     >
       <div className="min-h-0 overflow-hidden">
-        <div className="px-4 py-2 bg-mtg-card-bg border-t border-mtg-border">
+        <div className="container mx-auto px-4 py-4">
           {/* Toggle switches */}
           <div className="flex flex-col gap-3 mb-6">
             <label className="flex items-center gap-3 cursor-pointer">
@@ -206,8 +219,8 @@ export function TemplateCustomizer({
                   onChange={(e) => handleToggle(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-600 rounded-full peer-checked:bg-mtg-accent transition-colors" />
-                <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5" />
+                <div className="w-11 h-6 bg-gray-600 rounded-full peer-checked:bg-mtg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-mtg-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-mtg-card-bg transition-colors" />
+                <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5 pointer-events-none" />
               </div>
               <span className="text-sm text-mtg-text">Use Custom Template</span>
             </label>
@@ -219,21 +232,19 @@ export function TemplateCustomizer({
                   onChange={(e) => onUseCustomQuantityChange(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-600 rounded-full peer-checked:bg-mtg-accent transition-colors" />
-                <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5" />
+                <div className="w-11 h-6 bg-gray-600 rounded-full peer-checked:bg-mtg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-mtg-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-mtg-card-bg transition-colors" />
+                <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5 pointer-events-none" />
               </div>
-              <span className="text-sm text-mtg-text">Use Custom Quantity</span>
+              <span className="text-sm text-mtg-text flex items-center gap-1">
+                Use Custom Quantity
+                <span
+                  className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-mtg-text-muted/20 text-mtg-text-muted text-xs cursor-help"
+                  title="Set how many labels to print for each selected item. The quantity input appears next to selected items when enabled."
+                >
+                  ?
+                </span>
+              </span>
             </label>
-          </div>
-
-          <div className="mb-6">
-            <PlaceholdersInput
-              templateId={templateId}
-              placeholders={placeholders}
-              onPlaceholdersChange={onPlaceholdersChange}
-              customTemplate={customTemplate}
-              useCustomTemplate={useCustomTemplate}
-            />
           </div>
 
           {/* Load template */}
@@ -268,15 +279,34 @@ export function TemplateCustomizer({
                   )}
                 </select>
                 {selectedSavedId && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteSaved(selectedSavedId)}
-                    className="h-9 flex items-center px-3 py-0 text-red-600 text-sm hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded border border-red-300 dark:border-red-800 shrink-0"
-                    title="Delete this template"
-                    aria-label="Delete selected template"
-                  >
-                    Delete
-                  </button>
+                  confirmingDeleteId === selectedSavedId ? (
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSaved(selectedSavedId)}
+                        className="h-9 flex items-center px-3 py-0 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingDeleteId(null)}
+                        className="h-9 flex items-center px-3 py-0 text-sm border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSaved(selectedSavedId)}
+                      className="h-9 flex items-center px-3 py-0 text-red-600 text-sm hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded border border-red-300 dark:border-red-800 shrink-0"
+                      title="Delete this template"
+                      aria-label="Delete selected template"
+                    >
+                      Delete
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -303,19 +333,41 @@ export function TemplateCustomizer({
                 Save
               </button>
             </div>
+            {confirmOverwrite && (
+              <div className="flex items-center gap-2 w-full mt-2 px-3 py-2 bg-mtg-section-bg border border-mtg-border rounded-lg text-sm">
+                <span className="text-mtg-text">
+                  Overwrite &ldquo;{confirmOverwrite.name}&rdquo;?
+                </span>
+                <button
+                  type="button"
+                  onClick={handleConfirmOverwrite}
+                  className="h-7 px-2 py-0 bg-mtg-accent text-gray-900 font-medium rounded text-xs hover:bg-mtg-accent-hover transition-colors"
+                >
+                  Overwrite
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmOverwrite(null)}
+                  className="h-7 px-2 py-0 border border-mtg-border rounded text-xs hover:bg-mtg-hover-bg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Grid: controls + preview */}
-          <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6">
-            <div className="space-y-5">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6">
+            {/* Controls - 2x2 grid on desktop, stacked on mobile */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Page Size */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
-                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2">
-                  <span className="text-mtg-accent">📄</span> Page Size
+                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg> Page Size
                 </h3>
-                <div className="flex items-end gap-3 mb-4">
+                <div className="flex items-end gap-2 mb-3">
                   <div className="flex-1">
-                    <label className="text-xs text-mtg-text-muted block mb-1.5">Width</label>
+                    <label className="text-xs text-mtg-text-muted block mb-1">Width</label>
                     <input
                       type="number"
                       inputMode="decimal"
@@ -331,7 +383,7 @@ export function TemplateCustomizer({
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs text-mtg-text-muted block mb-1.5">Height</label>
+                    <label className="text-xs text-mtg-text-muted block mb-1">Height</label>
                     <input
                       type="number"
                       inputMode="decimal"
@@ -346,15 +398,15 @@ export function TemplateCustomizer({
                       className={inputClasses}
                     />
                   </div>
-                  <div>
-                    <label htmlFor={unitId} className="text-xs text-mtg-text-muted block mb-1.5">Unit</label>
+                  <div className="w-16">
+                    <label htmlFor={unitId} className="text-xs text-mtg-text-muted block mb-1">Unit</label>
                     <select
                       id={unitId}
                       value={template.unit}
                       onChange={(e) =>
                         handleUnitChange(e.target.value as TemplateMeasurementUnit)
                       }
-                      className="h-9 px-2.5 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm shrink-0"
+                      className="w-full h-9 px-2 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm"
                     >
                       <option value="in">in</option>
                       <option value="mm">mm</option>
@@ -362,7 +414,7 @@ export function TemplateCustomizer({
                   </div>
                 </div>
                 <div>
-                  <label htmlFor={quickSizeId} className="text-xs text-mtg-text-muted block mb-1.5">Quick Size</label>
+                  <label htmlFor={quickSizeId} className="text-xs text-mtg-text-muted block mb-1">Quick Size</label>
                   <select
                     id={quickSizeId}
                     value={
@@ -391,10 +443,10 @@ export function TemplateCustomizer({
 
               {/* Margins */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
-                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2">
-                  <span className="text-mtg-accent">📐</span> Page Margins
+                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 12h10"/><path d="M12 7v10"/></svg> Page Margins
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <NumField label="Top" value={template.marginTop} onChange={(v) => update({ marginTop: v })} />
                   <NumField label="Left" value={template.marginLeft} onChange={(v) => update({ marginLeft: v })} />
                 </div>
@@ -402,10 +454,10 @@ export function TemplateCustomizer({
 
               {/* Grid Layout */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
-                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2">
-                  <span className="text-mtg-accent">⊞</span> Grid Layout
+                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> Grid Layout
                 </h3>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <NumField label="Columns" value={template.columns} onChange={(v) => update({ columns: v })} min={1} step={1} integer />
                   <NumField label="Rows" value={template.rows} onChange={(v) => update({ rows: v })} min={1} step={1} integer />
                   <NumField label="H Gap" value={template.horizontalGap} onChange={(v) => update({ horizontalGap: v })} />
@@ -415,10 +467,10 @@ export function TemplateCustomizer({
 
               {/* Label Size */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
-                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2">
-                  <span className="text-mtg-accent">🏷️</span> Label Size
+                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg> Label Size
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <NumField label="Width" value={template.labelWidth} onChange={(v) => update({ labelWidth: v })} min={0.1} />
                   <NumField label="Height" value={template.labelHeight} onChange={(v) => update({ labelHeight: v })} min={0.1} />
                 </div>
@@ -429,7 +481,7 @@ export function TemplateCustomizer({
             <div className="rounded-lg border border-mtg-border bg-mtg-section-bg overflow-hidden flex flex-col min-h-0">
               <div className="flex items-center justify-between p-4 border-b border-mtg-border">
                 <h3 className="font-semibold text-mtg-text flex items-center gap-2">
-                  <span className="text-mtg-accent">📄</span> Page Preview
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Page Preview
                 </h3>
                 <button
                   onClick={() => setShowFullPreview(true)}
@@ -445,12 +497,22 @@ export function TemplateCustomizer({
                 <PagePreview
                   template={template}
                   containerSize={previewContainerSize ?? undefined}
+                  placeholders={placeholders}
                 />
               </div>
-              <p className="text-xs text-center text-mtg-text-muted px-4 py-2 border-t border-mtg-border">
-                {totalLabels} labels ({template.columns}&times;{template.rows}) •{' '}
-                {template.pageWidth}&times;{template.pageHeight} {template.unit}
-              </p>
+              <div className="flex items-center justify-between px-4 py-2 border-t border-mtg-border">
+                <PlaceholdersInput
+                  templateId={templateId}
+                  placeholders={placeholders}
+                  onPlaceholdersChange={onPlaceholdersChange}
+                  customTemplate={customTemplate}
+                  useCustomTemplate={useCustomTemplate}
+                />
+                <p className="text-xs text-mtg-text-muted">
+                  {totalLabels} labels ({template.columns}&times;{template.rows}) •{' '}
+                  {template.pageWidth}&times;{template.pageHeight} {template.unit}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -478,7 +540,7 @@ export function TemplateCustomizer({
                 Close
               </button>
             </div>
-            <PagePreview template={template} fullscreen />
+            <PagePreview template={template} fullscreen placeholders={placeholders} />
           </div>
         </div>
       )}

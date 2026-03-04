@@ -75,10 +75,11 @@ body {
   }
 }
 
-/* Minimum touch target for links; checkboxes/radio override per-component */
-a {
+/* Minimum touch target for standalone navigation links only */
+nav a {
   min-height: 44px;
-  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Buttons size by padding and content, not forced 44px */

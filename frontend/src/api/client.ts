@@ -26,21 +26,38 @@ export async function customFetch<T>(url: string, init?: RequestInit): Promise<T
   } as T
 }
 
-export async function generatePDF(
-  setIds: string[],
-  template: string,
-  placeholders: number,
-  customTemplate?: Record<string, number>,
-): Promise<Blob> {
+interface GeneratePDFOptions {
+  setIds?: string[]
+  cardTypeIds?: string[]
+  template: string
+  placeholders: number
+  customTemplate?: Record<string, number>
+  viewMode: 'sets' | 'types'
+}
+
+export async function generatePDF({
+  setIds,
+  cardTypeIds,
+  template,
+  placeholders,
+  customTemplate,
+  viewMode,
+}: GeneratePDFOptions): Promise<Blob> {
   const formData = new FormData()
 
-  for (const id of setIds) {
-    formData.append('set_ids', id)
+  if (viewMode === 'sets' && setIds) {
+    for (const id of setIds) {
+      formData.append('set_ids', id)
+    }
+  } else if (viewMode === 'types' && cardTypeIds) {
+    for (const id of cardTypeIds) {
+      formData.append('card_type_ids', id)
+    }
   }
 
   formData.append('template', template)
   formData.append('placeholders', placeholders.toString())
-  formData.append('view_mode', 'sets')
+  formData.append('view_mode', viewMode)
 
   if (customTemplate) {
     formData.append('custom_template', JSON.stringify(customTemplate))

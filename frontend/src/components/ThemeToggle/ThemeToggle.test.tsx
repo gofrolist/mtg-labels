@@ -38,7 +38,7 @@ describe('ThemeToggle', () => {
     })
 
     render(<ThemeToggle />)
-    expect(screen.getByText('🌙')).toBeInTheDocument()
+    expect(screen.getByLabelText('Switch to dark theme')).toBeInTheDocument()
   })
 
   it('shows sun icon for dark theme', () => {
@@ -49,6 +49,6 @@ describe('ThemeToggle', () => {
     })
 
     render(<ThemeToggle />)
-    expect(screen.getByText('☀️')).toBeInTheDocument()
+    expect(screen.getByLabelText('Switch to light theme')).toBeInTheDocument()
   })
 })

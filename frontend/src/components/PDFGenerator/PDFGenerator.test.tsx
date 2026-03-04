@@ -58,12 +58,13 @@ describe('PDFGenerator', () => {
     fireEvent.click(button)
 
     await waitFor(() => {
-      expect(generatePDF).toHaveBeenCalledWith(
-        ['set-1'],
-        'avery5160',
-        0,
-        undefined,
-      )
+      expect(generatePDF).toHaveBeenCalledWith({
+        setIds: ['set-1'],
+        template: 'avery5160',
+        placeholders: 0,
+        customTemplate: undefined,
+        viewMode: 'sets',
+      })
     })
   })
 

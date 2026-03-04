@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { MTGSet } from '../../types'
 import { AccordionGroup } from '../AccordionGroup/AccordionGroup'
 import { SetItem } from '../SetItem/SetItem'
@@ -27,6 +28,8 @@ export function SetList({
   onSelectGroup,
   setIconsMap,
 }: SetListProps) {
+  const selectedSet = useMemo(() => new Set(selectedSetIds), [selectedSetIds])
+
   return (
     <div>
       {Object.entries(groupedSets).map(([groupName, sets]) => (
@@ -39,13 +42,14 @@ export function SetList({
               const setIds = sets.map(s => s.id)
               onSelectGroup(groupName, setIds)
             } : undefined}
+            isGroupSelected={sets.length > 0 && sets.every(s => selectedSet.has(s.id))}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
               {sets.map((set) => (
                 <div key={set.id} className="col">
                   <SetItem
                     set={set}
-                    isSelected={selectedSetIds.includes(set.id)}
+                    isSelected={selectedSet.has(set.id)}
                     quantity={quantities[set.id] || 1}
                     showQuantityInput={useCustomQuantity}
                     onToggle={() => onToggleSet(set.id)}
