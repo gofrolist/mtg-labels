@@ -7,6 +7,8 @@ import { ErrorDisplay } from '../ErrorDisplay'
 
 interface PDFGeneratorProps {
   selectedSetIds: string[]
+  selectedTypeIds?: string[]
+  viewMode?: 'sets' | 'types'
   quantities: Record<string, number>
   useCustomQuantity: boolean
   templateId: string | null
@@ -18,6 +20,8 @@ interface PDFGeneratorProps {
 
 export function PDFGenerator({
   selectedSetIds,
+  selectedTypeIds = [],
+  viewMode = 'sets',
   quantities,
   useCustomQuantity,
   templateId,
@@ -30,8 +34,9 @@ export function PDFGenerator({
   const [error, setError] = useState<string | null>(null)
 
   const handleGenerate = async () => {
-    if (selectedSetIds.length === 0) {
-      setError('Please select at least one set before generating the PDF.')
+    const hasSelection = viewMode === 'sets' ? selectedSetIds.length > 0 : selectedTypeIds.length > 0
+    if (!hasSelection) {
+      setError(`Please select at least one ${viewMode === 'sets' ? 'set' : 'type'} before generating the PDF.`)
       return
     }
 
@@ -57,23 +62,44 @@ export function PDFGenerator({
           ? customTemplateToBackendFormat(customTemplate)
           : undefined
 
-      const expandedSetIds: string[] = []
-      for (const id of selectedSetIds) {
-        const qty = useCustomQuantity ? (quantities[id] ?? 1) : 1
-        for (let i = 0; i < qty; i++) {
-          expandedSetIds.push(id)
-        }
-      }
-
       const backendTemplateId =
         templateId && LABEL_TEMPLATES[templateId] ? templateId : 'avery5160'
 
-      const blob = await generatePDF(
-        expandedSetIds,
-        backendTemplateId,
-        placeholders,
-        backendCustomTemplate,
-      )
+      let blob: Blob
+
+      if (viewMode === 'sets') {
+        const expandedSetIds: string[] = []
+        for (const id of selectedSetIds) {
+          const qty = useCustomQuantity ? (quantities[id] ?? 1) : 1
+          for (let i = 0; i < qty; i++) {
+            expandedSetIds.push(id)
+          }
+        }
+
+        blob = await generatePDF({
+          setIds: expandedSetIds,
+          template: backendTemplateId,
+          placeholders,
+          customTemplate: backendCustomTemplate,
+          viewMode: 'sets',
+        })
+      } else {
+        const expandedTypeIds: string[] = []
+        for (const id of selectedTypeIds) {
+          const qty = useCustomQuantity ? (quantities[id] ?? 1) : 1
+          for (let i = 0; i < qty; i++) {
+            expandedTypeIds.push(id)
+          }
+        }
+
+        blob = await generatePDF({
+          cardTypeIds: expandedTypeIds,
+          template: backendTemplateId,
+          placeholders,
+          customTemplate: backendCustomTemplate,
+          viewMode: 'types',
+        })
+      }
 
       onSuccess?.()
 
@@ -102,7 +128,7 @@ export function PDFGenerator({
 
       <button
         onClick={handleGenerate}
-        disabled={loading || selectedSetIds.length === 0}
+        disabled={loading || (viewMode === 'sets' ? selectedSetIds.length === 0 : selectedTypeIds.length === 0)}
         className="h-9 px-4 py-0 flex items-center gap-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
       >
         {loading ? (

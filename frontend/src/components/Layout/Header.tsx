@@ -16,6 +16,8 @@ interface HeaderProps {
   onTemplateToggle: () => void
   templateBadgeLabel?: string
   selectedSetIds: string[]
+  selectedTypeIds: string[]
+  viewMode: 'sets' | 'types'
   quantities: Record<string, number>
   useCustomQuantity: boolean
   templateId: string | null
@@ -31,6 +33,8 @@ export function Header({
   onTemplateToggle,
   templateBadgeLabel,
   selectedSetIds,
+  selectedTypeIds,
+  viewMode,
   quantities,
   useCustomQuantity,
   templateId,
@@ -92,6 +96,8 @@ export function Header({
 
             <PDFGenerator
               selectedSetIds={selectedSetIds}
+              selectedTypeIds={selectedTypeIds}
+              viewMode={viewMode}
               quantities={quantities}
               useCustomQuantity={useCustomQuantity}
               templateId={templateId}
