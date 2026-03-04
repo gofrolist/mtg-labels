@@ -448,12 +448,22 @@ def create_app() -> FastAPI:
                     "generating without template overlay"
                 )
 
+        # Parse label layout if provided
+        label_layout_config: dict | None = None
+        if label_layout:
+            try:
+                label_layout_config = json.loads(label_layout)
+                logger.info(f"Using custom label layout: {label_layout_config}")
+            except json.JSONDecodeError:
+                logger.warning("Invalid JSON in label_layout field, using default layout")
+
         pdf_generator = PDFGenerator(
             selected_items_data,
             template_name=label_template,
             template_path=template_path,
             view_mode=view_mode,
             template_config=custom_template_config,
+            label_layout=label_layout_config,
         )
         pdf_buffer = pdf_generator.generate()
         filename = "mtg_labels.pdf" if not use_template_bool else "mtg_labels_with_template.pdf"

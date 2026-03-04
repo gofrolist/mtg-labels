@@ -32,6 +32,7 @@ interface GeneratePDFOptions {
   template: string
   placeholders: number
   customTemplate?: Record<string, number>
+  labelLayout?: Record<string, unknown>
   viewMode: 'sets' | 'types'
 }
 
@@ -41,6 +42,7 @@ export async function generatePDF({
   template,
   placeholders,
   customTemplate,
+  labelLayout,
   viewMode,
 }: GeneratePDFOptions): Promise<Blob> {
   const formData = new FormData()
@@ -61,6 +63,10 @@ export async function generatePDF({
 
   if (customTemplate) {
     formData.append('custom_template', JSON.stringify(customTemplate))
+  }
+
+  if (labelLayout) {
+    formData.append('label_layout', JSON.stringify(labelLayout))
   }
 
   const response = await fetch(`${API_BASE_URL}/generate-pdf`, {

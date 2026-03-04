@@ -67,6 +67,9 @@ export interface SelectionState {
   customTemplate: CustomTemplateDimensions | null
   useCustomTemplate: boolean
   useCustomQuantity: boolean // When false, all sets use quantity 1
+  labelLayoutId: string | null // ID of selected label layout (null = default, or 'saved:ID')
+  labelLayout: LabelLayout | null // Current label layout configuration
+  useCustomLayout: boolean // When true, use custom label layout
 }
 
 // Theme Preference
