@@ -27,59 +27,31 @@ export const TypeItem = memo(function TypeItem({
   }
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onToggle}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onToggle()
-        }
-      }}
-      className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-        isSelected
-          ? 'bg-mtg-accent/10 border border-mtg-accent'
-          : 'bg-mtg-card-bg border border-mtg-border hover:bg-mtg-hover-bg'
-      }`}
-      aria-pressed={isSelected}
-      aria-label={`${typeName} - ${isSelected ? 'selected' : 'not selected'}`}
-    >
-      <div
-        className={`w-5 h-5 rounded flex items-center justify-center shrink-0 transition-colors ${
-          isSelected ? 'bg-mtg-accent text-white' : 'border-2 border-mtg-border'
-        }`}
+    <div className="flex items-center hover:bg-mtg-hover-bg rounded px-1 py-0.5 transition-colors">
+      <input
+        type="checkbox"
+        id={`type-${typeId}`}
+        checked={isSelected}
+        onChange={onToggle}
+        className="w-4 h-4 mr-2 accent-mtg-accent rounded focus:ring-2 focus:ring-mtg-accent cursor-pointer flex-shrink-0"
+      />
+      <label
+        className="flex items-center cursor-pointer flex-1 min-w-0"
+        htmlFor={`type-${typeId}`}
+        title={typeName}
       >
-        {isSelected && (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        )}
-      </div>
-
-      <span className="text-sm text-mtg-text truncate flex-1">{typeName}</span>
-
-      {showQuantityInput && isSelected && (
+        <span className="truncate text-base">{typeName}</span>
+      </label>
+      {isSelected && showQuantityInput && (
         <input
           type="number"
-          min={1}
-          max={100}
+          inputMode="numeric"
+          min="1"
+          max="100"
           value={quantity}
           onChange={handleQuantityChange}
           onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-          className="w-14 px-2 py-1 text-sm border border-mtg-border rounded bg-mtg-input-bg text-mtg-text focus:outline-none focus:ring-2 focus:ring-mtg-accent"
+          className="w-12 ml-auto px-1 py-0.5 text-xs border border-mtg-border rounded bg-mtg-card-bg text-mtg-text flex-shrink-0"
           aria-label={`Quantity for ${typeName}`}
         />
       )}
