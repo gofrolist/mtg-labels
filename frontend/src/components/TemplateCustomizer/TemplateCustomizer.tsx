@@ -349,16 +349,17 @@ export function TemplateCustomizer({
           </div>
 
           {/* Grid: controls + preview */}
-          <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6">
-            <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6">
+            {/* Controls - 2x2 grid on desktop, stacked on mobile */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Page Size */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
-                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg> Page Size
+                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg> Page Size
                 </h3>
-                <div className="flex items-end gap-3 mb-4">
+                <div className="flex items-end gap-2 mb-3">
                   <div className="flex-1">
-                    <label className="text-xs text-mtg-text-muted block mb-1.5">Width</label>
+                    <label className="text-xs text-mtg-text-muted block mb-1">Width</label>
                     <input
                       type="number"
                       inputMode="decimal"
@@ -374,7 +375,7 @@ export function TemplateCustomizer({
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs text-mtg-text-muted block mb-1.5">Height</label>
+                    <label className="text-xs text-mtg-text-muted block mb-1">Height</label>
                     <input
                       type="number"
                       inputMode="decimal"
@@ -389,15 +390,15 @@ export function TemplateCustomizer({
                       className={inputClasses}
                     />
                   </div>
-                  <div>
-                    <label htmlFor={unitId} className="text-xs text-mtg-text-muted block mb-1.5">Unit</label>
+                  <div className="w-16">
+                    <label htmlFor={unitId} className="text-xs text-mtg-text-muted block mb-1">Unit</label>
                     <select
                       id={unitId}
                       value={template.unit}
                       onChange={(e) =>
                         handleUnitChange(e.target.value as TemplateMeasurementUnit)
                       }
-                      className="h-9 px-2.5 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm shrink-0"
+                      className="w-full h-9 px-2 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm"
                     >
                       <option value="in">in</option>
                       <option value="mm">mm</option>
@@ -405,7 +406,7 @@ export function TemplateCustomizer({
                   </div>
                 </div>
                 <div>
-                  <label htmlFor={quickSizeId} className="text-xs text-mtg-text-muted block mb-1.5">Quick Size</label>
+                  <label htmlFor={quickSizeId} className="text-xs text-mtg-text-muted block mb-1">Quick Size</label>
                   <select
                     id={quickSizeId}
                     value={
@@ -434,10 +435,10 @@ export function TemplateCustomizer({
 
               {/* Margins */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
-                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 12h10"/><path d="M12 7v10"/></svg> Page Margins
+                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 12h10"/><path d="M12 7v10"/></svg> Page Margins
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <NumField label="Top" value={template.marginTop} onChange={(v) => update({ marginTop: v })} />
                   <NumField label="Left" value={template.marginLeft} onChange={(v) => update({ marginLeft: v })} />
                 </div>
@@ -445,10 +446,10 @@ export function TemplateCustomizer({
 
               {/* Grid Layout */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
-                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> Grid Layout
+                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> Grid Layout
                 </h3>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <NumField label="Columns" value={template.columns} onChange={(v) => update({ columns: v })} min={1} step={1} integer />
                   <NumField label="Rows" value={template.rows} onChange={(v) => update({ rows: v })} min={1} step={1} integer />
                   <NumField label="H Gap" value={template.horizontalGap} onChange={(v) => update({ horizontalGap: v })} />
@@ -458,10 +459,10 @@ export function TemplateCustomizer({
 
               {/* Label Size */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
-                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg> Label Size
+                <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg> Label Size
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <NumField label="Width" value={template.labelWidth} onChange={(v) => update({ labelWidth: v })} min={0.1} />
                   <NumField label="Height" value={template.labelHeight} onChange={(v) => update({ labelHeight: v })} min={0.1} />
                 </div>
