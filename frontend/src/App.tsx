@@ -54,7 +54,6 @@ function App() {
   const [selectedTypeIds, setSelectedTypeIds] = useState<string[]>([])
   const [typeQuantities, setTypeQuantities] = useState<Record<string, number>>({})
   const [typeOpenGroups, setTypeOpenGroups] = useState<Set<string>>(new Set())
->>>>>>> e3aa978 (feat: add Sets/Types toggle and PDF types mode support)
 
   const filteredSets = useMemo(() => filterSetsByQuery(sets, searchQuery), [sets, searchQuery])
   const groupedSets = useMemo(() => groupSetsByType(filteredSets), [filteredSets])

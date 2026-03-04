@@ -235,7 +235,15 @@ export function TemplateCustomizer({
                 <div className="w-11 h-6 bg-gray-600 rounded-full peer-checked:bg-mtg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-mtg-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-mtg-card-bg transition-colors" />
                 <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5 pointer-events-none" />
               </div>
-              <span className="text-sm text-mtg-text">Use Custom Quantity</span>
+              <span className="text-sm text-mtg-text flex items-center gap-1">
+                Use Custom Quantity
+                <span
+                  className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-mtg-text-muted/20 text-mtg-text-muted text-xs cursor-help"
+                  title="Set how many labels to print for each selected item. The quantity input appears next to selected items when enabled."
+                >
+                  ?
+                </span>
+              </span>
             </label>
           </div>
 
