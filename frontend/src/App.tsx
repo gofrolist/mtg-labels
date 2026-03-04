@@ -142,12 +142,20 @@ function App() {
     })
   }
 
-  const handleSelectTypeGroup = (_groupName: string, typeIds: string[]) => {
+  const handleSelectTypeGroup = (groupName: string, typeIds: string[]) => {
     const allSelected = typeIds.every((id) => selectedTypeIds.includes(id))
     if (allSelected) {
       setSelectedTypeIds((prev) => prev.filter((id) => !typeIds.includes(id)))
+      // Close the group when deselecting
+      setTypeOpenGroups((prev) => {
+        const next = new Set(prev)
+        next.delete(groupName)
+        return next
+      })
     } else {
       setSelectedTypeIds((prev) => [...new Set([...prev, ...typeIds])])
+      // Open the group when selecting
+      setTypeOpenGroups((prev) => new Set([...prev, groupName]))
     }
   }
 
@@ -158,8 +166,12 @@ function App() {
     const allSelected = allTypeIds.every((id) => selectedTypeIds.includes(id))
     if (allSelected) {
       setSelectedTypeIds([])
+      // Close all groups when deselecting all
+      setTypeOpenGroups(new Set())
     } else {
       setSelectedTypeIds(allTypeIds)
+      // Open all groups when selecting all
+      setTypeOpenGroups(new Set(Object.keys(cardTypes)))
     }
   }
 
