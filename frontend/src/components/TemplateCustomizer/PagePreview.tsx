@@ -6,9 +6,11 @@ interface PagePreviewProps {
   fullscreen?: boolean
   /** When provided, scale preview to fit this container (width, height in px). */
   containerSize?: { width: number; height: number }
+  /** Number of empty/skipped labels at the start of the page */
+  placeholders?: number
 }
 
-export function PagePreview({ template, fullscreen, containerSize }: PagePreviewProps) {
+export function PagePreview({ template, fullscreen, containerSize, placeholders = 0 }: PagePreviewProps) {
   const u = template.unit
   const pageW = toPoints(template.pageWidth, u)
   const pageH = toPoints(template.pageHeight, u)
@@ -59,21 +61,28 @@ export function PagePreview({ template, fullscreen, containerSize }: PagePreview
             rowGap: vGap * scale,
           }}
         >
-          {Array.from({ length: template.columns * template.rows }).map((_, i) => (
-            <div
-              key={i}
-              className="border border-dashed border-gray-300 bg-[#d4af37]/10 flex items-center justify-center overflow-hidden"
-            >
-              {showNumbers && (
-                <span
-                  className="text-gray-500 select-none"
-                  style={{ fontSize: Math.max(fontSize, 6) }}
-                >
-                  {i + 1}
-                </span>
-              )}
-            </div>
-          ))}
+          {Array.from({ length: template.columns * template.rows }).map((_, i) => {
+            const isEmpty = i < placeholders
+            return (
+              <div
+                key={i}
+                className={`border border-dashed flex items-center justify-center overflow-hidden ${
+                  isEmpty
+                    ? 'border-gray-400 bg-gray-200'
+                    : 'border-gray-300 bg-[#d4af37]/10'
+                }`}
+              >
+                {showNumbers && (
+                  <span
+                    className={`select-none ${isEmpty ? 'text-gray-400' : 'text-gray-500'}`}
+                    style={{ fontSize: Math.max(fontSize, 6) }}
+                  >
+                    {isEmpty ? '-' : i + 1 - placeholders}
+                  </span>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

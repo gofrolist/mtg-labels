@@ -498,6 +498,7 @@ export function TemplateCustomizer({
                 <PagePreview
                   template={template}
                   containerSize={previewContainerSize ?? undefined}
+                  placeholders={placeholders}
                 />
               </div>
               <p className="text-xs text-center text-mtg-text-muted px-4 py-2 border-t border-mtg-border">
@@ -531,7 +532,7 @@ export function TemplateCustomizer({
                 Close
               </button>
             </div>
-            <PagePreview template={template} fullscreen />
+            <PagePreview template={template} fullscreen placeholders={placeholders} />
           </div>
         </div>
       )}
