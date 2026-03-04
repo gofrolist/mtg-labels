@@ -204,11 +204,11 @@ export function TemplateCustomizer({
 
   return (
     <div
-      className="border border-mtg-border rounded-lg mb-4 overflow-hidden grid transition-[grid-template-rows] duration-200 ease-out"
+      className="overflow-hidden grid transition-[grid-template-rows] duration-200 ease-out bg-mtg-card-bg border-b border-mtg-border"
       style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
     >
       <div className="min-h-0 overflow-hidden">
-        <div className="px-4 py-2 bg-mtg-card-bg border-t border-mtg-border">
+        <div className="container mx-auto px-4 py-4">
           {/* Toggle switches */}
           <div className="flex flex-col gap-3 mb-6">
             <label className="flex items-center gap-3 cursor-pointer">
