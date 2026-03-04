@@ -30,8 +30,14 @@ export function PlaceholdersInput({
 
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor="placeholders-input" className="text-sm text-mtg-text whitespace-nowrap">
-        Empty at start:
+      <label htmlFor="placeholders-input" className="text-sm text-mtg-text whitespace-nowrap flex items-center gap-1">
+        Skip labels:
+        <span
+          className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-mtg-text-muted/20 text-mtg-text-muted text-xs cursor-help"
+          title="Skip labels already used from a previous print. Useful when continuing on a partially used sheet."
+        >
+          ?
+        </span>
       </label>
       <input
         id="placeholders-input"
@@ -42,7 +48,7 @@ export function PlaceholdersInput({
         value={placeholders}
         onChange={handleChange}
         className="w-16 px-2 py-1 border border-mtg-border rounded bg-mtg-card-bg text-mtg-text focus:outline-none focus:ring-2 focus:ring-mtg-accent text-sm"
-        aria-label={`Number of empty labels at start (0 to ${maxPlaceholders})`}
+        aria-label={`Number of labels to skip (0 to ${maxPlaceholders})`}
       />
     </div>
   )

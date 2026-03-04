@@ -239,16 +239,6 @@ export function TemplateCustomizer({
             </label>
           </div>
 
-          <div className="mb-6">
-            <PlaceholdersInput
-              templateId={templateId}
-              placeholders={placeholders}
-              onPlaceholdersChange={onPlaceholdersChange}
-              customTemplate={customTemplate}
-              useCustomTemplate={useCustomTemplate}
-            />
-          </div>
-
           {/* Load template */}
           <div className="flex flex-wrap items-end gap-4 mb-6">
             <div className="min-w-[200px] flex-1">
@@ -501,10 +491,19 @@ export function TemplateCustomizer({
                   placeholders={placeholders}
                 />
               </div>
-              <p className="text-xs text-center text-mtg-text-muted px-4 py-2 border-t border-mtg-border">
-                {totalLabels} labels ({template.columns}&times;{template.rows}) •{' '}
-                {template.pageWidth}&times;{template.pageHeight} {template.unit}
-              </p>
+              <div className="flex items-center justify-between px-4 py-2 border-t border-mtg-border">
+                <PlaceholdersInput
+                  templateId={templateId}
+                  placeholders={placeholders}
+                  onPlaceholdersChange={onPlaceholdersChange}
+                  customTemplate={customTemplate}
+                  useCustomTemplate={useCustomTemplate}
+                />
+                <p className="text-xs text-mtg-text-muted">
+                  {totalLabels} labels ({template.columns}&times;{template.rows}) •{' '}
+                  {template.pageWidth}&times;{template.pageHeight} {template.unit}
+                </p>
+              </div>
             </div>
           </div>
         </div>
