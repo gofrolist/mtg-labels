@@ -53,7 +53,7 @@ export const SetItem = memo(function SetItem({ set, isSelected, quantity, showQu
           {set.name}
         </span>
       </label>
-      {showQuantityInput && (
+      {isSelected && showQuantityInput && (
         <input
           type="number"
           inputMode="numeric"
