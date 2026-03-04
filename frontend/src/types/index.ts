@@ -1,6 +1,17 @@
 // Re-export API types from generated models
 export type { MTGSetResponse as MTGSet } from '../api/model'
 
+// Re-export label layout types
+export type {
+  LabelElementPosition,
+  LabelFontFamily,
+  TextElementConfig,
+  IconElementConfig,
+  LabelLayout,
+  SavedCustomLayout,
+} from './labelLayout'
+export { POSITION_OPTIONS, FONT_OPTIONS } from './labelLayout'
+
 // Label Template configuration
 export interface LabelTemplate {
   id: string

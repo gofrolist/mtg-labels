@@ -244,6 +244,7 @@ def create_app() -> FastAPI:
         use_template: str | None = Form(None),
         template: str | None = Form(None),
         custom_template: str | None = Form(None),
+        label_layout: str | None = Form(None),
         placeholders: int = Form(0),
         view_mode: str = Form("sets"),
     ) -> StreamingResponse:
