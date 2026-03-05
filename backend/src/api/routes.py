@@ -448,14 +448,38 @@ def create_app() -> FastAPI:
                     "generating without template overlay"
                 )
 
-        # Parse label layout if provided
+        # Parse and validate label layout if provided
         label_layout_config: dict | None = None
         if label_layout:
             try:
-                label_layout_config = json.loads(label_layout)
-                logger.info(f"Using custom label layout: {label_layout_config}")
+                parsed_layout = json.loads(label_layout)
+                if not isinstance(parsed_layout, dict):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="label_layout must be a JSON object.",
+                    )
+                # Validate known keys have correct types
+                allowed_element_keys = {"setIcon", "setName", "setCode", "releaseDate"}
+                for key in allowed_element_keys:
+                    if key in parsed_layout and not isinstance(parsed_layout[key], dict):
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"label_layout.{key} must be a JSON object.",
+                        )
+                if "padding" in parsed_layout:
+                    padding_val = parsed_layout["padding"]
+                    if not isinstance(padding_val, (int, float)) or padding_val < 0:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="label_layout.padding must be a non-negative number.",
+                        )
+                label_layout_config = parsed_layout
+                logger.debug("Using custom label layout")
             except json.JSONDecodeError:
-                logger.warning("Invalid JSON in label_layout field, using default layout")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid JSON in label_layout field.",
+                )
 
         pdf_generator = PDFGenerator(
             selected_items_data,

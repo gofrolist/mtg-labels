@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useId } from 'react'
-import type { CustomTemplateDimensions, TemplateMeasurementUnit, LabelLayout } from '../../types'
+import type { CustomTemplateDimensions, TemplateMeasurementUnit } from '../../types'
 import { LABEL_TEMPLATES, DEFAULT_TEMPLATE_ID } from '../../constants/templates'
 import { convertValue } from '../../utils/unitConversion'
 import { round2, presetToCustom, getPresetUnit } from '../../utils/templateUtils'
@@ -24,12 +24,8 @@ interface TemplateCustomizerProps {
   onPlaceholdersChange: (value: number) => void
   onTemplateChange: (templateId: string | null) => void
   // Label layout props
-  labelLayoutId: string | null
-  labelLayout: LabelLayout | null
   useCustomLayout: boolean
   customLayoutsApi: CustomLayoutsApi
-  onLabelLayoutIdChange: (layoutId: string | null) => void
-  onLabelLayoutChange: (layout: LabelLayout | null) => void
   onUseCustomLayoutChange: (value: boolean) => void
 }
 
@@ -54,12 +50,8 @@ export function TemplateCustomizer({
   onUseCustomQuantityChange,
   onPlaceholdersChange,
   onTemplateChange,
-  labelLayoutId,
-  labelLayout,
   useCustomLayout,
   customLayoutsApi,
-  onLabelLayoutIdChange,
-  onLabelLayoutChange,
   onUseCustomLayoutChange,
 }: TemplateCustomizerProps) {
   const loadTemplateId = useId()
@@ -288,13 +280,7 @@ export function TemplateCustomizer({
           {/* Label Layout Editor - shown when custom layout is enabled */}
           {useCustomLayout && (
             <div className="mb-6">
-              <LabelLayoutEditor
-                layoutId={labelLayoutId}
-                layout={labelLayout}
-                customLayoutsApi={customLayoutsApi}
-                onLayoutIdChange={onLabelLayoutIdChange}
-                onLayoutChange={onLabelLayoutChange}
-              />
+              <LabelLayoutEditor layoutsApi={customLayoutsApi} />
             </div>
           )}
 

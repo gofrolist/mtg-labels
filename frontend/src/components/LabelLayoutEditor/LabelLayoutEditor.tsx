@@ -5,14 +5,21 @@ import type { CustomLayoutsApi } from '../../hooks/useCustomLayouts'
 import { LabelPreview } from './LabelPreview'
 
 interface LabelLayoutEditorProps {
-  isOpen: boolean
   layoutsApi: CustomLayoutsApi
+}
+
+/** Extract only the layout data fields (omit metadata: id, name, isDefault). */
+function extractLayoutData(
+  layout: LabelLayout,
+): Omit<LabelLayout, 'id' | 'name' | 'isDefault'> {
+  const { setIcon, setName, setCode, releaseDate, padding } = layout
+  return { setIcon, setName, setCode, releaseDate, padding }
 }
 
 const inputClasses =
   'w-full h-9 px-3 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm focus:outline-none focus:ring-2 focus:ring-mtg-accent/40'
 
-export function LabelLayoutEditor({ isOpen, layoutsApi }: LabelLayoutEditorProps) {
+export function LabelLayoutEditor({ layoutsApi }: LabelLayoutEditorProps) {
   const layoutSelectId = useId()
   const [saveName, setSaveName] = useState('')
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
@@ -67,7 +74,7 @@ export function LabelLayoutEditor({ isOpen, layoutsApi }: LabelLayoutEditorProps
   const handleSave = () => {
     const name = saveName.trim()
     if (!name || !draft) return
-    
+
     const existing = customLayouts.find(
       (l) => l.name.toLowerCase() === name.toLowerCase()
     )
@@ -75,17 +82,15 @@ export function LabelLayoutEditor({ isOpen, layoutsApi }: LabelLayoutEditorProps
       setConfirmOverwrite({ id: existing.id, name: existing.name })
       return
     }
-    
-    const { id: _id, name: _name, isDefault: _isDefault, ...layoutData } = draft
-    saveLayout(name, layoutData)
+
+    saveLayout(name, extractLayoutData(draft))
     setDraft(null)
     setSaveName('')
   }
 
   const handleConfirmOverwrite = () => {
     if (!confirmOverwrite || !draft) return
-    const { id: _id, name: _name, isDefault: _isDefault, ...layoutData } = draft
-    updateLayout(confirmOverwrite.id, layoutData)
+    updateLayout(confirmOverwrite.id, extractLayoutData(draft))
     setSelectedLayoutId(confirmOverwrite.id)
     setDraft(null)
     setSaveName('')
@@ -94,8 +99,7 @@ export function LabelLayoutEditor({ isOpen, layoutsApi }: LabelLayoutEditorProps
 
   const handleUpdateCurrent = () => {
     if (!draft || !isLayoutEditable(selectedLayoutId)) return
-    const { id: _id, name: _name, isDefault: _isDefault, ...layoutData } = draft
-    updateLayout(selectedLayoutId, layoutData)
+    updateLayout(selectedLayoutId, extractLayoutData(draft))
     setDraft(null)
   }
 
@@ -114,12 +118,9 @@ export function LabelLayoutEditor({ isOpen, layoutsApi }: LabelLayoutEditorProps
   }
 
   return (
-    <div
-      className="overflow-hidden grid transition-[grid-template-rows] duration-200 ease-out bg-mtg-card-bg border-b border-mtg-border"
-      style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
-    >
-      <div className="min-h-0 overflow-hidden">
-        <div className="container mx-auto px-4 py-4">
+    <div>
+      <div>
+        <div>
           {/* Layout selector */}
           <div className="flex flex-wrap items-end gap-4 mb-6">
             <div className="min-w-[200px] flex-1">

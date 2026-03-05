@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { CustomTemplateDimensions, SelectionState, LabelLayout } from '../types'
+import type { CustomTemplateDimensions, SelectionState } from '../types'
 import { getStorageItem, setStorageItem, isStorageAvailable } from '../utils/localStorage'
 import { DEFAULT_TEMPLATE_ID } from '../constants/templates'
 
@@ -13,8 +13,6 @@ const initialState: SelectionState = {
   customTemplate: null,
   useCustomTemplate: false,
   useCustomQuantity: false,
-  labelLayoutId: null,
-  labelLayout: null,
   useCustomLayout: false,
 }
 
@@ -107,14 +105,6 @@ export function useSelection() {
     setSelection((prev) => ({ ...prev, useCustomQuantity }))
   }, [])
 
-  const setLabelLayoutId = useCallback((labelLayoutId: string | null) => {
-    setSelection((prev) => ({ ...prev, labelLayoutId }))
-  }, [])
-
-  const setLabelLayout = useCallback((labelLayout: LabelLayout | null) => {
-    setSelection((prev) => ({ ...prev, labelLayout }))
-  }, [])
-
   const setUseCustomLayout = useCallback((useCustomLayout: boolean) => {
     setSelection((prev) => ({ ...prev, useCustomLayout }))
   }, [])
@@ -133,8 +123,6 @@ export function useSelection() {
     setCustomTemplate,
     setUseCustomTemplate,
     setUseCustomQuantity,
-    setLabelLayoutId,
-    setLabelLayout,
     setUseCustomLayout,
   }
 }

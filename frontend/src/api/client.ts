@@ -32,7 +32,7 @@ interface GeneratePDFOptions {
   template: string
   placeholders: number
   customTemplate?: Record<string, number>
-  labelLayout?: Record<string, unknown>
+  labelLayout?: object
   viewMode: 'sets' | 'types'
 }
 

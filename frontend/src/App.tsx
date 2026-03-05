@@ -41,8 +41,6 @@ function App() {
     setCustomTemplate,
     setUseCustomTemplate,
     setUseCustomQuantity,
-    setLabelLayoutId,
-    setLabelLayout,
     setUseCustomLayout,
   } = useSelection()
 
@@ -229,7 +227,7 @@ function App() {
         placeholders={selection.placeholders}
         customTemplate={selection.customTemplate}
         useCustomTemplate={selection.useCustomTemplate}
-        labelLayout={selection.labelLayout}
+        labelLayout={selection.useCustomLayout ? customLayoutsApi.getSelectedLayout() : null}
         useCustomLayout={selection.useCustomLayout}
       />
 
@@ -247,12 +245,8 @@ function App() {
           onUseCustomQuantityChange={setUseCustomQuantity}
           onPlaceholdersChange={setPlaceholders}
           onTemplateChange={setTemplate}
-          labelLayoutId={selection.labelLayoutId}
-          labelLayout={selection.labelLayout}
           useCustomLayout={selection.useCustomLayout}
           customLayoutsApi={customLayoutsApi}
-          onLabelLayoutIdChange={setLabelLayoutId}
-          onLabelLayoutChange={setLabelLayout}
           onUseCustomLayoutChange={setUseCustomLayout}
         />
       </Suspense>

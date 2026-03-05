@@ -71,10 +71,37 @@ class PDFGenerator:
     # Default label layout configuration
     DEFAULT_LABEL_LAYOUT: dict[str, Any] = {
         "setIcon": {"visible": True, "position": "middle-left", "size": 70},
-        "setName": {"visible": True, "position": "top-right", "fontFamily": "Helvetica-Bold", "fontSize": 8},
-        "setCode": {"visible": True, "position": "middle-right", "fontFamily": "Helvetica", "fontSize": 7},
-        "releaseDate": {"visible": False, "position": "bottom-right", "fontFamily": "Helvetica", "fontSize": 6},
+        "setName": {
+            "visible": True,
+            "position": "top-right",
+            "fontFamily": "EBGaramondBold",
+            "fontSize": 8,
+        },
+        "setCode": {
+            "visible": True,
+            "position": "middle-right",
+            "fontFamily": "SourceSansProRegular",
+            "fontSize": 7,
+        },
+        "releaseDate": {
+            "visible": False,
+            "position": "bottom-right",
+            "fontFamily": "SourceSansProRegular",
+            "fontSize": 6,
+        },
         "padding": 4,
+    }
+
+    # Map frontend font names to registered PDF fonts
+    FONT_MAP: dict[str, str] = {
+        "Helvetica": "Helvetica",
+        "Helvetica-Bold": "Helvetica-Bold",
+        "Times-Roman": "Times-Roman",
+        "Times-Bold": "Times-Bold",
+        "Courier": "Courier",
+        "Courier-Bold": "Courier-Bold",
+        "EBGaramondBold": "EBGaramondBold",
+        "SourceSansProRegular": "SourceSansProRegular",
     }
 
     def __init__(
@@ -111,10 +138,10 @@ class PDFGenerator:
                 template_key = CURRENT_LABEL_TEMPLATE
             self.template = LABEL_TEMPLATES[template_key]
         self.template_path = template_path
-        
-        # Label layout configuration (merge with defaults)
-        self.label_layout = {**self.DEFAULT_LABEL_LAYOUT, **(label_layout or {})}
-        
+
+        # Label layout configuration (deep merge with defaults)
+        self.label_layout = self._merge_layout(label_layout)
+
         self.buffer = io.BytesIO()
         self.canvas = canvas.Canvas(
             self.buffer, pagesize=(self.template["page_width"], self.template["page_height"])
@@ -132,6 +159,26 @@ class PDFGenerator:
         self.start_time: float | None = None
         self.end_time: float | None = None
         self.labels_processed = 0
+
+    def _merge_layout(self, user_layout: dict[str, Any] | None) -> dict[str, Any]:
+        """Deep-merge user layout overrides into DEFAULT_LABEL_LAYOUT.
+
+        Nested dicts (setIcon, setName, setCode, releaseDate) are merged
+        per-key so partial overrides don't discard defaults.
+        """
+        if not user_layout:
+            return dict(self.DEFAULT_LABEL_LAYOUT)
+
+        merged: dict[str, Any] = {}
+        for key, default_val in self.DEFAULT_LABEL_LAYOUT.items():
+            user_val = user_layout.get(key)
+            if isinstance(default_val, dict) and isinstance(user_val, dict):
+                merged[key] = {**default_val, **user_val}
+            elif user_val is not None:
+                merged[key] = user_val
+            else:
+                merged[key] = default_val
+        return merged
 
     def generate(self) -> io.BytesIO:
         """
@@ -218,7 +265,7 @@ class PDFGenerator:
         # Get layout configuration
         layout = self.label_layout
         padding = layout.get("padding", 4)
-        
+
         # Calculate label content area (inside padding)
         content_x = label_x + padding
         content_y = label_y + padding
@@ -242,7 +289,7 @@ class PDFGenerator:
             released_at = set_data.get("released_at")
             if released_at:
                 try:
-                    release_date_text = datetime.strptime(released_at, "%Y-%m-%d").strftime("%Y-%m-%d")
+                    release_date_text = datetime.strptime(released_at, "%Y-%m-%d").strftime("%B %Y")
                 except ValueError:
                     release_date_text = released_at
             symbol_file = get_symbol_file(set_data)
@@ -258,7 +305,10 @@ class PDFGenerator:
         if icon_config.get("visible", True) and symbol_file:
             self._draw_positioned_symbol(
                 symbol_file,
-                content_x, content_y, content_width, content_height,
+                content_x,
+                content_y,
+                content_width,
+                content_height,
                 icon_config.get("position", "middle-left"),
                 icon_config.get("size", 70),
                 symbol_label,
@@ -268,7 +318,10 @@ class PDFGenerator:
         if name_config.get("visible", True):
             self._draw_positioned_text(
                 set_name_text,
-                content_x, content_y, content_width, content_height,
+                content_x,
+                content_y,
+                content_width,
+                content_height,
                 name_config.get("position", "top-right"),
                 name_config.get("fontFamily", "Helvetica-Bold"),
                 name_config.get("fontSize", 8),
@@ -278,7 +331,10 @@ class PDFGenerator:
         if code_config.get("visible", True):
             self._draw_positioned_text(
                 set_code_text,
-                content_x, content_y, content_width, content_height,
+                content_x,
+                content_y,
+                content_width,
+                content_height,
                 code_config.get("position", "middle-right"),
                 code_config.get("fontFamily", "Helvetica"),
                 code_config.get("fontSize", 7),
@@ -288,7 +344,10 @@ class PDFGenerator:
         if date_config.get("visible", False) and release_date_text:
             self._draw_positioned_text(
                 release_date_text,
-                content_x, content_y, content_width, content_height,
+                content_x,
+                content_y,
+                content_width,
+                content_height,
                 date_config.get("position", "bottom-right"),
                 date_config.get("fontFamily", "Helvetica"),
                 date_config.get("fontSize", 6),
@@ -369,34 +428,20 @@ class PDFGenerator:
         if not text:
             return
 
-        # Map layout font names to registered fonts
-        font_map = {
-            "Helvetica": "Helvetica",
-            "Helvetica-Bold": "Helvetica-Bold",
-            "Times-Roman": "Times-Roman",
-            "Times-Bold": "Times-Bold",
-            "Courier": "Courier",
-            "Courier-Bold": "Courier-Bold",
-        }
-        actual_font = font_map.get(font_family, "Helvetica")
+        actual_font = self.FONT_MAP.get(font_family, "Helvetica")
 
-        # Calculate text width
+        # Calculate text width and truncate if too wide
         self.canvas.setFont(actual_font, font_size)
         text_width = self.canvas.stringWidth(text, actual_font, font_size)
-        
-        # Truncate text if too wide
         max_width = content_width * 0.9
+
         if text_width > max_width:
-            while text_width > max_width and len(text) > 1:
-                text = text[:-1]
-                text_width = self.canvas.stringWidth(text + "...", actual_font, font_size)
-            text = text + "..."
+            text = fit_text_to_width(text, actual_font, font_size, max_width, self.canvas)
             text_width = self.canvas.stringWidth(text, actual_font, font_size)
 
         # Get position (use font_size as approximate height)
         x, y = self._get_position_coords(
-            position, content_x, content_y, content_width, content_height,
-            text_width, font_size
+            position, content_x, content_y, content_width, content_height, text_width, font_size
         )
 
         # Draw text
@@ -434,13 +479,26 @@ class PDFGenerator:
 
         if local_file.lower().endswith(".svg"):
             self._draw_positioned_svg_symbol(
-                local_file, content_x, content_y, content_width, content_height,
-                position, target_height, target_width, set_name
+                local_file,
+                content_x,
+                content_y,
+                content_width,
+                content_height,
+                position,
+                target_height,
+                target_width,
+                set_name,
             )
         else:
             self._draw_positioned_raster_symbol(
-                local_file, content_x, content_y, content_width, content_height,
-                position, target_height, target_width
+                local_file,
+                content_x,
+                content_y,
+                content_width,
+                content_height,
+                position,
+                target_height,
+                target_width,
             )
 
     def _draw_positioned_svg_symbol(
@@ -490,14 +548,19 @@ class PDFGenerator:
         scale_from_height = target_height / intrinsic_height
         scale_from_width = target_width / intrinsic_width
         scale_factor = min(scale_from_height, scale_from_width)
-        
+
         scaled_width = intrinsic_width * scale_factor
         scaled_height = intrinsic_height * scale_factor
 
         # Get position
         x, y = self._get_position_coords(
-            position, content_x, content_y, content_width, content_height,
-            scaled_width, scaled_height
+            position,
+            content_x,
+            content_y,
+            content_width,
+            content_height,
+            scaled_width,
+            scaled_height,
         )
 
         # Draw symbol
@@ -532,13 +595,19 @@ class PDFGenerator:
             symbol_height = symbol_width
 
             x, y = self._get_position_coords(
-                position, content_x, content_y, content_width, content_height,
-                symbol_width, symbol_height
+                position,
+                content_x,
+                content_y,
+                content_width,
+                content_height,
+                symbol_width,
+                symbol_height,
             )
 
             self.canvas.drawImage(
                 image_reader,
-                x, y,
+                x,
+                y,
                 width=symbol_width,
                 height=symbol_height,
                 preserveAspectRatio=True,
@@ -546,24 +615,6 @@ class PDFGenerator:
             )
         except Exception as e:
             logger.error(f"Error drawing raster symbol: {e}")
-
-    def _draw_label_text(self, text_x: float, text_y: float, line1: str, line2: str) -> None:
-        """Draw the two text lines on a label.
-
-        Args:
-            text_x: X position for text
-            text_y: Y position for first line
-            line1: First line text (set name or card type)
-            line2: Second line text (set code/date or color)
-        """
-        self.canvas.setFont("EBGaramondBold", FONT_SIZE_ROW1)
-        self.canvas.setFillColorRGB(0, 0, 0)
-        self.canvas.drawString(text_x, text_y, line1)
-
-        if line2:
-            second_text_y = text_y - FONT_SIZE_ROW1 - 4
-            self.canvas.setFont("SourceSansProRegular", FONT_SIZE_ROW2)
-            self.canvas.drawString(text_x, second_text_y, line2)
 
     def _calculate_symbol_position(
         self,

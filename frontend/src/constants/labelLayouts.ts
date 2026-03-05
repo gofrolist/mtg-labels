@@ -18,19 +18,19 @@ export const DEFAULT_LABEL_LAYOUTS: Record<string, LabelLayout> = {
     setName: {
       visible: true,
       position: 'top-right',
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: 'EBGaramondBold',
       fontSize: 8,
     },
     setCode: {
       visible: true,
       position: 'middle-right',
-      fontFamily: 'Helvetica',
+      fontFamily: 'SourceSansProRegular',
       fontSize: 7,
     },
     releaseDate: {
       visible: false,
       position: 'bottom-right',
-      fontFamily: 'Helvetica',
+      fontFamily: 'SourceSansProRegular',
       fontSize: 6,
     },
     padding: 4,

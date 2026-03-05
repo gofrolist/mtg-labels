@@ -1,6 +1,6 @@
 /**
  * Label Layout Configuration Types
- * 
+ *
  * Allows users to customize how elements are positioned and styled within labels.
  */
 
@@ -24,6 +24,8 @@ export type LabelFontFamily =
   | 'Times-Bold'
   | 'Courier'
   | 'Courier-Bold'
+  | 'EBGaramondBold'
+  | 'SourceSansProRegular'
 
 // Configuration for a text element
 export interface TextElementConfig {
@@ -78,6 +80,8 @@ export const POSITION_OPTIONS: { value: LabelElementPosition; label: string }[] 
 
 // Font family options for UI dropdowns
 export const FONT_OPTIONS: { value: LabelFontFamily; label: string }[] = [
+  { value: 'EBGaramondBold', label: 'EB Garamond Bold' },
+  { value: 'SourceSansProRegular', label: 'Source Sans Pro' },
   { value: 'Helvetica', label: 'Helvetica' },
   { value: 'Helvetica-Bold', label: 'Helvetica Bold' },
   { value: 'Times-Roman', label: 'Times Roman' },
