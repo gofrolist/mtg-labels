@@ -133,5 +133,8 @@ export function useSelection() {
     setCustomTemplate,
     setUseCustomTemplate,
     setUseCustomQuantity,
+    setLabelLayoutId,
+    setLabelLayout,
+    setUseCustomLayout,
   }
 }

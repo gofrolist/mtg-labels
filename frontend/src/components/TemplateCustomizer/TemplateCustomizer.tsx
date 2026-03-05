@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useId } from 'react'
-import type { CustomTemplateDimensions, TemplateMeasurementUnit } from '../../types'
+import type { CustomTemplateDimensions, TemplateMeasurementUnit, LabelLayout } from '../../types'
 import { LABEL_TEMPLATES, DEFAULT_TEMPLATE_ID } from '../../constants/templates'
 import { convertValue } from '../../utils/unitConversion'
 import { round2, presetToCustom, getPresetUnit } from '../../utils/templateUtils'
 import type { CustomTemplatesApi } from '../../hooks/useCustomTemplates'
+import type { CustomLayoutsApi } from '../../hooks/useCustomLayouts'
 import { PagePreview } from './PagePreview'
 import { PlaceholdersInput } from './PlaceholdersInput'
 import { NumField, inputClasses } from './NumField'
+import { LabelLayoutEditor } from '../LabelLayoutEditor'
 
 interface TemplateCustomizerProps {
   isOpen: boolean
@@ -21,6 +23,14 @@ interface TemplateCustomizerProps {
   onUseCustomQuantityChange: (value: boolean) => void
   onPlaceholdersChange: (value: number) => void
   onTemplateChange: (templateId: string | null) => void
+  // Label layout props
+  labelLayoutId: string | null
+  labelLayout: LabelLayout | null
+  useCustomLayout: boolean
+  customLayoutsApi: CustomLayoutsApi
+  onLabelLayoutIdChange: (layoutId: string | null) => void
+  onLabelLayoutChange: (layout: LabelLayout | null) => void
+  onUseCustomLayoutChange: (value: boolean) => void
 }
 
 const PAGE_SIZES: Record<
@@ -44,6 +54,13 @@ export function TemplateCustomizer({
   onUseCustomQuantityChange,
   onPlaceholdersChange,
   onTemplateChange,
+  labelLayoutId,
+  labelLayout,
+  useCustomLayout,
+  customLayoutsApi,
+  onLabelLayoutIdChange,
+  onLabelLayoutChange,
+  onUseCustomLayoutChange,
 }: TemplateCustomizerProps) {
   const loadTemplateId = useId()
   const unitId = useId()
@@ -245,7 +262,41 @@ export function TemplateCustomizer({
                 </span>
               </span>
             </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={useCustomLayout}
+                  onChange={(e) => onUseCustomLayoutChange(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-600 rounded-full peer-checked:bg-mtg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-mtg-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-mtg-card-bg transition-colors" />
+                <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5 pointer-events-none" />
+              </div>
+              <span className="text-sm text-mtg-text flex items-center gap-1">
+                Use Custom Label Layout
+                <span
+                  className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-mtg-text-muted/20 text-mtg-text-muted text-xs cursor-help"
+                  title="Customize what appears on each label: icon position/size, text elements, fonts, and more."
+                >
+                  ?
+                </span>
+              </span>
+            </label>
           </div>
+
+          {/* Label Layout Editor - shown when custom layout is enabled */}
+          {useCustomLayout && (
+            <div className="mb-6">
+              <LabelLayoutEditor
+                layoutId={labelLayoutId}
+                layout={labelLayout}
+                customLayoutsApi={customLayoutsApi}
+                onLayoutIdChange={onLabelLayoutIdChange}
+                onLayoutChange={onLabelLayoutChange}
+              />
+            </div>
+          )}
 
           {/* Load template */}
           <div className="flex flex-wrap items-end gap-4 mb-6">

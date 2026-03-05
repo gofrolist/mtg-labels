@@ -7,7 +7,7 @@ import { PDFGenerator } from '../PDFGenerator/PDFGenerator'
 const DonateModal = lazy(() =>
   import('../DonateModal').then((m) => ({ default: m.DonateModal })),
 )
-import type { CustomTemplateDimensions } from '../../types'
+import type { CustomTemplateDimensions, LabelLayout } from '../../types'
 
 interface HeaderProps {
   searchQuery: string
@@ -24,6 +24,8 @@ interface HeaderProps {
   placeholders: number
   customTemplate: CustomTemplateDimensions | null
   useCustomTemplate: boolean
+  labelLayout: LabelLayout | null
+  useCustomLayout: boolean
 }
 
 export function Header({
@@ -41,6 +43,8 @@ export function Header({
   placeholders,
   customTemplate,
   useCustomTemplate,
+  labelLayout,
+  useCustomLayout,
 }: HeaderProps) {
   const [navMenuOpen, setNavMenuOpen] = useState(false)
   const [showDonateModal, setShowDonateModal] = useState(false)
@@ -104,6 +108,8 @@ export function Header({
               placeholders={placeholders}
               customTemplate={customTemplate}
               useCustomTemplate={useCustomTemplate}
+              labelLayout={labelLayout}
+              useCustomLayout={useCustomLayout}
               onSuccess={() => setShowDonateModal(true)}
             />
           </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { generatePDF } from '../../api/client'
 import { LABEL_TEMPLATES } from '../../constants/templates'
-import type { CustomTemplateDimensions } from '../../types'
+import type { CustomTemplateDimensions, LabelLayout } from '../../types'
 import { customTemplateToBackendFormat } from '../../utils/unitConversion'
 import { ErrorDisplay } from '../ErrorDisplay'
 
@@ -15,6 +15,8 @@ interface PDFGeneratorProps {
   placeholders: number
   customTemplate?: CustomTemplateDimensions | null
   useCustomTemplate?: boolean
+  labelLayout?: LabelLayout | null
+  useCustomLayout?: boolean
   onSuccess?: () => void
 }
 
@@ -28,6 +30,8 @@ export function PDFGenerator({
   placeholders,
   customTemplate,
   useCustomTemplate,
+  labelLayout,
+  useCustomLayout,
   onSuccess,
 }: PDFGeneratorProps) {
   const [loading, setLoading] = useState(false)
@@ -81,6 +85,7 @@ export function PDFGenerator({
           template: backendTemplateId,
           placeholders,
           customTemplate: backendCustomTemplate,
+          labelLayout: useCustomLayout && labelLayout ? labelLayout : undefined,
           viewMode: 'sets',
         })
       } else {
@@ -97,6 +102,7 @@ export function PDFGenerator({
           template: backendTemplateId,
           placeholders,
           customTemplate: backendCustomTemplate,
+          labelLayout: useCustomLayout && labelLayout ? labelLayout : undefined,
           viewMode: 'types',
         })
       }
