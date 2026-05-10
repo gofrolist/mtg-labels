@@ -386,3 +386,112 @@ class TestGeneratePdfEndpoint:
         assert response.status_code == 400
         response_json = response.json()
         assert "missing fields" in response_json["error"]["detail"]
+
+
+class TestGeneratePdfLabelLayout:
+    """Tests for the label_layout parameter on POST /generate-pdf."""
+
+    @patch("src.api.routes.PDFGenerator")
+    def test_label_layout_passed_to_generator(self, mock_pdf_gen, client):
+        """A valid label_layout JSON is parsed and forwarded to PDFGenerator."""
+        import json
+
+        mock_generator_instance = Mock()
+        mock_generator_instance.generate.return_value = BytesIO(b"%PDF-1.4 fake")
+        mock_pdf_gen.return_value = mock_generator_instance
+
+        layout = {
+            "setIcon": {"visible": True, "position": "top-left", "size": 60},
+            "setName": {"visible": True, "position": "middle-center", "fontSize": 9},
+            "padding": 6,
+        }
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "card_type_ids": ["White:Creature"],
+                "view_mode": "types",
+                "label_layout": json.dumps(layout),
+            },
+        )
+
+        assert response.status_code == 200
+        call_kwargs = mock_pdf_gen.call_args[1]
+        assert call_kwargs["label_layout"] == layout
+
+    def test_label_layout_invalid_json(self, client):
+        """Malformed label_layout JSON returns 400."""
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "card_type_ids": ["White:Creature"],
+                "view_mode": "types",
+                "label_layout": "{not valid",
+            },
+        )
+
+        assert response.status_code == 400
+        assert "Invalid JSON" in response.json()["error"]["detail"]
+
+    def test_label_layout_must_be_object(self, client):
+        """label_layout that isn't a JSON object returns 400."""
+        import json
+
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "card_type_ids": ["White:Creature"],
+                "view_mode": "types",
+                "label_layout": json.dumps([1, 2, 3]),
+            },
+        )
+
+        assert response.status_code == 400
+        assert "must be a JSON object" in response.json()["error"]["detail"]
+
+    def test_label_layout_element_must_be_object(self, client):
+        """label_layout element keys must themselves be JSON objects."""
+        import json
+
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "card_type_ids": ["White:Creature"],
+                "view_mode": "types",
+                "label_layout": json.dumps({"setIcon": "not-a-dict"}),
+            },
+        )
+
+        assert response.status_code == 400
+        assert "label_layout.setIcon" in response.json()["error"]["detail"]
+
+    def test_label_layout_padding_must_be_non_negative(self, client):
+        """Negative padding is rejected with 400."""
+        import json
+
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "card_type_ids": ["White:Creature"],
+                "view_mode": "types",
+                "label_layout": json.dumps({"padding": -1}),
+            },
+        )
+
+        assert response.status_code == 400
+        assert "padding" in response.json()["error"]["detail"]
+
+    def test_label_layout_padding_must_be_numeric(self, client):
+        """Non-numeric padding is rejected with 400."""
+        import json
+
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "card_type_ids": ["White:Creature"],
+                "view_mode": "types",
+                "label_layout": json.dumps({"padding": "lots"}),
+            },
+        )
+
+        assert response.status_code == 400
+        assert "padding" in response.json()["error"]["detail"]
