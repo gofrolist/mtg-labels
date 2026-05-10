@@ -6,6 +6,7 @@ import { useSelection } from './hooks/useSelection'
 import { useOpenGroups } from './hooks/useOpenGroups'
 import { useSetIcons } from './hooks/useSetIcons'
 import { useCustomTemplates } from './hooks/useCustomTemplates'
+import { useCustomLayouts } from './hooks/useCustomLayouts'
 import { groupSetsByType, filterSetsByQuery } from './utils/grouping'
 import { LABEL_TEMPLATES } from './constants/templates'
 import { Header } from './components/Layout/Header'
@@ -40,6 +41,7 @@ function App() {
     setCustomTemplate,
     setUseCustomTemplate,
     setUseCustomQuantity,
+    setUseCustomLayout,
   } = useSelection()
 
   const sets: MTGSet[] = useMemo(() => setsResponse?.data ?? [], [setsResponse?.data])
@@ -88,6 +90,7 @@ function App() {
   }, [selection.placeholders, totalLabels, labelsPerPage])
 
   const customTemplatesApi = useCustomTemplates()
+  const customLayoutsApi = useCustomLayouts()
   const templateBadgeLabel = selection.useCustomTemplate
     ? selection.templateId?.startsWith('saved:')
       ? customTemplatesApi.templates.find((t) => t.id === selection.templateId!.slice(6))?.name ??
@@ -224,6 +227,8 @@ function App() {
         placeholders={selection.placeholders}
         customTemplate={selection.customTemplate}
         useCustomTemplate={selection.useCustomTemplate}
+        labelLayout={selection.useCustomLayout ? customLayoutsApi.getSelectedLayout() : null}
+        useCustomLayout={selection.useCustomLayout}
       />
 
       <Suspense fallback={null}>
@@ -240,6 +245,9 @@ function App() {
           onUseCustomQuantityChange={setUseCustomQuantity}
           onPlaceholdersChange={setPlaceholders}
           onTemplateChange={setTemplate}
+          useCustomLayout={selection.useCustomLayout}
+          customLayoutsApi={customLayoutsApi}
+          onUseCustomLayoutChange={setUseCustomLayout}
         />
       </Suspense>
 

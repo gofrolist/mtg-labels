@@ -342,3 +342,249 @@ class TestPDFGenerator:
         # Should use custom config, not avery5160
         assert generator.template["page_width"] == 595.2
         assert generator.template["label_rows"] == 7
+
+
+class TestPDFGeneratorLabelLayout:
+    """Tests for PDFGenerator label_layout configuration."""
+
+    def test_merge_layout_with_none(self, sample_set_data):
+        """Passing None layout returns a copy of the defaults."""
+        generator = PDFGenerator(sample_set_data, label_layout=None)
+
+        assert generator.label_layout == PDFGenerator.DEFAULT_LABEL_LAYOUT
+        # Verify it's a copy, not a reference
+        assert generator.label_layout is not PDFGenerator.DEFAULT_LABEL_LAYOUT
+
+    def test_merge_layout_with_empty_dict(self, sample_set_data):
+        """Empty layout dict falls back to defaults."""
+        generator = PDFGenerator(sample_set_data, label_layout={})
+
+        assert generator.label_layout == PDFGenerator.DEFAULT_LABEL_LAYOUT
+
+    def test_merge_layout_partial_override(self, sample_set_data):
+        """Partial element overrides merge with element defaults."""
+        partial = {
+            "setIcon": {"size": 90},
+            "padding": 10,
+        }
+        generator = PDFGenerator(sample_set_data, label_layout=partial)
+
+        # setIcon: size overridden, but visible/position retained from defaults
+        assert generator.label_layout["setIcon"]["size"] == 90
+        assert generator.label_layout["setIcon"]["visible"] is True
+        assert generator.label_layout["setIcon"]["position"] == "middle-left"
+        # padding overridden
+        assert generator.label_layout["padding"] == 10
+        # Untouched element retains defaults
+        assert generator.label_layout["setName"] == PDFGenerator.DEFAULT_LABEL_LAYOUT["setName"]
+
+    def test_merge_layout_full_override(self, sample_set_data):
+        """All custom layout fields are honored."""
+        layout = {
+            "setIcon": {"visible": False, "position": "top-left", "size": 50},
+            "setName": {
+                "visible": True,
+                "position": "bottom-center",
+                "fontFamily": "Helvetica",
+                "fontSize": 10,
+            },
+            "setCode": {
+                "visible": True,
+                "position": "top-right",
+                "fontFamily": "Helvetica-Bold",
+                "fontSize": 9,
+            },
+            "releaseDate": {
+                "visible": True,
+                "position": "bottom-right",
+                "fontFamily": "Helvetica",
+                "fontSize": 6,
+            },
+            "padding": 8,
+        }
+        generator = PDFGenerator(sample_set_data, label_layout=layout)
+
+        assert generator.label_layout["setIcon"]["visible"] is False
+        assert generator.label_layout["setIcon"]["size"] == 50
+        assert generator.label_layout["setName"]["fontSize"] == 10
+        assert generator.label_layout["releaseDate"]["visible"] is True
+        assert generator.label_layout["padding"] == 8
+
+    def test_get_position_coords_all_positions(self, sample_set_data):
+        """All 9 position presets produce coordinates within content area."""
+        generator = PDFGenerator(sample_set_data)
+
+        cx, cy, cw, ch = 100.0, 200.0, 80.0, 60.0
+        ew, eh = 10.0, 10.0
+        positions = [
+            "top-left",
+            "top-center",
+            "top-right",
+            "middle-left",
+            "middle-center",
+            "middle-right",
+            "bottom-left",
+            "bottom-center",
+            "bottom-right",
+        ]
+        for position in positions:
+            x, y = generator._get_position_coords(position, cx, cy, cw, ch, ew, eh)
+            assert cx <= x <= cx + cw
+            assert cy <= y <= cy + ch
+
+    def test_get_position_coords_center_alignment(self, sample_set_data):
+        """Middle-center centers the element within content area."""
+        generator = PDFGenerator(sample_set_data)
+
+        x, y = generator._get_position_coords("middle-center", 0, 0, 100, 100, 20, 20)
+
+        assert x == 40
+        assert y == 40
+
+    def test_get_position_coords_default_when_invalid(self, sample_set_data):
+        """A bare position string falls back to middle/center semantics for missing axis."""
+        generator = PDFGenerator(sample_set_data)
+
+        # Single token -> vertical only, horizontal defaults to "center"
+        x, y = generator._get_position_coords("top", 0, 0, 100, 100, 20, 20)
+        # vertical "top" -> y = 0 + 100 - 20 = 80; horizontal default "center" -> x = 40
+        assert x == 40
+        assert y == 80
+
+    def test_pdf_generator_with_custom_layout_renders(self, sample_set_data):
+        """PDF generation with custom label_layout produces a valid PDF."""
+        layout = {
+            "setIcon": {"visible": True, "position": "top-left", "size": 40},
+            "setName": {
+                "visible": True,
+                "position": "middle-center",
+                "fontFamily": "Helvetica",
+                "fontSize": 9,
+            },
+            "setCode": {"visible": True, "position": "bottom-left"},
+            "releaseDate": {"visible": True, "position": "bottom-right"},
+            "padding": 6,
+        }
+        generator = PDFGenerator(sample_set_data, label_layout=layout)
+
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            result = generator.generate()
+
+        pdf_content = result.read()
+        assert pdf_content.startswith(b"%PDF")
+        assert len(pdf_content) > 1000
+
+    def test_pdf_generator_layout_hides_elements(self, sample_set_data):
+        """Layout with visible=False on all elements still produces a valid PDF."""
+        layout = {
+            "setIcon": {"visible": False},
+            "setName": {"visible": False},
+            "setCode": {"visible": False},
+            "releaseDate": {"visible": False},
+            "padding": 4,
+        }
+        generator = PDFGenerator(sample_set_data, label_layout=layout)
+
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            result = generator.generate()
+
+        pdf_content = result.read()
+        assert pdf_content.startswith(b"%PDF")
+
+    def test_pdf_generator_layout_types_view(self):
+        """Custom layout works in card-types view mode."""
+        items = [
+            {"color": "White", "type": "Creature", "name": "Creature", "id": "White:Creature"},
+            {"color": "Blue", "type": "Instant", "name": "Instant", "id": "Blue:Instant"},
+        ]
+        layout = {
+            "setName": {"visible": True, "position": "middle-center", "fontSize": 10},
+        }
+        generator = PDFGenerator(items, view_mode="types", label_layout=layout)
+
+        with patch.object(generator, "_get_mana_symbol_file", return_value=None):
+            result = generator.generate()
+
+        pdf_content = result.read()
+        assert pdf_content.startswith(b"%PDF")
+
+    def test_pdf_generator_layout_with_svg_symbol(self, sample_set_data, mock_svg_file):
+        """Custom layout exercises positioned SVG rendering when symbol_file is an SVG."""
+        layout = {
+            "setIcon": {"visible": True, "position": "middle-left", "size": 60},
+            "setName": {"visible": True, "position": "top-right"},
+            "setCode": {"visible": True, "position": "bottom-right"},
+            "releaseDate": {"visible": True, "position": "bottom-left"},
+        }
+        generator = PDFGenerator(sample_set_data, label_layout=layout)
+
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=str(mock_svg_file)):
+            result = generator.generate()
+
+        pdf_content = result.read()
+        assert pdf_content.startswith(b"%PDF")
+
+    def test_draw_svg_symbol_directly(self, sample_set_data, mock_svg_file):
+        """Directly invoking _draw_svg_symbol renders without raising."""
+        generator = PDFGenerator(sample_set_data)
+
+        # Should not raise; covers SVG drawing branch
+        generator._draw_svg_symbol(
+            str(mock_svg_file), label_x=10, label_y=20, target_height=30, set_name="TS1"
+        )
+
+    def test_draw_positioned_raster_symbol_directly(self, sample_set_data, tmp_path):
+        """Directly invoking _draw_positioned_raster_symbol covers the raster branch."""
+        # Generate a tiny PNG via PIL (already a transitive dep via reportlab/Pillow)
+        from PIL import Image
+
+        png_file = tmp_path / "tiny.png"
+        Image.new("RGBA", (4, 4), (255, 0, 0, 255)).save(png_file)
+
+        generator = PDFGenerator(sample_set_data)
+
+        generator._draw_positioned_raster_symbol(
+            str(png_file),
+            content_x=10,
+            content_y=20,
+            content_width=80,
+            content_height=60,
+            position="middle-left",
+            target_height=30,
+            target_width=30,
+        )
+
+    def test_draw_positioned_symbol_dispatches_by_extension(
+        self, sample_set_data, mock_svg_file, tmp_path
+    ):
+        """_draw_positioned_symbol routes .svg to SVG path and other extensions to raster path."""
+        from PIL import Image
+
+        png_file = tmp_path / "tiny.png"
+        Image.new("RGBA", (4, 4), (0, 255, 0, 255)).save(png_file)
+
+        generator = PDFGenerator(sample_set_data)
+
+        # SVG dispatch
+        generator._draw_positioned_symbol(
+            str(mock_svg_file),
+            content_x=0,
+            content_y=0,
+            content_width=100,
+            content_height=100,
+            position="middle-center",
+            size_percent=50,
+            set_name="svg-set",
+        )
+
+        # Raster dispatch
+        generator._draw_positioned_symbol(
+            str(png_file),
+            content_x=0,
+            content_y=0,
+            content_width=100,
+            content_height=100,
+            position="middle-center",
+            size_percent=50,
+            set_name="png-set",
+        )

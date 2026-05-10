@@ -244,6 +244,7 @@ def create_app() -> FastAPI:
         use_template: str | None = Form(None),
         template: str | None = Form(None),
         custom_template: str | None = Form(None),
+        label_layout: str | None = Form(None),
         placeholders: int = Form(0),
         view_mode: str = Form("sets"),
     ) -> StreamingResponse:
@@ -447,12 +448,46 @@ def create_app() -> FastAPI:
                     "generating without template overlay"
                 )
 
+        # Parse and validate label layout if provided
+        label_layout_config: dict | None = None
+        if label_layout:
+            try:
+                parsed_layout = json.loads(label_layout)
+                if not isinstance(parsed_layout, dict):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="label_layout must be a JSON object.",
+                    )
+                # Validate known keys have correct types
+                allowed_element_keys = {"setIcon", "setName", "setCode", "releaseDate"}
+                for key in allowed_element_keys:
+                    if key in parsed_layout and not isinstance(parsed_layout[key], dict):
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"label_layout.{key} must be a JSON object.",
+                        )
+                if "padding" in parsed_layout:
+                    padding_val = parsed_layout["padding"]
+                    if not isinstance(padding_val, (int, float)) or padding_val < 0:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="label_layout.padding must be a non-negative number.",
+                        )
+                label_layout_config = parsed_layout
+                logger.debug("Using custom label layout")
+            except json.JSONDecodeError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid JSON in label_layout field.",
+                )
+
         pdf_generator = PDFGenerator(
             selected_items_data,
             template_name=label_template,
             template_path=template_path,
             view_mode=view_mode,
             template_config=custom_template_config,
+            label_layout=label_layout_config,
         )
         pdf_buffer = pdf_generator.generate()
         filename = "mtg_labels.pdf" if not use_template_bool else "mtg_labels_with_template.pdf"

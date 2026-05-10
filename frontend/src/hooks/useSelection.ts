@@ -13,6 +13,7 @@ const initialState: SelectionState = {
   customTemplate: null,
   useCustomTemplate: false,
   useCustomQuantity: false,
+  useCustomLayout: false,
 }
 
 export function useSelection() {
@@ -104,6 +105,10 @@ export function useSelection() {
     setSelection((prev) => ({ ...prev, useCustomQuantity }))
   }, [])
 
+  const setUseCustomLayout = useCallback((useCustomLayout: boolean) => {
+    setSelection((prev) => ({ ...prev, useCustomLayout }))
+  }, [])
+
   return {
     selection,
     toggleSetSelection,
@@ -118,5 +123,6 @@ export function useSelection() {
     setCustomTemplate,
     setUseCustomTemplate,
     setUseCustomQuantity,
+    setUseCustomLayout,
   }
 }
