@@ -14,7 +14,6 @@ export const KNOWN_SET_TYPES: readonly SetTypeMeta[] = [
   { key: 'expansion', label: 'Expansion', description: 'Rotational expansion set in a block' },
   { key: 'masters', label: 'Masters', description: 'Reprint set with no new cards' },
   { key: 'eternal', label: 'Eternal', description: 'New cards added to high-power formats' },
-  { key: 'alchemy', label: 'Alchemy', description: 'Arena set designed for Alchemy' },
   { key: 'masterpiece', label: 'Masterpiece', description: 'Premium foil card series' },
   { key: 'arsenal', label: 'Arsenal', description: 'Commander-oriented gift set' },
   { key: 'from_the_vault', label: 'From the Vault', description: 'Limited-print premium gift sets' },

@@ -6,7 +6,6 @@ export const DEFAULT_SET_TYPES: readonly string[] = [
   'expansion',
   'masters',
   'eternal',
-  'alchemy',
   'masterpiece',
   'from_the_vault',
   'premium_deck',
