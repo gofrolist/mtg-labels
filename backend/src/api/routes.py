@@ -48,7 +48,7 @@ def _preload_icon_cache() -> None:
     """
     try:
         all_sets = scryfall_client.fetch_sets()
-        filtered = scryfall_client.filter_sets(all_sets)
+        filtered = scryfall_client.filter_non_digital(all_sets)
         cache_manager = get_cache_manager()
 
         downloaded = 0
@@ -188,7 +188,7 @@ def create_app() -> FastAPI:
             List of filtered set dictionaries
         """
         all_sets = scryfall_client.fetch_sets()
-        filtered = scryfall_client.filter_sets(all_sets)
+        filtered = scryfall_client.filter_non_digital(all_sets)
         return [MTGSetResponse(**s) for s in filtered]
 
     @app.get("/api/card-types")
@@ -214,7 +214,7 @@ def create_app() -> FastAPI:
         """
         cache_manager = get_cache_manager()
         all_sets = scryfall_client.fetch_sets()
-        filtered = scryfall_client.filter_sets(all_sets)
+        filtered = scryfall_client.filter_non_digital(all_sets)
 
         icons: dict[str, str] = {}
         for s in filtered:
@@ -404,7 +404,7 @@ def create_app() -> FastAPI:
         else:
             # Handle sets (default)
             all_sets = scryfall_client.fetch_sets()
-            filtered = scryfall_client.filter_sets(all_sets)
+            filtered = scryfall_client.filter_non_digital(all_sets)
 
             # Create a mapping of set_id to set_dict for quick lookup
             sets_by_id: dict[str, dict] = {}
