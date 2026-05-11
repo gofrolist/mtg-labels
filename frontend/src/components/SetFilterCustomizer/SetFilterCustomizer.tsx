@@ -87,7 +87,7 @@ export function SetFilterCustomizer({
             {/* Set Types */}
             <section className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
               <h3 className="font-semibold text-mtg-text mb-3 text-sm">Set Types</h3>
-              <ul className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+              <ul className="scroll-visible flex flex-col gap-2 max-h-72 overflow-y-scroll pr-1">
                 {setTypeKeys.map((key) => {
                   const meta = getSetTypeMeta(key)
                   const checked = activeTypeSet.has(key)
@@ -122,7 +122,7 @@ export function SetFilterCustomizer({
               <p className="text-xs text-mtg-text-muted mb-3">
                 Uncheck a row to include that set in the list.
               </p>
-              <ul className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+              <ul className="scroll-visible flex flex-col gap-2 max-h-72 overflow-y-scroll pr-1">
                 {ignoredCodeRows.map((code) => {
                   const checked = ignoredCodeSet.has(code.toLowerCase())
                   const set = setByCode[code.toLowerCase()]
