@@ -144,7 +144,7 @@ class TestGeneratePdfEndpoint:
         assert placeholder_count == 3
 
     @patch("src.api.routes.PDFGenerator")
-    @patch("src.api.routes.scryfall_client.filter_sets")
+    @patch("src.api.routes.scryfall_client.filter_non_digital")
     @patch("src.api.routes.scryfall_client.fetch_sets")
     def test_generate_pdf_sets_view_no_valid_sets(
         self, mock_fetch, mock_filter, mock_pdf_gen, client, sample_set_data
@@ -163,7 +163,7 @@ class TestGeneratePdfEndpoint:
         assert "No valid sets selected" in response_json["error"]["detail"]
 
     @patch("src.api.routes.PDFGenerator")
-    @patch("src.api.routes.scryfall_client.filter_sets")
+    @patch("src.api.routes.scryfall_client.filter_non_digital")
     @patch("src.api.routes.scryfall_client.fetch_sets")
     def test_generate_pdf_sets_view_success(
         self, mock_fetch, mock_filter, mock_pdf_gen, client, sample_set_data

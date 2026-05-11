@@ -46,35 +46,6 @@ class TestApiSetsEndpoint:
         assert len(data) > 0
 
     @patch("src.api.routes.scryfall_client.fetch_sets")
-    def test_api_sets_endpoint_filters_sets(self, mock_fetch, client):
-        """Test that /api/sets filters sets correctly."""
-        all_sets = [
-            {
-                "id": "test-1",
-                "name": "Test 1",
-                "code": "T1",
-                "set_type": "expansion",
-                "card_count": 100,
-            },
-            {
-                "id": "test-2",
-                "name": "Test 2",
-                "code": "T2",
-                "set_type": "invalid",
-                "card_count": 100,
-            },
-        ]
-        mock_fetch.return_value = all_sets
-
-        response = client.get("/api/sets")
-
-        assert response.status_code == 200
-        data = response.json()
-        # Should filter out invalid set_type
-        assert len(data) == 1
-        assert data[0]["id"] == "test-1"
-
-    @patch("src.api.routes.scryfall_client.fetch_sets")
     def test_api_sets_endpoint_empty_result(self, mock_fetch, client):
         """Test GET /api/sets with no valid sets."""
         mock_fetch.return_value = []
@@ -85,7 +56,7 @@ class TestApiSetsEndpoint:
         data = response.json()
         assert data == []
 
-    @patch("src.api.routes.scryfall_client.filter_sets")
+    @patch("src.api.routes.scryfall_client.filter_non_digital")
     @patch("src.api.routes.scryfall_client.fetch_sets")
     def test_api_sets_endpoint_returns_dicts(self, mock_fetch, mock_filter, client):
         """Test that /api/sets returns dictionaries."""

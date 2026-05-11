@@ -52,7 +52,7 @@ class TestSetIconsEndpoint:
             patch("src.api.routes.get_cache_manager", return_value=cache_with_symbols),
         ):
             mock_client.fetch_sets.return_value = filtered_sets
-            mock_client.filter_sets.return_value = filtered_sets
+            mock_client.filter_non_digital.return_value = filtered_sets
 
             response = client.get("/api/set-icons")
 
@@ -75,7 +75,7 @@ class TestSetIconsEndpoint:
             patch("src.api.routes.get_cache_manager", return_value=cache_with_symbols),
         ):
             mock_client.fetch_sets.return_value = filtered_sets
-            mock_client.filter_sets.return_value = filtered_sets
+            mock_client.filter_non_digital.return_value = filtered_sets
 
             response = client.get("/api/set-icons")
 
@@ -91,7 +91,7 @@ class TestSetIconsEndpoint:
             patch("src.api.routes.get_cache_manager", return_value=empty_cache),
         ):
             mock_client.fetch_sets.return_value = filtered_sets
-            mock_client.filter_sets.return_value = filtered_sets
+            mock_client.filter_non_digital.return_value = filtered_sets
 
             response = client.get("/api/set-icons")
 
