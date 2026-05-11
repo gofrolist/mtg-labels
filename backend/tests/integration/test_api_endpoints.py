@@ -74,6 +74,51 @@ class TestApiSetsEndpoint:
         assert isinstance(data, list)
         assert all(isinstance(item, dict) for item in data)
 
+    @patch("src.api.routes.scryfall_client.fetch_sets")
+    def test_api_sets_returns_previously_excluded_sets(self, mock_fetch, client):
+        """Sets that the old filter excluded (bad type, ignored code, small) are now included."""
+        all_sets = [
+            {
+                "id": "promo-1",
+                "name": "Promo One",
+                "code": "promo1",
+                "set_type": "promo",
+                "card_count": 100,
+                "digital": False,
+            },
+            {
+                "id": "ignored-1",
+                "name": "Mystery Booster Playtest",
+                "code": "cmb1",
+                "set_type": "expansion",
+                "card_count": 100,
+                "digital": False,
+            },
+            {
+                "id": "small-1",
+                "name": "Tiny Set",
+                "code": "t1",
+                "set_type": "expansion",
+                "card_count": 3,
+                "digital": False,
+            },
+            {
+                "id": "digital-1",
+                "name": "Digital Only",
+                "code": "d1",
+                "set_type": "expansion",
+                "card_count": 100,
+                "digital": True,
+            },
+        ]
+        mock_fetch.return_value = all_sets
+
+        response = client.get("/api/sets")
+
+        assert response.status_code == 200
+        ids = {s["id"] for s in response.json()}
+        assert ids == {"promo-1", "ignored-1", "small-1"}
+
 
 class TestApiCardTypesEndpoint:
     """Tests for GET /api/card-types endpoint."""

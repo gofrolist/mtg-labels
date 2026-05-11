@@ -386,3 +386,33 @@ class TestGeneratePdfEndpoint:
         assert response.status_code == 400
         response_json = response.json()
         assert "missing fields" in response_json["error"]["detail"]
+
+    @patch("src.api.routes.PDFGenerator")
+    @patch("src.api.routes.scryfall_client.fetch_sets")
+    def test_generate_pdf_accepts_previously_excluded_set(self, mock_fetch, mock_pdf_gen, client):
+        """A set that the old filter excluded (e.g., promo type) can now be printed."""
+        mock_fetch.return_value = [
+            {
+                "id": "promo-1",
+                "name": "Promo One",
+                "code": "promo1",
+                "set_type": "promo",
+                "card_count": 100,
+                "released_at": "2024-01-01",
+                "icon_svg_uri": "https://example.com/p.svg",
+                "digital": False,
+            },
+        ]
+        mock_generator_instance = Mock()
+        mock_generator_instance.generate.return_value = BytesIO(b"%PDF-1.4 fake")
+        mock_pdf_gen.return_value = mock_generator_instance
+
+        response = client.post(
+            "/generate-pdf",
+            data={"set_ids": ["promo-1"], "view_mode": "sets"},
+        )
+
+        assert response.status_code == 200
+        # PDFGenerator was invoked with the promo set in the items list.
+        items = mock_pdf_gen.call_args[0][0]
+        assert any(item.get("id") == "promo-1" for item in items)
