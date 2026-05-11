@@ -65,8 +65,10 @@ describe('SetFilterCustomizer', () => {
   it('toggling an ignored set calls onIgnoredSetCodesChange with the code removed', () => {
     const onIgnoredSetCodesChange = vi.fn()
     render(<SetFilterCustomizer {...makeProps({ onIgnoredSetCodesChange })} />)
-    // cmb1 is ignored by default; unchecking should remove it
-    const cmb1Checkbox = screen.getByRole('checkbox', { name: /cmb1/i })
+    // cmb1 is ignored by default and resolved to its set name via sampleSets.
+    const cmb1Checkbox = screen.getByRole('checkbox', {
+      name: /Mystery Booster Playtest Cards/i,
+    })
     fireEvent.click(cmb1Checkbox)
     expect(onIgnoredSetCodesChange).toHaveBeenCalledWith(
       defaultPrefs.ignoredSetCodes.filter((c) => c !== 'cmb1'),
@@ -92,5 +94,21 @@ describe('SetFilterCustomizer', () => {
     render(<SetFilterCustomizer {...makeProps()} />)
     // cmb1 is in default ignored codes AND in sampleSets, so its name should render
     expect(screen.getByText(/Mystery Booster Playtest Cards/i)).toBeInTheDocument()
+  })
+
+  it('clamps minimum set size to the input range', () => {
+    const onMinimumSetSizeChange = vi.fn()
+    render(<SetFilterCustomizer {...makeProps({ onMinimumSetSizeChange })} />)
+    const input = screen.getByLabelText(/minimum set size/i) as HTMLInputElement
+    fireEvent.change(input, { target: { value: '-5' } })
+    expect(onMinimumSetSizeChange).toHaveBeenLastCalledWith(0)
+    fireEvent.change(input, { target: { value: '99999' } })
+    expect(onMinimumSetSizeChange).toHaveBeenLastCalledWith(1000)
+  })
+
+  it('collapses to zero rows when isOpen is false', () => {
+    const { container } = render(<SetFilterCustomizer {...makeProps({ isOpen: false })} />)
+    const collapsibleRoot = container.firstElementChild as HTMLElement
+    expect(collapsibleRoot.style.gridTemplateRows).toBe('0fr')
   })
 })

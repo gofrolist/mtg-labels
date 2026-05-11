@@ -91,6 +91,22 @@ describe('useSetFilterPreferences', () => {
     expect(warnSpy).toHaveBeenCalled()
   })
 
+  it('falls back to defaults when stored value has the wrong shape', () => {
+    // Valid JSON but missing/incorrectly-typed fields — exercises the hook's
+    // own isValid() branch (distinct from the JSON parse error path).
+    localStorageMock.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ activeSetTypes: 'not-an-array', minimumSetSize: 'oops' }),
+    )
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { result } = renderHook(() => useSetFilterPreferences())
+    expect(result.current.preferences.activeSetTypes).toEqual([...DEFAULT_SET_TYPES])
+    expect(result.current.preferences.minimumSetSize).toBe(DEFAULT_MINIMUM_SET_SIZE)
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid set filter preferences in localStorage'),
+    )
+  })
+
   it('reset() restores defaults', () => {
     const { result } = renderHook(() => useSetFilterPreferences())
     act(() => {

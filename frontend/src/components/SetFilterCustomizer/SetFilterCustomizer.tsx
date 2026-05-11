@@ -100,7 +100,6 @@ export function SetFilterCustomizer({
                           id={inputId}
                           checked={checked}
                           onChange={() => toggleSetType(key)}
-                          aria-label={meta.label}
                           className="w-4 h-4 mr-2 accent-mtg-accent rounded focus:ring-2 focus:ring-mtg-accent cursor-pointer flex-shrink-0"
                         />
                         <label
@@ -137,7 +136,6 @@ export function SetFilterCustomizer({
                           id={inputId}
                           checked={checked}
                           onChange={() => toggleIgnoredCode(code)}
-                          aria-label={code}
                           className="w-4 h-4 mr-2 accent-mtg-accent rounded focus:ring-2 focus:ring-mtg-accent cursor-pointer flex-shrink-0"
                         />
                         <label
@@ -174,7 +172,9 @@ export function SetFilterCustomizer({
               value={preferences.minimumSetSize}
               onChange={(e) => {
                 const v = parseInt(e.target.value, 10)
-                if (!Number.isNaN(v)) onMinimumSetSizeChange(v)
+                if (Number.isNaN(v)) return
+                const clamped = Math.max(SIZE_INPUT_MIN, Math.min(SIZE_INPUT_MAX, v))
+                onMinimumSetSizeChange(clamped)
               }}
               aria-label="Minimum set size"
               className="h-9 w-32 px-3 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm"

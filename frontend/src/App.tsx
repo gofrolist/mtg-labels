@@ -34,6 +34,12 @@ import { ErrorDisplay } from './components/ErrorDisplay'
 import { LoadingSkeleton } from './components/LoadingSkeleton'
 import type { MTGSet } from './types'
 
+function sameElements(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false
+  const setB = new Set(b)
+  return a.every((x) => setB.has(x))
+}
+
 function App() {
   const { data: setsResponse, isLoading: setsLoading, error: setsError } = useApiSetsApiSetsGet()
   const { data: typesResponse, isLoading: typesLoading, error: typesError } = useApiCardTypesApiCardTypesGet()
@@ -125,15 +131,16 @@ function App() {
       : undefined
 
   const setFilterModified = useMemo(() => {
-    const a = setFilterPreferences.activeSetTypes
-    const b = setFilterPreferences.ignoredSetCodes
-    if (a.length !== DEFAULT_SET_TYPES.length) return true
-    if (b.length !== DEFAULT_IGNORED_SET_CODES.length) return true
     if (setFilterPreferences.minimumSetSize !== DEFAULT_MINIMUM_SET_SIZE) return true
-    const defaultsA = new Set<string>(DEFAULT_SET_TYPES)
-    if (a.some((t) => !defaultsA.has(t))) return true
-    const defaultsB = new Set<string>(DEFAULT_IGNORED_SET_CODES)
-    if (b.some((c) => !defaultsB.has(c.toLowerCase()))) return true
+    if (!sameElements(setFilterPreferences.activeSetTypes, DEFAULT_SET_TYPES)) return true
+    if (
+      !sameElements(
+        setFilterPreferences.ignoredSetCodes.map((c) => c.toLowerCase()),
+        DEFAULT_IGNORED_SET_CODES,
+      )
+    ) {
+      return true
+    }
     return false
   }, [setFilterPreferences])
 
@@ -370,6 +377,20 @@ function App() {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 Clear search
+              </button>
+            </div>
+          ) : sets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-text-muted mb-4" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+              <p className="text-lg font-medium text-mtg-text mb-1">No sets match your filters</p>
+              <p className="text-sm text-mtg-text-muted mb-4">
+                All sets were excluded by your current filter preferences.
+              </p>
+              <button
+                onClick={resetSetFilter}
+                className="h-9 px-4 py-0 flex items-center gap-2 text-sm border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors"
+              >
+                Reset filters to defaults
               </button>
             </div>
           ) : (

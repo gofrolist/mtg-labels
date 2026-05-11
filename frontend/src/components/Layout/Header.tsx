@@ -92,6 +92,7 @@ export function Header({
               type="button"
               onClick={() => {
                 if (navMenuOpen && templateCustomizerOpen) onTemplateToggle()
+                if (navMenuOpen && setFilterOpen) onSetFilterToggle()
                 setNavMenuOpen((o) => !o)
               }}
               className="min-[880px]:hidden h-9 w-9 flex items-center justify-center rounded border border-white/30 hover:bg-white/10 transition-colors"
