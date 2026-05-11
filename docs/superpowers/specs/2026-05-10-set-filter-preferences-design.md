@@ -6,10 +6,10 @@
 ## Summary
 
 Move set filtering (`SET_TYPES`, `IGNORED_SETS`, `MINIMUM_SET_SIZE`) out of the
-hardcoded backend `config.py` and into a user-facing configuration screen.
-Filtering becomes a client-side concern; `config.py` remains the source of
-default values, exposed via a new read-only endpoint. Preferences persist in
-the browser's `localStorage`.
+backend `config.py` and into a user-facing configuration screen. Filtering
+becomes a purely client-side concern. The backend stops knowing about these
+values entirely — they are removed from `config.py`. Default values live in
+the frontend as TypeScript constants and persist per-user in `localStorage`.
 
 ## Goals
 
@@ -18,79 +18,100 @@ the browser's `localStorage`.
 - Let users un-ignore specific sets currently hardcoded in `IGNORED_SETS`
   (e.g., re-include `sir` Shadows over Innistrad Remastered).
 - Let users adjust the minimum card count threshold.
-- Preserve current `config.py` values as the default state on first visit and
-  via a "Reset to defaults" action.
+- Preserve the previous `config.py` values as the frontend defaults and via a
+  "Reset to defaults" action.
+- Remove `SET_TYPES`, `IGNORED_SETS`, `MINIMUM_SET_SIZE` from backend
+  `config.py` — backend is no longer aware of these filters.
 
 ## Non-goals
 
 - User accounts or per-user server storage.
-- Server-side admin override of defaults at runtime (still env-vars / code).
 - Free-form "add custom set code to ignore" input — out of scope; revisit if
   asked for.
 - New E2E coverage — existing PDF flow shape is unchanged.
 
 ## Architecture
 
-Filtering moves from backend to frontend. Backend stops applying
-`SET_TYPES`/`IGNORED_SETS`/`MINIMUM_SET_SIZE` filters in `/api/sets` and
-`/generate-pdf`. It still excludes `digital=true` sets (no paper-label use
-case). A new `/api/config/defaults` endpoint exposes the current `config.py`
-values so the frontend can seed and reset preferences without duplicating
-constants.
+Filtering moves from backend to frontend. Backend still excludes digital-only
+sets in `/api/sets`, `/api/set-icons`, and `/generate-pdf` (no paper-label use
+case for digital sets). All other filter dimensions are owned by the frontend.
 
-Frontend persists preferences in `localStorage` and applies them client-side
-via a pure `applyFilters` function. This matches the existing
-`useCustomTemplates` pattern and gives instant re-filter on toggle.
+Frontend persists user preferences in `localStorage` and applies them
+client-side via a pure `applyFilters` function. Defaults are TypeScript
+constants in `frontend/src/constants/`. This matches the existing
+`useCustomTemplates` pattern and gives instant re-filter on toggle, with no
+extra network calls.
 
 ```
 Backend /api/sets   → all non-digital sets
-Backend /api/config/defaults → current config.py values
-Frontend localStorage prefs → applyFilters(sets, prefs) → rendered list
+Frontend defaults (constants) ─┐
+                                ├─ useSetFilterPreferences (localStorage)
+Frontend modal toggles ────────┘
+                                ↓
+            applyFilters(sets, prefs) → rendered list
 ```
 
 ## Backend changes
 
+### `backend/src/config.py`
+
+Delete the constants `SET_TYPES`, `IGNORED_SETS`, and `MINIMUM_SET_SIZE`. They
+have no remaining consumers after this change.
+
 ### `backend/src/services/scryfall_client.py`
 
-Add a `filter_non_digital` static method:
-
-```python
-@staticmethod
-def filter_non_digital(sets: list[dict]) -> list[dict]:
-    return [s for s in sets if not s.get("digital", False)]
-```
-
-Keep `filter_sets` unchanged. The startup `_preload_icon_cache` continues to
-use `filter_sets`, so icons for default-included sets still preload at boot.
-Icons for newly-enabled set types lazy-load on demand via the existing
-`download_and_cache_symbol` helper (or stay missing gracefully, mirroring
-current behaviour for any uncached icon).
+- Remove the imports of `SET_TYPES`, `IGNORED_SETS`, `MINIMUM_SET_SIZE`.
+- Replace the `filter_sets` static method with `filter_non_digital`:
+  ```python
+  @staticmethod
+  def filter_non_digital(sets: list[dict]) -> list[dict]:
+      return [s for s in sets if not s.get("digital", False)]
+  ```
+- Delete `filter_sets` entirely (no callers will remain after the routes
+  update below).
 
 ### `backend/src/api/routes.py`
 
-- `/api/sets` and `/api/set-icons`: replace `filter_sets` calls with
-  `filter_non_digital`.
+- `/api/sets`: call `filter_non_digital` instead of `filter_sets`.
+- `/api/set-icons`: call `filter_non_digital` instead of `filter_sets`.
 - `/generate-pdf`: build `sets_by_id` from `filter_non_digital(all_sets)` so
-  any set the user enabled in the UI can be looked up.
-- New route `GET /api/config/defaults` returning a typed Pydantic response.
+  any set the user enabled in the UI can be looked up by id.
+- `_preload_icon_cache`: iterate `filter_non_digital(all_sets)`. This
+  preloads icons for a slightly larger set of releases than today, but the
+  ceiling is small and bounded (no digital sets, no growth beyond Scryfall's
+  catalogue). Acceptable trade-off for removing the heuristic.
 
-### `backend/src/models/set_data.py`
+### No new endpoints, no new models
 
-Add a `ConfigDefaultsResponse` model:
-
-```python
-class ConfigDefaultsResponse(BaseModel):
-    default_set_types: list[str]
-    default_ignored_sets: list[str]
-    default_minimum_set_size: int
-```
-
-Endpoint reads `SET_TYPES`, `IGNORED_SETS`, `MINIMUM_SET_SIZE` from
-`src.config` and returns them.
+`/api/config/defaults` is **not** added. Defaults live in the frontend.
 
 ## Frontend changes
 
 ### New files
+
+- `frontend/src/constants/setFilterDefaults.ts`
+  ```ts
+  export const DEFAULT_SET_TYPES: readonly string[] = [
+    'core', 'expansion', 'masters', 'eternal', 'alchemy', 'masterpiece',
+    'from_the_vault', 'premium_deck', 'duel_deck', 'draft_innovation',
+    'commander', 'planechase', 'funny', 'starter', 'box', 'minigame',
+  ] as const
+
+  export const DEFAULT_IGNORED_SET_CODES: readonly string[] = [
+    'cmb1', 'amh1', 'cmb2', 'fbb', 'sum', '4bb', 'bchr', 'rin', 'ren',
+    'rqs', 'itp', 'sir', 'sis', 'cst',
+  ] as const
+
+  export const DEFAULT_MINIMUM_SET_SIZE = 10
+  ```
+  These mirror the values currently in `backend/src/config.py` and become
+  the single source of truth going forward.
+
+- `frontend/src/constants/setTypes.ts` — master list of all known Scryfall
+  `set_type` values plus display label and short description for each
+  (e.g., `from_the_vault` → "From the Vault", "Limited-print premium gift
+  sets"). Used by the modal to render checkboxes nicely. Falls back to the
+  raw `set_type` string for unknown types.
 
 - `frontend/src/hooks/useSetFilterPreferences.ts`
   ```ts
@@ -101,10 +122,13 @@ Endpoint reads `SET_TYPES`, `IGNORED_SETS`, `MINIMUM_SET_SIZE` from
   }
   ```
   - Loads from `localStorage` key `mtg-labels:set-filter-preferences`.
-  - On first visit (no key), seeds from `/api/config/defaults`.
-  - Per-field setters and a `reset()` that restores defaults.
-  - Corrupt JSON → fall back to defaults, `console.warn`. Mirrors
-    `useCustomTemplates` parse-error handling.
+  - If the key is absent or contains invalid JSON, returns a fresh copy of
+    the defaults (and logs `console.warn` for the corrupt case, mirroring
+    `useCustomTemplates`).
+  - Per-field setters persist the updated object back to `localStorage`.
+  - `reset()` restores all three fields to the constants above.
+  - Preferences are always available synchronously on first render — no
+    loading state required.
 
 - `frontend/src/utils/filtering.ts`
   ```ts
@@ -113,68 +137,50 @@ Endpoint reads `SET_TYPES`, `IGNORED_SETS`, `MINIMUM_SET_SIZE` from
     prefs: SetFilterPreferences,
   ): MTGSet[]
   ```
-  Pure function. Excludes by `set_type` not in `activeSetTypes`,
-  `code.toLowerCase()` in `ignoredSetCodes`, or
-  `card_count < minimumSetSize`. Digital exclusion stays on the backend.
-
-- `frontend/src/constants/setTypes.ts` — display label + short description
-  per known Scryfall `set_type` (used by the modal to render checkboxes
-  nicely; falls back to the raw `set_type` string for unknown types).
+  Pure function. Excludes a set when:
+  - `set.set_type` is not in `prefs.activeSetTypes`, or
+  - `set.code.toLowerCase()` is in `prefs.ignoredSetCodes`, or
+  - `set.card_count < prefs.minimumSetSize`.
+  Digital exclusion remains on the backend.
 
 - `frontend/src/components/SetFilterCustomizer/SetFilterCustomizer.tsx` —
   modal/overlay component, structurally similar to `TemplateCustomizer`.
   Sections:
-  1. **Set types** — checkboxes for the union of defaults plus any
-     `set_type` observed in the loaded sets. Renders pretty label and
-     description from `constants/setTypes.ts`.
-  2. **Ignored sets** — checkboxes for the codes in
-     `default_ignored_sets`. Each row resolves the code against the
-     loaded set list to display the human-readable set name. Checking
-     adds the code to `ignoredSetCodes`; unchecking removes it.
+  1. **Set types** — checkboxes for the union of `DEFAULT_SET_TYPES`,
+     keys in `setTypes.ts`, and any `set_type` observed in the loaded
+     sets. Each row uses the label and description from `setTypes.ts`,
+     falling back to the raw type string.
+  2. **Ignored sets** — checkboxes for codes in
+     `DEFAULT_IGNORED_SET_CODES`. Each row resolves the code against the
+     loaded set list to display the human-readable set name. Checking a
+     box adds the code to `ignoredSetCodes`; unchecking removes it.
   3. **Minimum set size** — `<input type="number" min="0" max="1000" />`.
-  4. **Reset to defaults** button — calls `prefs.reset()`. Disabled until
-     `/api/config/defaults` has resolved.
+  4. **Reset to defaults** button — calls `prefs.reset()`.
 
 ### Edited files
 
 - `frontend/src/App.tsx`
-  - Use `useSetFilterPreferences` and the existing
-    `useApiSetsApiSetsGet` hook.
+  - Use `useSetFilterPreferences`.
   - Replace `sets = setsResponse?.data ?? []` with
     `sets = useMemo(() => applyFilters(rawSets, prefs), [rawSets, prefs])`.
-  - Add open/mounted state for the new modal (mirroring
-    `templateCustomizerOpen`/`templateCustomizerMounted`).
+  - Add open/mounted state for the new modal, mirroring
+    `templateCustomizerOpen`/`templateCustomizerMounted`.
 
 - `frontend/src/components/Layout/Header.tsx`
   - Add a filter/funnel icon button next to the existing template button
     to toggle the modal. Same styling pattern as the template toggle.
 
 - `frontend/src/api/...`
-  - Regenerate via `bun run api:gen` once the backend endpoint exists, so
-    Orval emits a typed client for `/api/config/defaults`.
-
-### Loading behaviour
-
-- App fetches `/api/config/defaults` on mount via TanStack Query, alongside
-  `/api/sets`.
-- `useSetFilterPreferences`:
-  - **Returning user** (localStorage has the key): preferences are
-    available synchronously on first render. Filtering proceeds even if
-    `/api/config/defaults` is still in flight; defaults are only needed
-    for the modal's "Reset to defaults" button.
-  - **First-time user** (no localStorage key): the hook returns
-    `undefined` for preferences until `/api/config/defaults` resolves,
-    then seeds and persists to localStorage. While preferences are
-    `undefined`, the App treats sets as still loading and renders the
-    existing `LoadingSkeleton` (same component used for the sets fetch).
+  - Regenerate via `bun run api:gen` after backend changes ship. The
+    regeneration is needed because `/api/sets` will return more rows; the
+    generated types do not change.
 
 ## Error handling
 
-- `useSetFilterPreferences`: corrupt JSON → defaults + `console.warn`.
-- `/api/config/defaults` fetch failure: TanStack Query retries; modal shows
-  a loading state and "Reset to defaults" is disabled while pending/error.
-- Backend `/api/config/defaults`: read-only access to module constants — no
-  runtime error path.
+- `useSetFilterPreferences`: corrupt localStorage JSON → defaults +
+  `console.warn`. Empty localStorage → defaults silently.
+- Backend has no new error paths — `filter_non_digital` is total over its
+  input.
 
 ## Testing
 
@@ -183,28 +189,31 @@ already enforce this).
 
 ### Backend (pytest)
 
-- Unit: `filter_non_digital` excludes only digital sets.
-- Unit: `/api/config/defaults` returns the values from `src.config`.
-- Integration: `/api/sets` includes a `promo` set, a set in `IGNORED_SETS`,
-  and a set with `card_count < 10` (these were excluded before).
-- Integration: `/generate-pdf` accepts a set ID that would have been
-  excluded by the old default filter.
+- Unit: `filter_non_digital` excludes only sets with `digital=True`.
+- Update existing tests that assert filtering by `SET_TYPES` / `IGNORED_SETS`
+  / `MINIMUM_SET_SIZE` to assert the new behaviour (only digital exclusion
+  at the API layer).
+- Integration: `/api/sets` includes a `promo` set, a set previously in
+  `IGNORED_SETS`, and a set with `card_count < 10`.
+- Integration: `/generate-pdf` accepts a set ID for any non-digital set.
 
 ### Frontend (vitest)
 
-- Unit: `applyFilters` covers each filter dimension and their combinations.
-- Hook: `useSetFilterPreferences` — initial seed from defaults, per-field
-  setters, `reset()`, corrupt-JSON fallback.
+- Unit: `applyFilters` covers each filter dimension and their combinations,
+  including case-insensitive code matching.
+- Hook: `useSetFilterPreferences` — defaults when localStorage is empty,
+  persistence across reads, per-field setters, `reset()`, corrupt-JSON
+  fallback.
 - Component: `SetFilterCustomizer` renders all sections, checkbox toggles
-  call the right setters, "Reset" calls `reset()`.
+  call the right setters, "Reset" restores defaults.
 
 ## Risks / open questions
 
-- **Icon coverage for non-default set types.** `_preload_icon_cache` still
-  uses `filter_sets`, so if a user enables `promo` they'll see sets without
-  cached icons until those icons are fetched on demand. Acceptable for v1;
-  can add a per-set lazy fetch later if it's a visible problem.
-- **Defaults drift.** `config.py` remains the seed; frontend never
-  hardcodes the defaults. Reset always pulls fresh from
-  `/api/config/defaults`.
-- **localStorage size.** Three small fields, well under any limit.
+- **Icon coverage for non-default set types.** With `_preload_icon_cache`
+  now using `filter_non_digital`, all non-digital sets get their icons
+  preloaded. Slightly more disk + bandwidth at startup than today;
+  bounded by Scryfall's catalogue.
+- **Defaults drift between languages.** The TypeScript constants in
+  `frontend/src/constants/setFilterDefaults.ts` replace the previous
+  `config.py` values verbatim. Going forward, defaults are edited there.
+- **localStorage size.** Three small fields, well under any browser limit.
