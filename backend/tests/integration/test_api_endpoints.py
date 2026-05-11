@@ -56,16 +56,14 @@ class TestApiSetsEndpoint:
         data = response.json()
         assert data == []
 
-    @patch("src.api.routes.scryfall_client.filter_non_digital")
     @patch("src.api.routes.scryfall_client.fetch_sets")
-    def test_api_sets_endpoint_returns_dicts(self, mock_fetch, mock_filter, client):
+    def test_api_sets_endpoint_returns_dicts(self, mock_fetch, client):
         """Test that /api/sets returns dictionaries."""
         sets = [
             {"id": "test-1", "name": "Test 1", "code": "T1", "set_type": "expansion"},
             {"id": "test-2", "name": "Test 2", "code": "T2", "set_type": "expansion"},
         ]
         mock_fetch.return_value = sets
-        mock_filter.return_value = sets
 
         response = client.get("/api/sets")
 

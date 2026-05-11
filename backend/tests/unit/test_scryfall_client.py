@@ -119,7 +119,8 @@ class TestScryfallClientFilterNonDigital:
             },
         ]
         result = ScryfallClient.filter_non_digital(sets)
-        assert {s["id"] for s in result} == {"a", "b", "c"}
+        # List equality also verifies order preservation.
+        assert [s["id"] for s in result] == ["a", "b", "c"]
 
     def test_excludes_digital_sets(self):
         """Sets with digital=True are excluded."""
@@ -161,8 +162,20 @@ class TestScryfallClientFilterNonDigital:
         assert result[0]["id"] == "no-field"
 
     def test_empty_input_returns_empty_list(self):
+        """Empty input returns an empty list."""
         result = ScryfallClient.filter_non_digital([])
         assert result == []
+
+    def test_truthy_non_boolean_digital_is_excluded(self):
+        """Defensive: any truthy `digital` value (not just True) excludes the set."""
+        sets = [
+            {"id": "bool-true", "digital": True},
+            {"id": "int-one", "digital": 1},
+            {"id": "str-yes", "digital": "yes"},
+            {"id": "paper", "digital": False},
+        ]
+        result = ScryfallClient.filter_non_digital(sets)
+        assert [s["id"] for s in result] == ["paper"]
 
 
 class TestScryfallClientFetchCardTypesCatalog:

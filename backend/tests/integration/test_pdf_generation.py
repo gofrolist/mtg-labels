@@ -144,14 +144,12 @@ class TestGeneratePdfEndpoint:
         assert placeholder_count == 3
 
     @patch("src.api.routes.PDFGenerator")
-    @patch("src.api.routes.scryfall_client.filter_non_digital")
     @patch("src.api.routes.scryfall_client.fetch_sets")
     def test_generate_pdf_sets_view_no_valid_sets(
-        self, mock_fetch, mock_filter, mock_pdf_gen, client, sample_set_data
+        self, mock_fetch, mock_pdf_gen, client, sample_set_data
     ):
         """Test PDF generation with sets view when no valid sets are selected."""
         mock_fetch.return_value = sample_set_data
-        mock_filter.return_value = sample_set_data
 
         response = client.post(
             "/generate-pdf",
@@ -163,14 +161,12 @@ class TestGeneratePdfEndpoint:
         assert "No valid sets selected" in response_json["error"]["detail"]
 
     @patch("src.api.routes.PDFGenerator")
-    @patch("src.api.routes.scryfall_client.filter_non_digital")
     @patch("src.api.routes.scryfall_client.fetch_sets")
     def test_generate_pdf_sets_view_success(
-        self, mock_fetch, mock_filter, mock_pdf_gen, client, sample_set_data
+        self, mock_fetch, mock_pdf_gen, client, sample_set_data
     ):
         """Test successful PDF generation for sets view."""
         mock_fetch.return_value = sample_set_data
-        mock_filter.return_value = sample_set_data
 
         mock_generator_instance = Mock()
         mock_buffer = BytesIO(b"%PDF-1.4 fake pdf content")
@@ -414,5 +410,5 @@ class TestGeneratePdfEndpoint:
 
         assert response.status_code == 200
         # PDFGenerator was invoked with the promo set in the items list.
-        items = mock_pdf_gen.call_args[0][0]
+        items = mock_pdf_gen.call_args.args[0]
         assert any(item.get("id") == "promo-1" for item in items)

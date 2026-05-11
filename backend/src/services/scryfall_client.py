@@ -108,10 +108,12 @@ class ScryfallClient:
 
     @staticmethod
     def filter_non_digital(sets: list[dict]) -> list[dict]:
-        """Return only non-digital sets (digital=True excluded)."""
-        result = [s for s in sets if not s.get("digital", False)]
-        logger.info(f"filter_non_digital: {len(result)} of {len(sets)} sets retained")
-        return result
+        """Return only non-digital sets (digital=True excluded).
+
+        Sets missing the `digital` field are treated as non-digital
+        (default False).
+        """
+        return [s for s in sets if not s.get("digital", False)]
 
     def get_card_types_by_color(self) -> dict[str, list[str]]:
         """
