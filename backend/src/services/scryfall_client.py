@@ -112,7 +112,9 @@ class ScryfallClient:
     @staticmethod
     def filter_non_digital(sets: list[dict]) -> list[dict]:
         """Return only non-digital sets (digital=True excluded)."""
-        return [s for s in sets if not s.get("digital", False)]
+        result = [s for s in sets if not s.get("digital", False)]
+        logger.info(f"filter_non_digital: {len(result)} of {len(sets)} sets retained")
+        return result
 
     @staticmethod
     def filter_sets(sets: list[dict]) -> list[dict]:
