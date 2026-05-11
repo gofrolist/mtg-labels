@@ -9,13 +9,10 @@ from urllib3.util.retry import Retry
 
 from src.cache.cache_manager import get_cache_manager
 from src.config import (
-    IGNORED_SETS,
-    MINIMUM_SET_SIZE,
     SCRYFALL_API_BASE_URL,
     SCRYFALL_API_RATE_LIMIT_DELAY,
     SCRYFALL_API_RETRY_ATTEMPTS,
     SCRYFALL_API_TIMEOUT,
-    SET_TYPES,
     logger,
 )
 
@@ -110,39 +107,13 @@ class ScryfallClient:
             raise HTTPException(status_code=500, detail="Error fetching sets from Scryfall.")
 
     @staticmethod
-    def filter_sets(sets: list[dict]) -> list[dict]:
+    def filter_non_digital(sets: list[dict]) -> list[dict]:
+        """Return only non-digital sets (digital=True excluded).
+
+        Sets missing the `digital` field are treated as non-digital
+        (default False).
         """
-        Filter sets based on configuration criteria.
-
-        Args:
-            sets: List of set dictionaries to filter
-
-        Returns:
-            Filtered list of sets that meet criteria
-        """
-        filtered: list[dict] = []
-        for s in sets:
-            set_type = s.get("set_type", "").lower()
-            card_count = s.get("card_count", 0)
-            code = s.get("code", "").lower()
-            digital = s.get("digital", False)
-
-            if set_type not in SET_TYPES:
-                logger.debug(f"Excluding set '{s.get('name')}' due to set_type '{set_type}'")
-                continue
-            if card_count < MINIMUM_SET_SIZE:
-                logger.debug(f"Excluding set '{s.get('name')}' due to card_count {card_count}")
-                continue
-            if code in IGNORED_SETS:
-                logger.debug(f"Excluding set '{s.get('name')}' due to ignored code '{code}'")
-                continue
-            if digital:
-                logger.debug(f"Excluding set '{s.get('name')}' due to digital-only release")
-                continue
-            filtered.append(s)
-
-        logger.info(f"Filtered sets count: {len(filtered)}")
-        return filtered
+        return [s for s in sets if not s.get("digital", False)]
 
     def get_card_types_by_color(self) -> dict[str, list[str]]:
         """

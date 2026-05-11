@@ -56,10 +56,6 @@ coverage.xml
 *~
 .DS_Store/
 
-# Project specific
-static/images/*.svg
-!static/images/.gitkeep
-
 # Environment variables
 .env
 .env.local

@@ -34,7 +34,7 @@ class TestPreloadIconCache:
             patch("src.api.routes.download_and_cache_symbol") as mock_download,
         ):
             mock_client.fetch_sets.return_value = filtered_sets
-            mock_client.filter_sets.return_value = filtered_sets
+            mock_client.filter_non_digital.return_value = filtered_sets
 
             from src.api.routes import _preload_icon_cache
 

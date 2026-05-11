@@ -144,14 +144,12 @@ class TestGeneratePdfEndpoint:
         assert placeholder_count == 3
 
     @patch("src.api.routes.PDFGenerator")
-    @patch("src.api.routes.scryfall_client.filter_sets")
     @patch("src.api.routes.scryfall_client.fetch_sets")
     def test_generate_pdf_sets_view_no_valid_sets(
-        self, mock_fetch, mock_filter, mock_pdf_gen, client, sample_set_data
+        self, mock_fetch, mock_pdf_gen, client, sample_set_data
     ):
         """Test PDF generation with sets view when no valid sets are selected."""
         mock_fetch.return_value = sample_set_data
-        mock_filter.return_value = sample_set_data
 
         response = client.post(
             "/generate-pdf",
@@ -163,14 +161,12 @@ class TestGeneratePdfEndpoint:
         assert "No valid sets selected" in response_json["error"]["detail"]
 
     @patch("src.api.routes.PDFGenerator")
-    @patch("src.api.routes.scryfall_client.filter_sets")
     @patch("src.api.routes.scryfall_client.fetch_sets")
     def test_generate_pdf_sets_view_success(
-        self, mock_fetch, mock_filter, mock_pdf_gen, client, sample_set_data
+        self, mock_fetch, mock_pdf_gen, client, sample_set_data
     ):
         """Test successful PDF generation for sets view."""
         mock_fetch.return_value = sample_set_data
-        mock_filter.return_value = sample_set_data
 
         mock_generator_instance = Mock()
         mock_buffer = BytesIO(b"%PDF-1.4 fake pdf content")
@@ -386,3 +382,33 @@ class TestGeneratePdfEndpoint:
         assert response.status_code == 400
         response_json = response.json()
         assert "missing fields" in response_json["error"]["detail"]
+
+    @patch("src.api.routes.PDFGenerator")
+    @patch("src.api.routes.scryfall_client.fetch_sets")
+    def test_generate_pdf_accepts_previously_excluded_set(self, mock_fetch, mock_pdf_gen, client):
+        """A set that the old filter excluded (e.g., promo type) can now be printed."""
+        mock_fetch.return_value = [
+            {
+                "id": "promo-1",
+                "name": "Promo One",
+                "code": "promo1",
+                "set_type": "promo",
+                "card_count": 100,
+                "released_at": "2024-01-01",
+                "icon_svg_uri": "https://example.com/p.svg",
+                "digital": False,
+            },
+        ]
+        mock_generator_instance = Mock()
+        mock_generator_instance.generate.return_value = BytesIO(b"%PDF-1.4 fake")
+        mock_pdf_gen.return_value = mock_generator_instance
+
+        response = client.post(
+            "/generate-pdf",
+            data={"set_ids": ["promo-1"], "view_mode": "sets"},
+        )
+
+        assert response.status_code == 200
+        # PDFGenerator was invoked with the promo set in the items list.
+        items = mock_pdf_gen.call_args.args[0]
+        assert any(item.get("id") == "promo-1" for item in items)

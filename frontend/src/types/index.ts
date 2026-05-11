@@ -60,3 +60,10 @@ export interface SelectionState {
 
 // Theme Preference
 export type ThemePreference = 'light' | 'dark'
+
+// User-configurable set filter preferences (persisted to localStorage)
+export interface SetFilterPreferences {
+  activeSetTypes: string[]
+  ignoredSetCodes: string[]
+  minimumSetSize: number
+}

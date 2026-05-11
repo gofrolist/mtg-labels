@@ -43,7 +43,7 @@ pytest with markers (`@pytest.mark.unit`, `integration`, `contract`, `performanc
 ## Domain Details
 
 - Scryfall API (`https://api.scryfall.com/sets`) is the data source for MTG set info and symbols
-- Set filtering rules and ignored sets in `src/config.py` (SET_TYPES, IGNORED_SETS, MINIMUM_SET_SIZE)
+- Backend only excludes digital-only sets via `ScryfallClient.filter_non_digital`; set-type, ignored-set, and minimum-size filtering live in the frontend (`frontend/src/utils/filtering.ts` and `useSetFilterPreferences`)
 - Label templates (Avery 5160, L7160, L7157, J8158, 94208, 64x30-R) defined in `config.py` LABEL_TEMPLATES with point-based dimensions
 - Long set names have abbreviation mappings in `config.py` ABBREVIATION_MAP
 - PDF uses EB Garamond Bold (set name) and Source Sans Pro Regular (set code/date) fonts from `fonts/`

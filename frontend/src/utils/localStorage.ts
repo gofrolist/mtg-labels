@@ -3,7 +3,7 @@
  * Gracefully handles cases where localStorage is disabled or unavailable.
  */
 
-const STORAGE_PREFIX = 'mtg-label-'
+export const STORAGE_PREFIX = 'mtg-label-'
 
 /**
  * Get a value from localStorage.

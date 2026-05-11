@@ -87,127 +87,95 @@ class TestScryfallClientFetchSets:
             assert "Error fetching sets" in exc_info.value.detail
 
 
-class TestScryfallClientFilterSets:
-    """Tests for ScryfallClient.filter_sets() static method."""
+class TestScryfallClientFilterNonDigital:
+    """Tests for ScryfallClient.filter_non_digital() static method."""
 
-    def test_filter_sets_includes_valid_sets(self, sample_set_data):
-        """Test that valid sets are included."""
-        filtered = ScryfallClient.filter_sets(sample_set_data)
-        assert len(filtered) == 2
-        assert all(s["id"] in ["test-set-1", "test-set-2"] for s in filtered)
-
-    def test_filter_sets_excludes_wrong_type(self):
-        """Test that sets with wrong set_type are excluded."""
+    def test_returns_all_non_digital_sets(self):
+        """All sets without digital=True are returned."""
         sets = [
             {
-                "id": "test-1",
-                "name": "Test 1",
-                "code": "T1",
-                "set_type": "expansion",
-                "card_count": 100,
-            },
-            {
-                "id": "test-2",
-                "name": "Test 2",
-                "code": "T2",
-                "set_type": "invalid_type",
-                "card_count": 100,
-            },
-        ]
-        filtered = ScryfallClient.filter_sets(sets)
-        assert len(filtered) == 1
-        assert filtered[0]["id"] == "test-1"
-
-    @patch("src.services.scryfall_client.MINIMUM_SET_SIZE", 50)
-    def test_filter_sets_excludes_small_sets(self):
-        """Test that sets below minimum size are excluded."""
-        sets = [
-            {
-                "id": "test-1",
-                "name": "Test 1",
-                "code": "T1",
-                "set_type": "expansion",
-                "card_count": 100,
-            },
-            {
-                "id": "test-2",
-                "name": "Test 2",
-                "code": "T2",
-                "set_type": "expansion",
-                "card_count": 30,
-            },
-        ]
-        filtered = ScryfallClient.filter_sets(sets)
-        assert len(filtered) == 1
-        assert filtered[0]["id"] == "test-1"
-
-    def test_filter_sets_excludes_ignored_sets(self):
-        """Test that ignored sets are excluded."""
-        sets = [
-            {
-                "id": "test-1",
-                "name": "Test 1",
-                "code": "T1",
-                "set_type": "expansion",
-                "card_count": 100,
-            },
-            {
-                "id": "test-2",
-                "name": "Test 2",
-                "code": "cmb1",
-                "set_type": "expansion",
-                "card_count": 100,
-            },
-        ]
-        filtered = ScryfallClient.filter_sets(sets)
-        assert len(filtered) == 1
-        assert filtered[0]["id"] == "test-1"
-
-    def test_filter_sets_case_insensitive(self):
-        """Test that filtering is case-insensitive for set_type and code."""
-        sets = [
-            {
-                "id": "test-1",
-                "name": "Test 1",
-                "code": "T1",
-                "set_type": "EXPANSION",
-                "card_count": 100,
-            },
-            {
-                "id": "test-2",
-                "name": "Test 2",
-                "code": "CMB1",
-                "set_type": "expansion",
-                "card_count": 100,
-            },
-        ]
-        filtered = ScryfallClient.filter_sets(sets)
-        assert len(filtered) == 1
-        assert filtered[0]["id"] == "test-1"
-
-    def test_filter_sets_excludes_digital_sets(self):
-        """Test that digital-only sets are excluded."""
-        sets = [
-            {
-                "id": "test-1",
-                "name": "Test 1",
-                "code": "T1",
+                "id": "a",
+                "name": "A",
+                "code": "a",
                 "set_type": "expansion",
                 "card_count": 100,
                 "digital": False,
             },
             {
-                "id": "test-2",
-                "name": "Test 2",
-                "code": "T2",
+                "id": "b",
+                "name": "B",
+                "code": "b",
+                "set_type": "promo",
+                "card_count": 5,
+                "digital": False,
+            },
+            {
+                "id": "c",
+                "name": "C",
+                "code": "cmb1",
+                "set_type": "funny",
+                "card_count": 100,
+                "digital": False,
+            },
+        ]
+        result = ScryfallClient.filter_non_digital(sets)
+        # List equality also verifies order preservation.
+        assert [s["id"] for s in result] == ["a", "b", "c"]
+
+    def test_excludes_digital_sets(self):
+        """Sets with digital=True are excluded."""
+        sets = [
+            {
+                "id": "paper",
+                "name": "Paper",
+                "code": "p",
+                "set_type": "expansion",
+                "card_count": 100,
+                "digital": False,
+            },
+            {
+                "id": "online",
+                "name": "Online",
+                "code": "o",
                 "set_type": "expansion",
                 "card_count": 100,
                 "digital": True,
             },
         ]
-        filtered = ScryfallClient.filter_sets(sets)
-        assert len(filtered) == 1
-        assert filtered[0]["id"] == "test-1"
+        result = ScryfallClient.filter_non_digital(sets)
+        assert len(result) == 1
+        assert result[0]["id"] == "paper"
+
+    def test_missing_digital_field_is_included(self):
+        """Sets that omit the digital field are treated as non-digital (default False)."""
+        sets = [
+            {
+                "id": "no-field",
+                "name": "NoField",
+                "code": "n",
+                "set_type": "expansion",
+                "card_count": 100,
+            },
+        ]
+        result = ScryfallClient.filter_non_digital(sets)
+        assert len(result) == 1
+        assert result[0]["id"] == "no-field"
+
+    def test_empty_input_returns_empty_list(self):
+        """Empty input returns an empty list."""
+        result = ScryfallClient.filter_non_digital([])
+        assert result == []
+
+    def test_truthy_non_boolean_digital_is_excluded(self):
+        """Defensive: any truthy `digital` value (not just True) excludes the set."""
+        sets = [
+            {"id": "bool-true", "digital": True},
+            {"id": "int-one", "digital": 1},
+            {"id": "str-yes", "digital": "yes"},
+            {"id": "paper", "digital": False},
+        ]
+        result = ScryfallClient.filter_non_digital(sets)
+        assert [s["id"] for s in result] == ["paper"]
 
 
 class TestScryfallClientFetchCardTypesCatalog:

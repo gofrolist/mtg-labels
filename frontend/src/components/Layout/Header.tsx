@@ -2,6 +2,7 @@ import { useState, lazy, Suspense } from 'react'
 import { ThemeToggle } from '../ThemeToggle/ThemeToggle'
 import { SearchBar } from '../SearchBar/SearchBar'
 import { TemplateNavButton } from '../TemplateCustomizer/TemplateNavButton'
+import { SetFilterNavButton } from '../SetFilterCustomizer/SetFilterNavButton'
 import { PDFGenerator } from '../PDFGenerator/PDFGenerator'
 
 const DonateModal = lazy(() =>
@@ -24,6 +25,9 @@ interface HeaderProps {
   placeholders: number
   customTemplate: CustomTemplateDimensions | null
   useCustomTemplate: boolean
+  setFilterOpen: boolean
+  onSetFilterToggle: () => void
+  setFilterModified: boolean
 }
 
 export function Header({
@@ -41,6 +45,9 @@ export function Header({
   placeholders,
   customTemplate,
   useCustomTemplate,
+  setFilterOpen,
+  onSetFilterToggle,
+  setFilterModified,
 }: HeaderProps) {
   const [navMenuOpen, setNavMenuOpen] = useState(false)
   const [showDonateModal, setShowDonateModal] = useState(false)
@@ -73,10 +80,19 @@ export function Header({
               />
             </div>
 
+            <div className="hidden min-[880px]:block">
+              <SetFilterNavButton
+                isOpen={setFilterOpen}
+                onToggle={onSetFilterToggle}
+                modified={setFilterModified}
+              />
+            </div>
+
             <button
               type="button"
               onClick={() => {
                 if (navMenuOpen && templateCustomizerOpen) onTemplateToggle()
+                if (navMenuOpen && setFilterOpen) onSetFilterToggle()
                 setNavMenuOpen((o) => !o)
               }}
               className="min-[880px]:hidden h-9 w-9 flex items-center justify-center rounded border border-white/30 hover:bg-white/10 transition-colors"
@@ -129,6 +145,13 @@ export function Header({
                     isOpen={templateCustomizerOpen}
                     onToggle={onTemplateToggle}
                     badgeLabel={templateBadgeLabel}
+                  />
+                </div>
+                <div className="w-full min-w-0 [&_button]:w-full [&_button]:justify-start">
+                  <SetFilterNavButton
+                    isOpen={setFilterOpen}
+                    onToggle={onSetFilterToggle}
+                    modified={setFilterModified}
                   />
                 </div>
               </div>
