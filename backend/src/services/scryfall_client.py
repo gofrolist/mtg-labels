@@ -110,6 +110,11 @@ class ScryfallClient:
             raise HTTPException(status_code=500, detail="Error fetching sets from Scryfall.")
 
     @staticmethod
+    def filter_non_digital(sets: list[dict]) -> list[dict]:
+        """Return only non-digital sets (digital=True excluded)."""
+        return [s for s in sets if not s.get("digital", False)]
+
+    @staticmethod
     def filter_sets(sets: list[dict]) -> list[dict]:
         """
         Filter sets based on configuration criteria.
