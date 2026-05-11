@@ -6,6 +6,13 @@ import { useSelection } from './hooks/useSelection'
 import { useOpenGroups } from './hooks/useOpenGroups'
 import { useSetIcons } from './hooks/useSetIcons'
 import { useCustomTemplates } from './hooks/useCustomTemplates'
+import { useSetFilterPreferences } from './hooks/useSetFilterPreferences'
+import { applyFilters } from './utils/filtering'
+import {
+  DEFAULT_SET_TYPES,
+  DEFAULT_IGNORED_SET_CODES,
+  DEFAULT_MINIMUM_SET_SIZE,
+} from './constants/setFilterDefaults'
 import { groupSetsByType, filterSetsByQuery } from './utils/grouping'
 import { LABEL_TEMPLATES } from './constants/templates'
 import { Header } from './components/Layout/Header'
@@ -16,6 +23,11 @@ import { ViewToggle, type ViewMode } from './components/ViewToggle/ViewToggle'
 const TemplateCustomizer = lazy(() =>
   import('./components/TemplateCustomizer/TemplateCustomizer').then((m) => ({
     default: m.TemplateCustomizer,
+  })),
+)
+const SetFilterCustomizer = lazy(() =>
+  import('./components/SetFilterCustomizer/SetFilterCustomizer').then((m) => ({
+    default: m.SetFilterCustomizer,
   })),
 )
 import { ErrorDisplay } from './components/ErrorDisplay'
@@ -42,12 +54,27 @@ function App() {
     setUseCustomQuantity,
   } = useSelection()
 
-  const sets: MTGSet[] = useMemo(() => setsResponse?.data ?? [], [setsResponse?.data])
+  const {
+    preferences: setFilterPreferences,
+    setActiveSetTypes,
+    setIgnoredSetCodes,
+    setMinimumSetSize,
+    reset: resetSetFilter,
+  } = useSetFilterPreferences()
+
+  const rawSets: MTGSet[] = useMemo(() => setsResponse?.data ?? [], [setsResponse?.data])
+  const sets: MTGSet[] = useMemo(
+    () => applyFilters(rawSets, setFilterPreferences),
+    [rawSets, setFilterPreferences],
+  )
   const cardTypes: Record<string, string[]> = useMemo(() => typesResponse?.data ?? {}, [typesResponse?.data])
   const [searchQuery, setSearchQuery] = useState('')
   const [templateCustomizerOpen, setTemplateCustomizerOpen] = useState(false)
   const [templateCustomizerMounted, setTemplateCustomizerMounted] = useState(false)
   if (templateCustomizerOpen && !templateCustomizerMounted) setTemplateCustomizerMounted(true)
+  const [setFilterOpen, setSetFilterOpen] = useState(false)
+  const [setFilterMounted, setSetFilterMounted] = useState(false)
+  if (setFilterOpen && !setFilterMounted) setSetFilterMounted(true)
   const [viewMode, setViewMode] = useState<ViewMode>('sets')
 
   // Types selection state (separate from sets selection)
@@ -96,6 +123,19 @@ function App() {
     : selection.templateId
       ? LABEL_TEMPLATES[selection.templateId]?.name
       : undefined
+
+  const setFilterModified = useMemo(() => {
+    const a = setFilterPreferences.activeSetTypes
+    const b = setFilterPreferences.ignoredSetCodes
+    if (a.length !== DEFAULT_SET_TYPES.length) return true
+    if (b.length !== DEFAULT_IGNORED_SET_CODES.length) return true
+    if (setFilterPreferences.minimumSetSize !== DEFAULT_MINIMUM_SET_SIZE) return true
+    const defaultsA = new Set<string>(DEFAULT_SET_TYPES)
+    if (a.some((t) => !defaultsA.has(t))) return true
+    const defaultsB = new Set<string>(DEFAULT_IGNORED_SET_CODES)
+    if (b.some((c) => !defaultsB.has(c.toLowerCase()))) return true
+    return false
+  }, [setFilterPreferences])
 
   const handleSelectAllSets = () => {
     const allSetIds = filteredSets.map((set) => set.id)
@@ -224,6 +264,9 @@ function App() {
         placeholders={selection.placeholders}
         customTemplate={selection.customTemplate}
         useCustomTemplate={selection.useCustomTemplate}
+        setFilterOpen={setFilterOpen}
+        onSetFilterToggle={() => setSetFilterOpen((o) => !o)}
+        setFilterModified={setFilterModified}
       />
 
       <Suspense fallback={null}>
@@ -241,6 +284,20 @@ function App() {
           onPlaceholdersChange={setPlaceholders}
           onTemplateChange={setTemplate}
         />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        {setFilterMounted && (
+          <SetFilterCustomizer
+            isOpen={setFilterOpen}
+            preferences={setFilterPreferences}
+            allSets={rawSets}
+            onActiveSetTypesChange={setActiveSetTypes}
+            onIgnoredSetCodesChange={setIgnoredSetCodes}
+            onMinimumSetSizeChange={setMinimumSetSize}
+            onReset={resetSetFilter}
+          />
+        )}
       </Suspense>
 
       <main className="container mx-auto px-4 py-4 flex-1 min-h-[50vh]">
