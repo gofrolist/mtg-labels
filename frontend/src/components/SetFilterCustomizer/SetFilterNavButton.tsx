@@ -1,3 +1,5 @@
+export const SET_FILTER_PANEL_ID = 'set-filter-panel'
+
 interface SetFilterNavButtonProps {
   isOpen: boolean
   onToggle: () => void
@@ -11,6 +13,7 @@ export function SetFilterNavButton({ isOpen, onToggle, modified }: SetFilterNavB
       onClick={onToggle}
       className="h-9 px-3 py-0 flex items-center gap-2 rounded-lg bg-white/10 border border-white/20 hover:bg-white/20 transition-colors text-sm text-white font-medium cursor-pointer select-none"
       aria-expanded={isOpen}
+      aria-controls={SET_FILTER_PANEL_ID}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

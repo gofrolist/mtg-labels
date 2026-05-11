@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useSetFilterPreferences } from '../useSetFilterPreferences'
+import { useSetFilterPreferences, STORAGE_KEY as RAW_KEY } from '../useSetFilterPreferences'
+import { STORAGE_PREFIX } from '../../utils/localStorage'
 import {
   DEFAULT_SET_TYPES,
   DEFAULT_IGNORED_SET_CODES,
   DEFAULT_MINIMUM_SET_SIZE,
 } from '../../constants/setFilterDefaults'
 
-const STORAGE_KEY = 'mtg-label-set-filter-preferences'
+// Compose the full on-disk key so the test cannot drift from the hook.
+const STORAGE_KEY = `${STORAGE_PREFIX}${RAW_KEY}`
 
 const localStorageMock = (() => {
   let store: Record<string, string> = {}

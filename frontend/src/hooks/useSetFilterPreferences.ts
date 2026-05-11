@@ -7,7 +7,7 @@ import {
   DEFAULT_MINIMUM_SET_SIZE,
 } from '../constants/setFilterDefaults'
 
-const STORAGE_KEY = 'set-filter-preferences'
+export const STORAGE_KEY = 'set-filter-preferences'
 
 function buildDefaults(): SetFilterPreferences {
   return {

@@ -2,6 +2,7 @@ import { useId, useMemo } from 'react'
 import type { MTGSet, SetFilterPreferences } from '../../types'
 import { KNOWN_SET_TYPES, getSetTypeMeta } from '../../constants/setTypes'
 import { DEFAULT_IGNORED_SET_CODES } from '../../constants/setFilterDefaults'
+import { SET_FILTER_PANEL_ID } from './SetFilterNavButton'
 
 interface SetFilterCustomizerProps {
   isOpen: boolean
@@ -78,6 +79,7 @@ export function SetFilterCustomizer({
 
   return (
     <div
+      id={SET_FILTER_PANEL_ID}
       className="overflow-hidden grid transition-[grid-template-rows] duration-200 ease-out bg-mtg-card-bg border-b border-mtg-border"
       style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
     >
