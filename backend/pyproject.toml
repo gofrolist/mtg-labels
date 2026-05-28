@@ -30,7 +30,7 @@ dev = [
     "pytest-mock>=3.11.0",
     "psutil>=5.9.0",
     "pyyaml>=6.0",
-    "ruff>=0.15.12",
+    "ruff>=0.15.14",
     "pyright>=1.1.409",
     "pre-commit>=4.6.0",
 ]
