@@ -11,11 +11,13 @@ from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, Response, StreamingResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from src.api.dependencies import setup_error_handlers
+from src.api.rate_limit import RateLimiter, get_client_ip
 from src.cache.cache_manager import get_cache_manager
 from src.config import (
     _BACKEND_ROOT,
@@ -26,6 +28,15 @@ from src.config import (
     DEBUG,
     ENABLE_TEMPLATE_DEBUG,
     LABEL_TEMPLATES,
+    MAX_INPUT_ITEMS,
+    MAX_ITEM_LENGTH,
+    MAX_LABELS_PER_AXIS,
+    MAX_REQUEST_BODY_BYTES,
+    MAX_TEMPLATE_DIMENSION,
+    RATE_LIMIT_API_MAX_REQUESTS,
+    RATE_LIMIT_MAX_KEYS,
+    RATE_LIMIT_PDF_MAX_REQUESTS,
+    RATE_LIMIT_WINDOW_SECONDS,
     TEMPLATE_PDF_FILES,
     VERCEL_FRONTEND_URL,
     logger,
@@ -82,44 +93,440 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     yield
 
 
-def create_app() -> FastAPI:
+def _error_body(status_code: int, error_type: str, detail: str, path: str) -> dict:
+    """Build the structured error envelope used across the API."""
+    return {
+        "error": {
+            "type": error_type,
+            "status_code": status_code,
+            "detail": detail,
+            "path": path,
+        }
+    }
+
+
+class _BodySizeLimitMiddleware:
+    """ASGI middleware that rejects request bodies larger than ``max_bytes``.
+
+    Enforcement is twofold:
+
+    1. A fast ``Content-Length`` pre-check rejects a *declared* oversized body
+       (413) before any of it is read, and rejects a malformed/negative
+       ``Content-Length`` (400 — fail closed rather than letting it through).
+    2. An authoritative running byte count over the streamed body catches
+       chunked / ``Content-Length``-less requests that would otherwise bypass
+       the header check.
+
+    Bodies on this API are tiny (<= ``max_bytes``), so buffering the whole body
+    to count it before handing it to the route is acceptable.
+    """
+
+    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        # 1. Declared-length fast path (and fail-closed on malformed values).
+        declared: int | None = None
+        for name, value in scope.get("headers", []):
+            if name == b"content-length":
+                try:
+                    declared = int(value)
+                except ValueError:
+                    await self._reject(scope, send, 400, "Invalid Content-Length header.")
+                    return
+                if declared < 0:
+                    await self._reject(scope, send, 400, "Invalid Content-Length header.")
+                    return
+                break
+        if declared is not None and declared > self.max_bytes:
+            await self._reject(scope, send, 413, "Request body too large.")
+            return
+
+        # 2. Authoritative streamed byte count (catches chunked / lying CL).
+        body = bytearray()
+        more_body = True
+        while more_body:
+            message = await receive()
+            message_type = message["type"]
+            if message_type == "http.disconnect":
+                # Surface the disconnect to the inner app and stop. Bind the
+                # message as a default arg so the closure captures it by value,
+                # not by (later-rebindable) reference to the loop variable.
+                async def _disconnected(msg: Message = message) -> Message:
+                    return msg
+
+                await self.app(scope, _disconnected, send)
+                return
+            if message_type != "http.request":
+                # The ASGI HTTP spec only delivers http.request / http.disconnect
+                # on the receive channel. Stop reading on anything else rather
+                # than `continue` (which would not advance more_body and could
+                # spin forever if the channel went quiet).
+                break
+            body.extend(message.get("body", b""))
+            if len(body) > self.max_bytes:
+                await self._reject(scope, send, 413, "Request body too large.")
+                return
+            more_body = message.get("more_body", False)
+
+        # Replay the buffered body to the inner app exactly once, then delegate
+        # to the real receive channel. The delegation matters: after the body,
+        # downstream code (e.g. StreamingResponse) calls receive() to watch for
+        # client disconnect — it must get the genuine http.disconnect, not a
+        # second http.request (which raises "Unexpected message received").
+        buffered = bytes(body)
+        replayed = False
+
+        async def replay() -> Message:
+            nonlocal replayed
+            if not replayed:
+                replayed = True
+                return {"type": "http.request", "body": buffered, "more_body": False}
+            return await receive()
+
+        await self.app(scope, replay, send)
+
+    async def _reject(self, scope: Scope, send: Send, status_code: int, detail: str) -> None:
+        error_type = "PayloadTooLarge" if status_code == 413 else "BadRequest"
+        # This middleware sits just inside CORS, so CORS headers are still added
+        # to the rejection, but it is outside the security-header middleware —
+        # apply the hardening headers here so 413/400 responses are protected.
+        headers = security_headers()
+        # We reject before draining the (possibly still-streaming) request body.
+        # Ask the server to close the connection so leftover body bytes cannot
+        # corrupt the next request on a keep-alive connection.
+        headers["Connection"] = "close"
+        response = JSONResponse(
+            status_code=status_code,
+            content=_error_body(status_code, error_type, detail, scope.get("path", "")),
+            headers=headers,
+        )
+        await response(scope, _empty_receive, send)
+
+
+async def _empty_receive() -> Message:
+    """A no-op receive for sending a response without consuming a request body."""
+    return {"type": "http.request", "body": b"", "more_body": False}
+
+
+def security_headers() -> dict[str, str]:
+    """Return the hardening response headers applied to every response.
+
+    HSTS is only emitted outside DEBUG (production is always served over TLS).
+    """
+    headers = {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        # Limit powerful browser features for any HTML/error responses served here.
+        "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+        # Isolate this origin from cross-origin window references.
+        "Cross-Origin-Opener-Policy": "same-origin",
+        # This API never returns active HTML content; lock it down so any error
+        # page or unexpected HTML cannot execute scripts or be framed.
+        "Content-Security-Policy": (
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+        ),
+    }
+    if not DEBUG:
+        # Force HTTPS for a year (Fly serves with force_https).
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return headers
+
+
+def _validate_id_list(ids: list[str] | None, singular: str, plural: str) -> None:
+    """Reject an ID list that is too long or contains an over-length entry.
+
+    Args:
+        ids: The submitted list (may be ``None``/empty — both are no-ops here).
+        singular: Noun for the per-item message, e.g. ``"Set ID"``.
+        plural: Noun for the list-size message, e.g. ``"set IDs"``.
+    """
+    if not ids:
+        return
+    if len(ids) > MAX_INPUT_ITEMS:
+        raise HTTPException(
+            status_code=400, detail=f"Too many {plural}. Maximum is {MAX_INPUT_ITEMS}."
+        )
+    for item in ids:
+        if len(item) > MAX_ITEM_LENGTH:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{singular} too long. Maximum is {MAX_ITEM_LENGTH} characters.",
+            )
+
+
+def _parse_custom_template(custom_template: str) -> dict[str, float]:
+    """Parse and validate the ``custom_template`` JSON blob into a config dict.
+
+    Raises:
+        HTTPException(400): on invalid JSON, missing/non-numeric fields,
+            non-positive dimensions, or values exceeding the safe maximums.
+    """
+    try:
+        parsed = json.loads(custom_template)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON in custom_template field.")
+
+    required_fields = [
+        "page_width",
+        "page_height",
+        "labels_per_row",
+        "label_rows",
+        "label_width",
+        "label_height",
+        "left_margin",
+        "top_margin",
+        "horizontal_gap",
+        "vertical_gap",
+    ]
+    missing = [f for f in required_fields if f not in parsed]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Custom template missing fields: {', '.join(missing)}",
+        )
+
+    try:
+        config: dict[str, float] = {
+            "page_width": float(parsed["page_width"]),
+            "page_height": float(parsed["page_height"]),
+            "labels_per_row": float(parsed["labels_per_row"]),
+            "label_rows": float(parsed["label_rows"]),
+            "label_width": float(parsed["label_width"]),
+            "label_height": float(parsed["label_height"]),
+            "left_margin": float(parsed["left_margin"]),
+            "top_margin": float(parsed["top_margin"]),
+            "horizontal_gap": float(parsed["horizontal_gap"]),
+            "vertical_gap": float(parsed["vertical_gap"]),
+            "label_margin_x": float(parsed.get("label_margin_x", 7.2)),
+            "label_margin_y": float(parsed.get("label_margin_y", 7.2)),
+        }
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Custom template fields must be numeric.")
+
+    # Gaps may legitimately be zero; everything else must be strictly positive.
+    gap_fields = ("horizontal_gap", "vertical_gap")
+    for field, value in config.items():
+        if field not in gap_fields and value <= 0:
+            raise HTTPException(
+                status_code=400, detail=f"Custom template field '{field}' must be positive."
+            )
+
+    # Bound every dimension to prevent resource exhaustion (DoS): an oversized
+    # page/label or a huge grid would force the PDF generator into an enormous
+    # label layout. Grid counts and physical dimensions have separate ceilings.
+    grid_fields = ("labels_per_row", "label_rows")
+    for field in grid_fields:
+        if config[field] > MAX_LABELS_PER_AXIS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Custom template field '{field}' exceeds maximum "
+                f"of {int(MAX_LABELS_PER_AXIS)}.",
+            )
+    for field, value in config.items():
+        if field not in grid_fields and value > MAX_TEMPLATE_DIMENSION:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Custom template field '{field}' exceeds maximum "
+                f"of {MAX_TEMPLATE_DIMENSION} points.",
+            )
+
+    logger.info(f"Using custom template: {config}")
+    return config
+
+
+def _build_label_items(
+    view_mode: str,
+    set_ids: list[str] | None,
+    card_type_ids: list[str] | None,
+    placeholder_count: int,
+) -> list[dict]:
+    """Build the ordered list of label entries to render.
+
+    Leading placeholders shift the first printed label; the remainder are the
+    resolved card-type or set entries.
+    """
+    items: list[dict] = [{"__placeholder__": True} for _ in range(placeholder_count)]
+
+    if view_mode == "types":
+        # card_type_ids format: "color:type" (e.g. "White:Creature").
+        for card_type_id in card_type_ids or []:
+            if ":" in card_type_id:
+                color, card_type = card_type_id.split(":", 1)
+                items.append(
+                    {
+                        "color": color,
+                        "type": card_type,
+                        "name": card_type,
+                        "id": card_type_id,
+                    }
+                )
+        return items
+
+    # Sets (default): resolve each requested ID against the non-digital sets.
+    all_sets = scryfall_client.fetch_sets()
+    filtered = scryfall_client.filter_non_digital(all_sets)
+    sets_by_id: dict[str, dict] = {s["id"]: s for s in filtered if isinstance(s.get("id"), str)}
+    for set_id in set_ids or []:
+        if set_id in sets_by_id:
+            items.append(sets_by_id[set_id])
+    return items
+
+
+def _resolve_template_path(use_template: bool, label_template: str) -> str | None:
+    """Return the overlay PDF path for debug mode, or ``None`` if unavailable."""
+    if not use_template:
+        return None
+    template_pdf_filename = TEMPLATE_PDF_FILES.get(label_template)
+    if not template_pdf_filename:
+        logger.warning(
+            f"No template PDF mapping found for template '{label_template}', "
+            "generating without template overlay"
+        )
+        return None
+    template_file = Path(template_pdf_filename)
+    if not template_file.exists():
+        logger.warning(
+            f"Template PDF not found: {template_file} "
+            f"for template '{label_template}', generating without template"
+        )
+        return None
+    logger.info(f"Using template PDF '{template_pdf_filename}' for template '{label_template}'")
+    return str(template_file)
+
+
+def create_app(
+    *,
+    pdf_limiter: RateLimiter | None = None,
+    api_limiter: RateLimiter | None = None,
+    max_body_bytes: int | None = None,
+) -> FastAPI:
     """Create and configure the FastAPI application.
+
+    Args:
+        pdf_limiter: Rate limiter applied to ``/generate-pdf``. If omitted, a
+            fresh limiter scoped to this app instance is created — this keeps
+            tests that spin up multiple apps independent of each other.
+        api_limiter: Rate limiter applied to ``/api/*`` GET endpoints. Same
+            defaulting/override pattern as ``pdf_limiter``.
+        max_body_bytes: Maximum allowed request body size (bytes). Larger
+            requests return 413 (enforced by streamed byte count, so chunked
+            bodies cannot bypass it). ``None`` uses ``MAX_REQUEST_BODY_BYTES``.
 
     Returns:
         Configured FastAPI application instance
     """
+    # Limiters default per-instance, not module-global, so each create_app()
+    # call (notably in tests) gets a fresh bucket.
+    if pdf_limiter is None:
+        pdf_limiter = RateLimiter(
+            max_requests=RATE_LIMIT_PDF_MAX_REQUESTS,
+            window_seconds=RATE_LIMIT_WINDOW_SECONDS,
+            max_keys=RATE_LIMIT_MAX_KEYS,
+        )
+    if api_limiter is None:
+        api_limiter = RateLimiter(
+            max_requests=RATE_LIMIT_API_MAX_REQUESTS,
+            window_seconds=RATE_LIMIT_WINDOW_SECONDS,
+            max_keys=RATE_LIMIT_MAX_KEYS,
+        )
+    body_cap = max_body_bytes if max_body_bytes is not None else MAX_REQUEST_BODY_BYTES
+
     app = FastAPI(
         title=APP_NAME,
         debug=DEBUG,
         version=__version__,
         lifespan=lifespan,
-        # Disable interactive docs in production
+        # Disable interactive docs and schema exposure in production.
+        # The frontend uses a committed openapi.json (Orval), so the live
+        # schema endpoint is unnecessary in prod and only widens attack surface.
         docs_url="/docs" if DEBUG else None,
         redoc_url="/redoc" if DEBUG else None,
-        openapi_url="/openapi.json",
+        openapi_url="/openapi.json" if DEBUG else None,
     )
 
     # Setup error handlers
     setup_error_handlers(app)
 
+    # Middleware below is registered innermost-first. Starlette wraps each newly
+    # added middleware AROUND the previously added ones, so the LAST one
+    # registered is the OUTERMOST at runtime. Effective request order:
+    #   CORS -> body-size cap -> security headers -> rate limit -> GZip -> route
+    #
+    # The body-size cap is a pure-ASGI middleware that consumes and re-emits the
+    # request body. It must sit OUTSIDE the BaseHTTPMiddleware layers (security
+    # headers, rate limit): nesting a body-reading ASGI middleware *inside* a
+    # BaseHTTPMiddleware deadlocks Starlette on streaming responses. CORS is
+    # itself a pure-ASGI middleware (not BaseHTTPMiddleware), so it can safely
+    # wrap the body-size cap — and being outermost means CORS headers are added
+    # to the body-size cap's own 413/400 responses too. The body-size cap
+    # applies the hardening headers to those responses directly (see _reject);
+    # the security-header middleware wraps the rate limiter so 429s carry them.
+
     # GZip compression for large responses (e.g. /api/set-icons ~650KB → ~150KB)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    # Per-IP rate limiting on the expensive PDF endpoint and the public /api
+    # surface. ``/``, ``/static/*`` and docs paths are intentionally exempt:
+    # the root path serves health checks, and static SVGs are bulk-fetched by
+    # browsers (one request per set icon).
+    @app.middleware("http")
+    async def rate_limit_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]
+        path = request.url.path
+        if path == "/generate-pdf":
+            limiter: RateLimiter | None = pdf_limiter
+        elif path.startswith("/api/"):
+            limiter = api_limiter
+        else:
+            limiter = None
+        if limiter is not None:
+            client_ip = get_client_ip(request)
+            if not limiter.hit(client_ip):
+                return JSONResponse(
+                    status_code=429,
+                    content=_error_body(
+                        429,
+                        "RateLimited",
+                        "Too many requests. Please slow down and retry shortly.",
+                        request.url.path,
+                    ),
+                    headers={"Retry-After": str(RATE_LIMIT_WINDOW_SECONDS)},
+                )
+        return await call_next(request)
 
     # Security response headers
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
         response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        for header, value in security_headers().items():
+            response.headers[header] = value
         return response
 
-    # Configure CORS
+    # Reject oversized request bodies (413), enforced by a streamed byte count so
+    # chunked / Content-Length-less requests cannot bypass the cap. Registered
+    # before CORS so it wraps the BaseHTTPMiddleware layers (avoiding the
+    # Starlette streaming deadlock) but is itself wrapped by CORS (so its
+    # rejections still get CORS headers).
+    app.add_middleware(_BodySizeLimitMiddleware, max_bytes=body_cap)
+
+    # Configure CORS.
+    # This API is stateless and uses no cookies, Authorization headers, or any
+    # other credentials, so credentials are disabled. This is important because
+    # allow_origin_regex matches a broad set of preview origins
+    # (*.vusercontent.net); pairing that with allow_credentials=True would let
+    # those origins make authenticated cross-site requests.
+    # Registered LAST so CORS is the OUTERMOST middleware.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
         allow_origin_regex=CORS_ORIGIN_REGEX,
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Content-Type", "Accept"],
     )
@@ -272,82 +679,28 @@ def create_app() -> FastAPI:
                 status_code=400, detail="Invalid view_mode. Must be 'sets' or 'types'."
             )
 
-        # Limit input list sizes to prevent abuse
-        max_items = 500
-        if set_ids and len(set_ids) > max_items:
+        # Bound input list sizes and per-item lengths to prevent abuse.
+        _validate_id_list(set_ids, "Set ID", "set IDs")
+        _validate_id_list(card_type_ids, "Card type ID", "card type IDs")
+
+        # Require a non-empty selection for the active view mode.
+        if view_mode == "types" and not card_type_ids:
+            logger.warning("PDF generation attempted with no card types selected")
             raise HTTPException(
-                status_code=400, detail=f"Too many set IDs. Maximum is {max_items}."
+                status_code=400,
+                detail="Please select at least one card type before generating the PDF.",
             )
-        if card_type_ids and len(card_type_ids) > max_items:
+        if view_mode == "sets" and not set_ids:
+            logger.warning("PDF generation attempted with no sets selected")
             raise HTTPException(
-                status_code=400, detail=f"Too many card type IDs. Maximum is {max_items}."
+                status_code=400,
+                detail="Please select at least one set before generating the PDF.",
             )
 
-        # Handle case where no sets/card types are selected
-        if view_mode == "types":
-            if not card_type_ids or len(card_type_ids) == 0:
-                logger.warning("PDF generation attempted with no card types selected")
-                raise HTTPException(
-                    status_code=400,
-                    detail="Please select at least one card type before generating the PDF.",
-                )
-        else:
-            if not set_ids or len(set_ids) == 0:
-                logger.warning("PDF generation attempted with no sets selected")
-                raise HTTPException(
-                    status_code=400,
-                    detail="Please select at least one set before generating the PDF.",
-                )
-
-        # Parse and validate custom template if provided
-        custom_template_config: dict[str, float] | None = None
-        if custom_template:
-            try:
-                parsed = json.loads(custom_template)
-                required_fields = [
-                    "page_width",
-                    "page_height",
-                    "labels_per_row",
-                    "label_rows",
-                    "label_width",
-                    "label_height",
-                    "left_margin",
-                    "top_margin",
-                    "horizontal_gap",
-                    "vertical_gap",
-                ]
-                missing = [f for f in required_fields if f not in parsed]
-                if missing:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Custom template missing fields: {', '.join(missing)}",
-                    )
-                custom_template_config = {
-                    "page_width": float(parsed["page_width"]),
-                    "page_height": float(parsed["page_height"]),
-                    "labels_per_row": float(parsed["labels_per_row"]),
-                    "label_rows": float(parsed["label_rows"]),
-                    "label_width": float(parsed["label_width"]),
-                    "label_height": float(parsed["label_height"]),
-                    "left_margin": float(parsed["left_margin"]),
-                    "top_margin": float(parsed["top_margin"]),
-                    "horizontal_gap": float(parsed["horizontal_gap"]),
-                    "vertical_gap": float(parsed["vertical_gap"]),
-                    "label_margin_x": float(parsed.get("label_margin_x", 7.2)),
-                    "label_margin_y": float(parsed.get("label_margin_y", 7.2)),
-                }
-                # Validate positive values
-                for field, value in custom_template_config.items():
-                    if field not in ("horizontal_gap", "vertical_gap") and value <= 0:
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"Custom template field '{field}' must be positive.",
-                        )
-                logger.info(f"Using custom template: {custom_template_config}")
-            except json.JSONDecodeError:
-                raise HTTPException(
-                    status_code=400, detail="Invalid JSON in custom_template field."
-                )
+        # Parse and validate the custom template (raises 400 on any problem).
+        custom_template_config = (
+            _parse_custom_template(custom_template) if custom_template else None
+        )
 
         # Validate and set template
         label_template = template or CURRENT_LABEL_TEMPLATE
@@ -373,79 +726,23 @@ def create_app() -> FastAPI:
 
         # Calculate how many placeholders (empty labels) to insert at the start.
         # We clamp this to at most labels_per_page - 1 so the user can shift
-        # labels within the first page of the sheet.
+        # labels within the first page of the sheet. The absolute cap also
+        # prevents a large custom grid from turning an unbounded `placeholders`
+        # value into a huge label list (resource-exhaustion / DoS guard).
         labels_config = custom_template_config or LABEL_TEMPLATES[label_template]
         labels_per_page = int(labels_config["labels_per_row"] * labels_config["label_rows"])
-        raw_placeholders = placeholders or 0
-        placeholder_count = max(0, min(raw_placeholders, max(labels_per_page - 1, 0)))
+        max_placeholders = max(labels_per_page - 1, 0)
+        placeholder_count = min(max(0, placeholders or 0), max_placeholders)
 
-        # Build the list of labels to render
-        selected_items_data: list[dict] = []
-
-        # Add placeholders as special entries understood by PDFGenerator
-        for _ in range(placeholder_count):
-            selected_items_data.append({"__placeholder__": True})
-
-        if view_mode == "types":
-            # Handle card types (color + type combinations)
-            # card_type_ids format: "color:type" (e.g., "White:Creature")
-            for card_type_id in card_type_ids or []:
-                if ":" in card_type_id:
-                    color, card_type = card_type_id.split(":", 1)
-                    # Create a simple dict for the label
-                    selected_items_data.append(
-                        {
-                            "color": color,
-                            "type": card_type,
-                            "name": f"{card_type}",  # Just the type name for the label
-                            "id": card_type_id,  # Use the combined ID
-                        }
-                    )
-        else:
-            # Handle sets (default)
-            all_sets = scryfall_client.fetch_sets()
-            filtered = scryfall_client.filter_non_digital(all_sets)
-
-            # Create a mapping of set_id to set_dict for quick lookup
-            sets_by_id: dict[str, dict] = {}
-            for s in filtered:
-                set_id_key = s.get("id")
-                if isinstance(set_id_key, str):
-                    sets_by_id[set_id_key] = s
-
-            # Expand set_ids list to include duplicates based on quantities
-            for set_id in set_ids or []:
-                if set_id in sets_by_id:
-                    selected_items_data.append(sets_by_id[set_id])
-
+        selected_items_data = _build_label_items(
+            view_mode, set_ids, card_type_ids, placeholder_count
+        )
         if not selected_items_data:
             item_type = "card types" if view_mode == "types" else "sets"
             logger.error(f"No valid {item_type} selected")
             raise HTTPException(status_code=400, detail=f"No valid {item_type} selected.")
 
-        # Set template path if debug mode is enabled
-        template_path = None
-        if use_template_bool:
-            # Get the template PDF file based on the selected template
-            template_pdf_filename = TEMPLATE_PDF_FILES.get(label_template)
-            if template_pdf_filename:
-                template_file = Path(template_pdf_filename)
-                if template_file.exists():
-                    template_path = str(template_file)
-                    logger.info(
-                        f"Using template PDF '{template_pdf_filename}' "
-                        f"for template '{label_template}'"
-                    )
-                else:
-                    logger.warning(
-                        f"Template PDF not found: {template_file} "
-                        f"for template '{label_template}', generating without template"
-                    )
-            else:
-                logger.warning(
-                    f"No template PDF mapping found for template '{label_template}', "
-                    "generating without template overlay"
-                )
+        template_path = _resolve_template_path(use_template_bool, label_template)
 
         pdf_generator = PDFGenerator(
             selected_items_data,

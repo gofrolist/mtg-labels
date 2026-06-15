@@ -69,5 +69,11 @@ jobs:
     - name: Pyright
       run: uv run pyright
 
+    - name: Dependency vulnerability scan (pip-audit)
+      run: uv run --with pip-audit pip-audit
+
+    - name: Static security scan (bandit)
+      run: uv run --with bandit bandit -q -r src
+
     - name: Pytest
       run: uv run pytest -q --cov --cov-report=term-missing

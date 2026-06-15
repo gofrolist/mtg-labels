@@ -6,9 +6,17 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from src.api.rate_limit import RateLimiter
 from src.api.routes import create_app
 
-app = create_app()
+# These tests focus on PDF generation correctness, not rate limiting, and the
+# module-level app is shared by 18+ tests all driving /generate-pdf from the
+# same client IP. Use a permissive limiter so the rate-limit middleware does
+# not turn these tests into rate-limit tests.
+app = create_app(
+    pdf_limiter=RateLimiter(max_requests=10_000, window_seconds=60),
+    api_limiter=RateLimiter(max_requests=10_000, window_seconds=60),
+)
 
 
 @pytest.fixture
