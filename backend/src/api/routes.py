@@ -261,6 +261,41 @@ def _validate_id_list(ids: list[str] | None, singular: str, plural: str) -> None
             )
 
 
+def _parse_letters(raw: str | None) -> list[str]:
+    """Parse the alphabet-divider ``letters`` form value into single letters.
+
+    The frontend expands ranges (``A-F, H, L-Z``) before sending, so the value
+    here is a comma-separated list of single letters. Each token is validated as
+    a single A-Z letter, uppercased, and de-duplicated while preserving order.
+
+    Args:
+        raw: Comma-separated single letters, or ``None``/empty.
+
+    Returns:
+        Ordered, de-duplicated list of uppercase letters (empty if no input).
+
+    Raises:
+        HTTPException: 400 if the value is too long or has a non-letter token.
+    """
+    if not raw:
+        return []
+    if len(raw) > 200:
+        raise HTTPException(status_code=400, detail="Letters value too long.")
+    letters: list[str] = []
+    for token in raw.split(","):
+        token = token.strip().upper()
+        if not token:
+            continue
+        if len(token) != 1 or not ("A" <= token <= "Z"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid letter '{token}'. Use single letters A-Z.",
+            )
+        if token not in letters:
+            letters.append(token)
+    return letters
+
+
 def _parse_custom_template(custom_template: str) -> dict[str, float]:
     """Parse and validate the ``custom_template`` JSON blob into a config dict.
 
