@@ -19,6 +19,7 @@ dependencies = [
     "cachetools>=7.0.6",
     "pypdf>=6.12.2",
     "defusedxml>=0.7.1",
+    "starlette>=1.0.1",
 ]
 
 [dependency-groups]

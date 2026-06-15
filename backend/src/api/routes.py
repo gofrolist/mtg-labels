@@ -11,11 +11,12 @@ from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, Response, StreamingResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 
 from src.api.dependencies import setup_error_handlers
+from src.api.rate_limit import RateLimiter, get_client_ip
 from src.cache.cache_manager import get_cache_manager
 from src.config import (
     _BACKEND_ROOT,
@@ -82,21 +83,69 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     yield
 
 
-def create_app() -> FastAPI:
+# Default per-IP rate-limit budgets. Tuned for a single client doing normal
+# interactive use — PDF generation is intentionally tighter because it is the
+# most expensive endpoint (Scryfall I/O + cairosvg + ReportLab).
+_DEFAULT_PDF_MAX_REQUESTS = 10
+_DEFAULT_API_MAX_REQUESTS = 60
+_DEFAULT_RATE_WINDOW_SECONDS = 60
+
+# Request bodies should never approach this size. /generate-pdf accepts a small
+# JSON `custom_template` plus a list of UUIDs; 128 KB leaves plenty of headroom
+# and keeps a malicious Content-Length far short of memory exhaustion.
+_DEFAULT_MAX_BODY_BYTES = 128 * 1024
+
+# Individual set IDs are Scryfall UUIDs (36 chars). Card type IDs are
+# "Color:Type" strings well under 64. Anything longer is a misuse / abuse signal.
+_MAX_ITEM_LENGTH = 64
+
+
+def create_app(
+    *,
+    pdf_limiter: RateLimiter | None = None,
+    api_limiter: RateLimiter | None = None,
+    max_body_bytes: int | None = None,
+) -> FastAPI:
     """Create and configure the FastAPI application.
+
+    Args:
+        pdf_limiter: Rate limiter applied to ``/generate-pdf``. If omitted, a
+            fresh limiter scoped to this app instance is created — this keeps
+            tests that spin up multiple apps independent of each other.
+        api_limiter: Rate limiter applied to ``/api/*`` GET endpoints. Same
+            defaulting/override pattern as ``pdf_limiter``.
+        max_body_bytes: Maximum allowed ``Content-Length`` (bytes). Requests
+            exceeding this return 413 before the body is read. ``None`` falls
+            back to the module default.
 
     Returns:
         Configured FastAPI application instance
     """
+    # Limiters default per-instance, not module-global, so each create_app()
+    # call (notably in tests) gets a fresh bucket.
+    if pdf_limiter is None:
+        pdf_limiter = RateLimiter(
+            max_requests=_DEFAULT_PDF_MAX_REQUESTS,
+            window_seconds=_DEFAULT_RATE_WINDOW_SECONDS,
+        )
+    if api_limiter is None:
+        api_limiter = RateLimiter(
+            max_requests=_DEFAULT_API_MAX_REQUESTS,
+            window_seconds=_DEFAULT_RATE_WINDOW_SECONDS,
+        )
+    body_cap = max_body_bytes if max_body_bytes is not None else _DEFAULT_MAX_BODY_BYTES
+
     app = FastAPI(
         title=APP_NAME,
         debug=DEBUG,
         version=__version__,
         lifespan=lifespan,
-        # Disable interactive docs in production
+        # Disable interactive docs and schema exposure in production.
+        # The frontend uses a committed openapi.json (Orval), so the live
+        # schema endpoint is unnecessary in prod and only widens attack surface.
         docs_url="/docs" if DEBUG else None,
         redoc_url="/redoc" if DEBUG else None,
-        openapi_url="/openapi.json",
+        openapi_url="/openapi.json" if DEBUG else None,
     )
 
     # Setup error handlers
@@ -105,6 +154,61 @@ def create_app() -> FastAPI:
     # GZip compression for large responses (e.g. /api/set-icons ~650KB → ~150KB)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+    # Reject oversized request bodies up-front. Checked via Content-Length so
+    # the body is never read into memory. Registered before security headers
+    # so the 413 response still gets the hardening header set.
+    @app.middleware("http")
+    async def limit_body_size(request: Request, call_next):  # type: ignore[no-untyped-def]
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                size = int(content_length)
+            except ValueError:
+                size = 0
+            if size > body_cap:
+                return JSONResponse(
+                    status_code=413,
+                    content={
+                        "error": {
+                            "type": "PayloadTooLarge",
+                            "status_code": 413,
+                            "detail": "Request body too large.",
+                            "path": request.url.path,
+                        }
+                    },
+                )
+        return await call_next(request)
+
+    # Per-IP rate limiting on the expensive PDF endpoint and the public /api
+    # surface. ``/``, ``/static/*`` and docs paths are intentionally exempt:
+    # the root path serves health checks, and static SVGs are bulk-fetched by
+    # browsers (one request per set icon).
+    @app.middleware("http")
+    async def rate_limit_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]
+        path = request.url.path
+        if path == "/generate-pdf":
+            limiter: RateLimiter | None = pdf_limiter
+        elif path.startswith("/api/"):
+            limiter = api_limiter
+        else:
+            limiter = None
+        if limiter is not None:
+            client_ip = get_client_ip(request)
+            if not limiter.hit(client_ip):
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "error": {
+                            "type": "RateLimited",
+                            "status_code": 429,
+                            "detail": "Too many requests. Please slow down and retry shortly.",
+                            "path": request.url.path,
+                        }
+                    },
+                    headers={"Retry-After": "60"},
+                )
+        return await call_next(request)
+
     # Security response headers
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
@@ -112,14 +216,32 @@ def create_app() -> FastAPI:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # Limit powerful browser features for any HTML/error responses served here.
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        # Isolate this origin from cross-origin window references.
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        # This API never returns active HTML content; lock it down so any
+        # error page or unexpected HTML cannot execute scripts or be framed.
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+        )
+        # Force HTTPS for a year (Fly serves with force_https). Safe because the
+        # API is only reached over TLS in production.
+        if not DEBUG:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
-    # Configure CORS
+    # Configure CORS.
+    # This API is stateless and uses no cookies, Authorization headers, or any
+    # other credentials, so credentials are disabled. This is important because
+    # allow_origin_regex matches a broad set of preview origins
+    # (*.vusercontent.net); pairing that with allow_credentials=True would let
+    # those origins make authenticated cross-site requests.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
         allow_origin_regex=CORS_ORIGIN_REGEX,
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Content-Type", "Accept"],
     )
@@ -283,6 +405,27 @@ def create_app() -> FastAPI:
                 status_code=400, detail=f"Too many card type IDs. Maximum is {max_items}."
             )
 
+        # Bound the length of each individual ID. Scryfall IDs are 36-char
+        # UUIDs and card type IDs are short "Color:Type" strings; anything
+        # over _MAX_ITEM_LENGTH is malformed or abusive and would only blow
+        # up logs and downstream lookup paths.
+        if set_ids:
+            for sid in set_ids:
+                if len(sid) > _MAX_ITEM_LENGTH:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Set ID too long. Maximum is {_MAX_ITEM_LENGTH} characters.",
+                    )
+        if card_type_ids:
+            for ctid in card_type_ids:
+                if len(ctid) > _MAX_ITEM_LENGTH:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Card type ID too long. Maximum is {_MAX_ITEM_LENGTH} characters."
+                        ),
+                    )
+
         # Handle case where no sets/card types are selected
         if view_mode == "types":
             if not card_type_ids or len(card_type_ids) == 0:
@@ -343,6 +486,26 @@ def create_app() -> FastAPI:
                             status_code=400,
                             detail=f"Custom template field '{field}' must be positive.",
                         )
+                # Bound dimensions to sane maximums to prevent resource-exhaustion
+                # (DoS): an unbounded labels_per_row/label_rows or oversized page
+                # would force the PDF generator into a huge label grid.
+                # 5000pt ~= 69 inches, far beyond any real label sheet.
+                max_dimension = 5000.0
+                max_labels_per_axis = 100.0
+                for field in ("page_width", "page_height", "label_width", "label_height"):
+                    if custom_template_config[field] > max_dimension:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Custom template field '{field}' exceeds maximum "
+                            f"of {max_dimension} points.",
+                        )
+                for field in ("labels_per_row", "label_rows"):
+                    if custom_template_config[field] > max_labels_per_axis:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Custom template field '{field}' exceeds maximum "
+                            f"of {int(max_labels_per_axis)}.",
+                        )
                 logger.info(f"Using custom template: {custom_template_config}")
             except json.JSONDecodeError:
                 raise HTTPException(
@@ -373,11 +536,14 @@ def create_app() -> FastAPI:
 
         # Calculate how many placeholders (empty labels) to insert at the start.
         # We clamp this to at most labels_per_page - 1 so the user can shift
-        # labels within the first page of the sheet.
+        # labels within the first page of the sheet. The absolute cap also
+        # prevents a large custom grid from turning an unbounded `placeholders`
+        # value into a huge label list (resource-exhaustion / DoS guard).
         labels_config = custom_template_config or LABEL_TEMPLATES[label_template]
         labels_per_page = int(labels_config["labels_per_row"] * labels_config["label_rows"])
-        raw_placeholders = placeholders or 0
-        placeholder_count = max(0, min(raw_placeholders, max(labels_per_page - 1, 0)))
+        max_placeholders = max(labels_per_page - 1, 0)
+        raw_placeholders = max(0, placeholders or 0)
+        placeholder_count = min(raw_placeholders, max_placeholders)
 
         # Build the list of labels to render
         selected_items_data: list[dict] = []
