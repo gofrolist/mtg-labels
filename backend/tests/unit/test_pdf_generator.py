@@ -404,3 +404,38 @@ class TestPDFGenerator:
         with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
             result = generator.generate()
         assert result.read().startswith(b"%PDF")
+
+    def test_letter_is_top_aligned(self):
+        """The divider letter is anchored to the top of the label, not centered."""
+        set_data = [
+            {
+                "id": "s1",
+                "name": "Modern Horizons 2",
+                "code": "MH2",
+                "released_at": "2021-06-18",
+                "letter": "Q",
+            }
+        ]
+        generator = PDFGenerator(set_data)
+        draw_calls: list[tuple[float, float, str]] = []
+        original_draw_string = generator.canvas.drawString
+
+        def record(x, y, text, *args, **kwargs):
+            draw_calls.append((x, y, text))
+            return original_draw_string(x, y, text, *args, **kwargs)
+
+        generator.canvas.drawString = record
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            generator.generate()
+
+        letter_calls = [call for call in draw_calls if call[2] == "Q"]
+        assert letter_calls, "divider letter was not drawn"
+        _, letter_y, _ = letter_calls[0]
+
+        # First label sits in the top-left corner (row 0, col 0).
+        template = generator.template
+        label_top = template["page_height"] - template["top_margin"]
+        label_bottom = label_top - template["label_height"]
+        label_center = (label_top + label_bottom) / 2
+        # Top-aligned: the baseline stays above the label's vertical center.
+        assert letter_y > label_center

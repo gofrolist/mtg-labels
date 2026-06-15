@@ -35,6 +35,7 @@ from src.services.helpers import (
     fit_text_to_width,
     get_svg_intrinsic_dimensions,
     get_symbol_file,
+    letter_baseline_y,
     letter_font_size,
 )
 
@@ -293,12 +294,21 @@ class PDFGenerator:
         if symbol_file:
             self._draw_symbol(symbol_file, label_x, label_y, symbol_label)
 
-        # Draw the alphabet divider letter, vertically centered, left of the symbol.
+        # Draw the alphabet divider letter, top-aligned with the set name, left
+        # of the symbol. capHeight is reported in 1/1000 em units by ReportLab.
         if letter:
-            letter_baseline_y = label_y + (self.template["label_height"] - letter_size) / 2
+            font_face = pdfmetrics.getFont("EBGaramondBold").face  # type: ignore[attr-defined]
+            cap_height_ratio = font_face.capHeight / 1000.0
+            baseline_y = letter_baseline_y(
+                label_top,
+                self.template["label_margin_y"],
+                FONT_SIZE_ROW1,
+                letter_size,
+                cap_height_ratio,
+            )
             self.canvas.setFont("EBGaramondBold", letter_size)
             self.canvas.setFillColorRGB(0, 0, 0)
-            self.canvas.drawString(letter_x, letter_baseline_y, letter)
+            self.canvas.drawString(letter_x, baseline_y, letter)
 
     def _draw_label_text(self, text_x: float, text_y: float, line1: str, line2: str) -> None:
         """Draw the two text lines on a label.

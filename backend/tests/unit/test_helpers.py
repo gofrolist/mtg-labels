@@ -3,6 +3,7 @@
 from io import BytesIO
 from unittest.mock import Mock, patch
 
+import pytest
 import requests
 from reportlab.pdfgen import canvas
 
@@ -12,6 +13,7 @@ from src.services.helpers import (
     fit_text_to_width,
     get_svg_intrinsic_dimensions,
     get_symbol_file,
+    letter_baseline_y,
     letter_font_size,
 )
 
@@ -96,6 +98,32 @@ class TestLetterFontSize:
     def test_short_label(self):
         # Narrow 48pt label -> 24pt letter (below the cap).
         assert letter_font_size(48) == 24.0
+
+
+class TestLetterBaselineY:
+    """Tests for letter_baseline_y() top-alignment helper."""
+
+    def test_cap_top_aligns_with_set_name(self):
+        # The letter's cap top should match the set name's cap top so the big
+        # letter is anchored to the top of the label.
+        label_top, margin, row1, letter, cap = 100.0, 7.2, 11.0, 36.0, 0.65
+        baseline = letter_baseline_y(label_top, margin, row1, letter, cap)
+        row1_cap_top = (label_top - margin) + cap * row1
+        letter_cap_top = baseline + cap * letter
+        assert letter_cap_top == pytest.approx(row1_cap_top)
+
+    def test_equal_sizes_share_baseline(self):
+        # When the letter matches the row-1 font size, the baselines coincide.
+        baseline = letter_baseline_y(100.0, 7.2, 11.0, 11.0, 0.65)
+        assert baseline == pytest.approx(100.0 - 7.2)
+
+    def test_larger_letter_sits_above_label_center(self):
+        # A large letter is top-aligned: its baseline stays above the vertical
+        # center of a 72pt-tall label (the old centered layout sat below it).
+        label_top, label_height = 100.0, 72.0
+        baseline = letter_baseline_y(label_top, 7.2, 11.0, 36.0, 0.65)
+        label_center = label_top - label_height / 2
+        assert baseline > label_center
 
 
 class TestGetSymbolFile:

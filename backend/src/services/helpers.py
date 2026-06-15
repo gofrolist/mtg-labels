@@ -84,6 +84,35 @@ def letter_font_size(label_height: float) -> float:
     return min(label_height * LETTER_FONT_SCALE, LETTER_MAX_FONT_SIZE)
 
 
+def letter_baseline_y(
+    label_top: float,
+    label_margin_y: float,
+    row1_font_size: float,
+    letter_size: float,
+    cap_height_ratio: float,
+) -> float:
+    """Baseline Y for a top-aligned alphabet divider letter.
+
+    Positions the letter so its cap top lines up with the cap top of the set
+    name's first text line. This anchors the big letter to the top of the
+    label instead of vertically centering it.
+
+    Args:
+        label_top: Y coordinate of the top edge of the label.
+        label_margin_y: Internal top margin; the set name baseline sits this
+            far below ``label_top``.
+        row1_font_size: Font size (points) of the set name's first line.
+        letter_size: Font size (points) of the divider letter.
+        cap_height_ratio: Cap height as a fraction of the font size (em).
+
+    Returns:
+        Baseline Y (points) for the divider letter.
+    """
+    row1_baseline = label_top - label_margin_y
+    row1_cap_top = row1_baseline + cap_height_ratio * row1_font_size
+    return row1_cap_top - cap_height_ratio * letter_size
+
+
 def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str) -> str | None:
     """
     Download a symbol SVG and cache it locally.
