@@ -10,7 +10,7 @@ vi.stubGlobal(
     observe() {}
     unobserve() {}
     disconnect() {}
-  },
+  }
 )
 
 function baseProps(alphabet: AlphabetSelection, onAlphabetChange = vi.fn()) {
@@ -60,13 +60,23 @@ describe('TemplateCustomizer letters control', () => {
   it('calls onAlphabetChange when typing in the custom input', () => {
     const onAlphabetChange = vi.fn()
     render(
-      <TemplateCustomizer
-        {...baseProps({ mode: 'custom', customInput: '' }, onAlphabetChange)}
-      />,
+      <TemplateCustomizer {...baseProps({ mode: 'custom', customInput: '' }, onAlphabetChange)} />
     )
     fireEvent.change(screen.getByPlaceholderText(/A-F, H, L-Z/i), {
       target: { value: 'A-C' },
     })
     expect(onAlphabetChange).toHaveBeenCalledWith({ mode: 'custom', customInput: 'A-C' })
+  })
+
+  it('associates the mode select and custom input with accessible labels', () => {
+    render(<TemplateCustomizer {...baseProps({ mode: 'custom', customInput: '' })} />)
+    expect(screen.getByLabelText(/alphabet divider letters/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Custom divider letters')).toBeInTheDocument()
+  })
+
+  it('shows a neutral hint (not an error) for an empty custom field', () => {
+    render(<TemplateCustomizer {...baseProps({ mode: 'custom', customInput: '' })} />)
+    expect(screen.getByText(/enter letters and ranges/i)).toBeInTheDocument()
+    expect(screen.queryByText(/enter at least one letter/i)).not.toBeInTheDocument()
   })
 })

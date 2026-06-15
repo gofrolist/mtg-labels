@@ -23,14 +23,14 @@ describe('PDFGenerator alphabet letters', () => {
         templateId="avery5160"
         placeholders={0}
         alphabet={{ mode: 'custom', customInput: 'A-C' }}
-      />,
+      />
     )
 
     fireEvent.click(screen.getByRole('button', { name: /pdf/i }))
 
     await waitFor(() => {
       expect(generatePDF).toHaveBeenCalledWith(
-        expect.objectContaining({ letters: ['A', 'B', 'C'], viewMode: 'sets' }),
+        expect.objectContaining({ letters: ['A', 'B', 'C'], viewMode: 'sets' })
       )
     })
   })
@@ -44,8 +44,24 @@ describe('PDFGenerator alphabet letters', () => {
         templateId="avery5160"
         placeholders={0}
         alphabet={{ mode: 'custom', customInput: 'Z-A' }}
-      />,
+      />
     )
     expect(screen.getByRole('button', { name: /pdf/i })).toBeDisabled()
+  })
+
+  it('does not block the types view when the custom spec is invalid', () => {
+    render(
+      <PDFGenerator
+        selectedSetIds={[]}
+        selectedTypeIds={['White:Creature']}
+        viewMode="types"
+        quantities={{}}
+        useCustomQuantity={false}
+        templateId="avery5160"
+        placeholders={0}
+        alphabet={{ mode: 'custom', customInput: 'Z-A' }}
+      />
+    )
+    expect(screen.getByRole('button', { name: /pdf/i })).toBeEnabled()
   })
 })

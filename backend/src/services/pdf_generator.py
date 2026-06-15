@@ -238,6 +238,12 @@ class PDFGenerator:
             letter_width = self.canvas.stringWidth(letter, "EBGaramondBold", letter_size)
             letter_x = symbol_area_start - padding - letter_width
             text_boundary = letter_x - padding
+            # On a pathologically narrow (custom) label there may be no room left
+            # for text beside the letter; drop the letter rather than overlap the
+            # text or run off the label edge.
+            if text_boundary <= text_x:
+                letter = None
+                text_boundary = symbol_area_start
 
         max_text_width = text_boundary - text_x
 

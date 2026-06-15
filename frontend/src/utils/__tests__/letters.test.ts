@@ -17,8 +17,28 @@ describe('parseLetterSpec', () => {
     expect(r).toEqual({
       ok: true,
       letters: [
-        'A', 'B', 'C', 'D', 'E', 'F', 'H',
-        'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+        'A',
+        'B',
+        'C',
+        'D',
+        'E',
+        'F',
+        'H',
+        'L',
+        'M',
+        'N',
+        'O',
+        'P',
+        'Q',
+        'R',
+        'S',
+        'T',
+        'U',
+        'V',
+        'W',
+        'X',
+        'Y',
+        'Z',
       ],
     })
   })
@@ -31,14 +51,18 @@ describe('parseLetterSpec', () => {
     expect(parseLetterSpec('   ').ok).toBe(false)
   })
 
-  it('rejects a reversed range', () => {
-    expect(parseLetterSpec('Z-A').ok).toBe(false)
+  it('rejects a reversed range with a "backwards" message', () => {
+    const r = parseLetterSpec('Z-A')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.message).toMatch(/backwards/i)
   })
 
-  it('rejects non-letters', () => {
+  it('rejects non-letters with an "invalid entry" message', () => {
     expect(parseLetterSpec('1-5').ok).toBe(false)
-    expect(parseLetterSpec('AB').ok).toBe(false)
     expect(parseLetterSpec('A-').ok).toBe(false)
+    const r = parseLetterSpec('AB')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.message).toMatch(/invalid entry/i)
   })
 })
 

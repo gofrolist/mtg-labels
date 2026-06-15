@@ -282,6 +282,7 @@ def _parse_letters(raw: str | None) -> list[str]:
     if len(raw) > 200:
         raise HTTPException(status_code=400, detail="Letters value too long.")
     letters: list[str] = []
+    seen: set[str] = set()
     for token in raw.split(","):
         token = token.strip().upper()
         if not token:
@@ -291,7 +292,8 @@ def _parse_letters(raw: str | None) -> list[str]:
                 status_code=400,
                 detail=f"Invalid letter '{token}'. Use single letters A-Z.",
             )
-        if token not in letters:
+        if token not in seen:
+            seen.add(token)
             letters.append(token)
     return letters
 
