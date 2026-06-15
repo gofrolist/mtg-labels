@@ -782,6 +782,15 @@ def create_app(
         # Parse alphabet divider letters (raises 400 on a non-letter token).
         parsed_letters = _parse_letters(letters)
 
+        # Bound the set x letter cross-product to the same ceiling that limits a
+        # plain label request, so alphabet expansion cannot amplify a small
+        # request into a huge PDF (resource-exhaustion guard).
+        if parsed_letters and set_ids and len(set_ids) * len(parsed_letters) > MAX_INPUT_ITEMS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Too many label items. Maximum is {MAX_INPUT_ITEMS}.",
+            )
+
         selected_items_data = _build_label_items(
             view_mode, set_ids, card_type_ids, placeholder_count, parsed_letters
         )

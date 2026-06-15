@@ -450,3 +450,15 @@ class TestGeneratePdfEndpoint:
             data={"set_ids": ["test-set-1"], "letters": "1,2"},
         )
         assert response.status_code == 400
+
+    def test_generate_pdf_letters_cross_product_capped(self, client):
+        """The set x letter expansion is capped at MAX_INPUT_ITEMS (default 500)."""
+        # 26 set IDs x 26 letters = 676 label items > 500 -> rejected before work.
+        set_ids = [f"id-{i}" for i in range(26)]
+        all_letters = ",".join(chr(c) for c in range(ord("A"), ord("Z") + 1))
+        response = client.post(
+            "/generate-pdf",
+            data={"set_ids": set_ids, "letters": all_letters},
+        )
+        assert response.status_code == 400
+        assert "Too many label items" in response.text
