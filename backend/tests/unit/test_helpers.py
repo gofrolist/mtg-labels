@@ -12,6 +12,7 @@ from src.services.helpers import (
     fit_text_to_width,
     get_svg_intrinsic_dimensions,
     get_symbol_file,
+    letter_font_size,
 )
 
 
@@ -79,6 +80,22 @@ class TestFitTextToWidth:
         text = "Test"
         result = fit_text_to_width(text, "Helvetica", 12, 1, c)
         assert result.endswith("...")
+
+
+class TestLetterFontSize:
+    """Tests for letter_font_size() function."""
+
+    def test_scales_with_label_height(self):
+        # Default scale is 0.5, so a 72pt-tall label -> 36pt letter.
+        assert letter_font_size(72) == 36.0
+
+    def test_caps_at_max(self):
+        # Tall label is capped at LETTER_MAX_FONT_SIZE (default 40).
+        assert letter_font_size(200) == 40.0
+
+    def test_short_label(self):
+        # Narrow 48pt label -> 24pt letter (below the cap).
+        assert letter_font_size(48) == 24.0
 
 
 class TestGetSymbolFile:
