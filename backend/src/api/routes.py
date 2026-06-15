@@ -697,6 +697,7 @@ def create_app(
         custom_template: str | None = Form(None),
         placeholders: int = Form(0),
         view_mode: str = Form("sets"),
+        letters: str | None = Form(None),
     ) -> StreamingResponse:
         """
         Generate PDF with labels for selected sets or card types.
@@ -778,8 +779,11 @@ def create_app(
         max_placeholders = max(labels_per_page - 1, 0)
         placeholder_count = min(max(0, placeholders or 0), max_placeholders)
 
+        # Parse alphabet divider letters (raises 400 on a non-letter token).
+        parsed_letters = _parse_letters(letters)
+
         selected_items_data = _build_label_items(
-            view_mode, set_ids, card_type_ids, placeholder_count
+            view_mode, set_ids, card_type_ids, placeholder_count, parsed_letters
         )
         if not selected_items_data:
             item_type = "card types" if view_mode == "types" else "sets"

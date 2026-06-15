@@ -420,3 +420,33 @@ class TestGeneratePdfEndpoint:
         # PDFGenerator was invoked with the promo set in the items list.
         items = mock_pdf_gen.call_args.args[0]
         assert any(item.get("id") == "promo-1" for item in items)
+
+    @patch("src.api.routes.PDFGenerator")
+    @patch("src.api.routes.scryfall_client.fetch_sets")
+    def test_generate_pdf_with_letters_expands_items(
+        self, mock_fetch, mock_pdf_gen, client, sample_set_data
+    ):
+        """letters form field expands each set into one item per letter."""
+        mock_fetch.return_value = sample_set_data
+
+        mock_instance = Mock()
+        mock_instance.generate.return_value = BytesIO(b"%PDF-1.4 fake pdf content")
+        mock_pdf_gen.return_value = mock_instance
+
+        response = client.post(
+            "/generate-pdf",
+            data={"set_ids": ["test-set-1"], "letters": "A,B,C"},
+        )
+
+        assert response.status_code == 200
+        # First positional arg to PDFGenerator(...) is the list of label items.
+        passed_items = mock_pdf_gen.call_args.args[0]
+        assert [item["letter"] for item in passed_items] == ["A", "B", "C"]
+
+    def test_generate_pdf_invalid_letters_returns_400(self, client):
+        """Non-letter tokens are rejected before any work happens."""
+        response = client.post(
+            "/generate-pdf",
+            data={"set_ids": ["test-set-1"], "letters": "1,2"},
+        )
+        assert response.status_code == 400
