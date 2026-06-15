@@ -342,3 +342,35 @@ class TestPDFGenerator:
         # Should use custom config, not avery5160
         assert generator.template["page_width"] == 595.2
         assert generator.template["label_rows"] == 7
+
+    def test_renders_letter_label(self):
+        """A set item carrying a 'letter' renders a valid PDF."""
+        set_data = [
+            {
+                "id": "s1",
+                "name": "Modern Horizons 2",
+                "code": "MH2",
+                "released_at": "2021-06-18",
+                "letter": "Q",
+            }
+        ]
+        generator = PDFGenerator(set_data)
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            result = generator.generate()
+        assert result.read().startswith(b"%PDF")
+
+    def test_renders_letter_label_narrow_template(self):
+        """Letter rendering also works on the short narrow 94208 template."""
+        set_data = [
+            {
+                "id": "s1",
+                "name": "Modern Horizons 2",
+                "code": "MH2",
+                "released_at": "2021-06-18",
+                "letter": "Q",
+            }
+        ]
+        generator = PDFGenerator(set_data, template_name="avery94208")
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            result = generator.generate()
+        assert result.read().startswith(b"%PDF")

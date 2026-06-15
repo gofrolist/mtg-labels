@@ -35,6 +35,7 @@ from src.services.helpers import (
     fit_text_to_width,
     get_svg_intrinsic_dimensions,
     get_symbol_file,
+    letter_font_size,
 )
 
 # LRU cache for SVG drawings to avoid re-parsing (memory-efficient)
@@ -225,7 +226,20 @@ class PDFGenerator:
             - self.effective_symbol_width
             - padding
         )
-        max_text_width = symbol_area_start - text_x
+
+        # Reserve space for the alphabet divider letter, drawn just left of the set
+        # symbol. Only the "sets" view carries a letter.
+        letter = set_data.get("letter") if self.view_mode == "sets" else None
+        letter_x = 0.0
+        letter_size = 0.0
+        text_boundary = symbol_area_start
+        if letter:
+            letter_size = letter_font_size(self.template["label_height"])
+            letter_width = self.canvas.stringWidth(letter, "EBGaramondBold", letter_size)
+            letter_x = symbol_area_start - padding - letter_width
+            text_boundary = letter_x - padding
+
+        max_text_width = text_boundary - text_x
 
         # Ensure max_text_width is positive
         if max_text_width <= 0:
@@ -272,6 +286,13 @@ class PDFGenerator:
         # Draw symbol
         if symbol_file:
             self._draw_symbol(symbol_file, label_x, label_y, symbol_label)
+
+        # Draw the alphabet divider letter, vertically centered, left of the symbol.
+        if letter:
+            letter_baseline_y = label_y + (self.template["label_height"] - letter_size) / 2
+            self.canvas.setFont("EBGaramondBold", letter_size)
+            self.canvas.setFillColorRGB(0, 0, 0)
+            self.canvas.drawString(letter_x, letter_baseline_y, letter)
 
     def _draw_label_text(self, text_x: float, text_y: float, line1: str, line2: str) -> None:
         """Draw the two text lines on a label.
