@@ -144,3 +144,43 @@ def test_non_http_scope_passes_through_untouched():
     sent = _run(mw, {"type": "lifespan"}, [])
     assert app.called is True
     assert _status_of(sent) == 200
+
+
+def test_multi_chunk_body_under_limit_is_fully_delivered():
+    """A body split across several chunks reaches the inner app intact."""
+    app = _RecordingApp()
+    mw = _BodySizeLimitMiddleware(app, max_bytes=1024)
+    sent = _run(
+        mw,
+        _http_scope(headers=[]),
+        [
+            {"type": "http.request", "body": b"aaa", "more_body": True},
+            {"type": "http.request", "body": b"bbb", "more_body": True},
+            {"type": "http.request", "body": b"ccc", "more_body": False},
+        ],
+    )
+    assert app.called is True
+    assert app.body == b"aaabbbccc"
+    assert _status_of(sent) == 200
+
+
+def test_unknown_message_type_does_not_hang():
+    """A stray non-request/non-disconnect message must not spin the loop.
+
+    Only a finite set of messages is queued; if the loop did not break on the
+    unknown type it would call receive() forever and asyncio.run would never
+    return. Reaching the assertion proves it terminated.
+    """
+    app = _RecordingApp()
+    mw = _BodySizeLimitMiddleware(app, max_bytes=128)
+    sent = _run(
+        mw,
+        _http_scope(headers=[]),
+        [
+            {"type": "http.request", "body": b"hi", "more_body": True},
+            {"type": "http.weird.extension"},
+        ],
+    )
+    # The middleware stops reading on the unknown type and still hands off.
+    assert app.called is True
+    assert _status_of(sent) == 200

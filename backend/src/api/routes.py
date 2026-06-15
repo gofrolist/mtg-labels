@@ -152,15 +152,22 @@ class _BodySizeLimitMiddleware:
         more_body = True
         while more_body:
             message = await receive()
-            if message["type"] == "http.disconnect":
-                # Surface the disconnect to the inner app and stop.
-                async def _disconnected() -> Message:
-                    return message
+            message_type = message["type"]
+            if message_type == "http.disconnect":
+                # Surface the disconnect to the inner app and stop. Bind the
+                # message as a default arg so the closure captures it by value,
+                # not by (later-rebindable) reference to the loop variable.
+                async def _disconnected(msg: Message = message) -> Message:
+                    return msg
 
                 await self.app(scope, _disconnected, send)
                 return
-            if message["type"] != "http.request":
-                continue
+            if message_type != "http.request":
+                # The ASGI HTTP spec only delivers http.request / http.disconnect
+                # on the receive channel. Stop reading on anything else rather
+                # than `continue` (which would not advance more_body and could
+                # spin forever if the channel went quiet).
+                break
             body.extend(message.get("body", b""))
             if len(body) > self.max_bytes:
                 await self._reject(scope, send, 413, "Request body too large.")
@@ -186,13 +193,18 @@ class _BodySizeLimitMiddleware:
 
     async def _reject(self, scope: Scope, send: Send, status_code: int, detail: str) -> None:
         error_type = "PayloadTooLarge" if status_code == 413 else "BadRequest"
-        # This middleware is the outermost layer, so its rejections do not pass
-        # back through the security-header middleware — apply the headers here so
-        # 413/400 responses are still hardened.
+        # This middleware sits just inside CORS, so CORS headers are still added
+        # to the rejection, but it is outside the security-header middleware —
+        # apply the hardening headers here so 413/400 responses are protected.
+        headers = security_headers()
+        # We reject before draining the (possibly still-streaming) request body.
+        # Ask the server to close the connection so leftover body bytes cannot
+        # corrupt the next request on a keep-alive connection.
+        headers["Connection"] = "close"
         response = JSONResponse(
             status_code=status_code,
             content=_error_body(status_code, error_type, detail, scope.get("path", "")),
-            headers=security_headers(),
+            headers=headers,
         )
         await response(scope, _empty_receive, send)
 
@@ -227,24 +239,25 @@ def security_headers() -> dict[str, str]:
     return headers
 
 
-def _validate_id_list(ids: list[str] | None, kind: str) -> None:
+def _validate_id_list(ids: list[str] | None, singular: str, plural: str) -> None:
     """Reject an ID list that is too long or contains an over-length entry.
 
     Args:
         ids: The submitted list (may be ``None``/empty — both are no-ops here).
-        kind: Human-readable noun for error messages, e.g. ``"set IDs"``.
+        singular: Noun for the per-item message, e.g. ``"Set ID"``.
+        plural: Noun for the list-size message, e.g. ``"set IDs"``.
     """
     if not ids:
         return
     if len(ids) > MAX_INPUT_ITEMS:
         raise HTTPException(
-            status_code=400, detail=f"Too many {kind}. Maximum is {MAX_INPUT_ITEMS}."
+            status_code=400, detail=f"Too many {plural}. Maximum is {MAX_INPUT_ITEMS}."
         )
     for item in ids:
         if len(item) > MAX_ITEM_LENGTH:
             raise HTTPException(
                 status_code=400,
-                detail=f"{kind} entry too long. Maximum is {MAX_ITEM_LENGTH} characters.",
+                detail=f"{singular} too long. Maximum is {MAX_ITEM_LENGTH} characters.",
             )
 
 
@@ -444,15 +457,17 @@ def create_app(
     # Middleware below is registered innermost-first. Starlette wraps each newly
     # added middleware AROUND the previously added ones, so the LAST one
     # registered is the OUTERMOST at runtime. Effective request order:
-    #   body-size cap -> CORS -> security headers -> rate limit -> GZip -> route
+    #   CORS -> body-size cap -> security headers -> rate limit -> GZip -> route
     #
-    # The body-size cap is OUTERMOST on purpose: it is a pure-ASGI middleware
-    # that consumes and re-emits the request body. Nesting a body-reading ASGI
-    # middleware *inside* a BaseHTTPMiddleware (the rate-limit/security layers)
-    # deadlocks Starlette, so it must wrap them, not the other way around. It
-    # applies the hardening headers to its own 413/400 responses directly (see
-    # _reject). The security-header middleware still wraps the rate limiter, so
-    # 429s carry the headers too.
+    # The body-size cap is a pure-ASGI middleware that consumes and re-emits the
+    # request body. It must sit OUTSIDE the BaseHTTPMiddleware layers (security
+    # headers, rate limit): nesting a body-reading ASGI middleware *inside* a
+    # BaseHTTPMiddleware deadlocks Starlette on streaming responses. CORS is
+    # itself a pure-ASGI middleware (not BaseHTTPMiddleware), so it can safely
+    # wrap the body-size cap — and being outermost means CORS headers are added
+    # to the body-size cap's own 413/400 responses too. The body-size cap
+    # applies the hardening headers to those responses directly (see _reject);
+    # the security-header middleware wraps the rate limiter so 429s carry them.
 
     # GZip compression for large responses (e.g. /api/set-icons ~650KB → ~150KB)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -493,12 +508,20 @@ def create_app(
             response.headers[header] = value
         return response
 
+    # Reject oversized request bodies (413), enforced by a streamed byte count so
+    # chunked / Content-Length-less requests cannot bypass the cap. Registered
+    # before CORS so it wraps the BaseHTTPMiddleware layers (avoiding the
+    # Starlette streaming deadlock) but is itself wrapped by CORS (so its
+    # rejections still get CORS headers).
+    app.add_middleware(_BodySizeLimitMiddleware, max_bytes=body_cap)
+
     # Configure CORS.
     # This API is stateless and uses no cookies, Authorization headers, or any
     # other credentials, so credentials are disabled. This is important because
     # allow_origin_regex matches a broad set of preview origins
     # (*.vusercontent.net); pairing that with allow_credentials=True would let
     # those origins make authenticated cross-site requests.
+    # Registered LAST so CORS is the OUTERMOST middleware.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
@@ -507,13 +530,6 @@ def create_app(
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Content-Type", "Accept"],
     )
-
-    # Reject oversized request bodies (413), enforced by a streamed byte count so
-    # chunked / Content-Length-less requests cannot bypass the cap. Registered
-    # LAST so it is the OUTERMOST middleware: a body-reading ASGI middleware must
-    # wrap the BaseHTTPMiddleware layers, never be wrapped by them, or Starlette
-    # deadlocks on streaming responses.
-    app.add_middleware(_BodySizeLimitMiddleware, max_bytes=body_cap)
 
     # Mount static files (backend/static/)
     static_dir = _BACKEND_ROOT / "static"
@@ -664,8 +680,8 @@ def create_app(
             )
 
         # Bound input list sizes and per-item lengths to prevent abuse.
-        _validate_id_list(set_ids, "set IDs")
-        _validate_id_list(card_type_ids, "card type IDs")
+        _validate_id_list(set_ids, "Set ID", "set IDs")
+        _validate_id_list(card_type_ids, "Card type ID", "card type IDs")
 
         # Require a non-empty selection for the active view mode.
         if view_mode == "types" and not card_type_ids:

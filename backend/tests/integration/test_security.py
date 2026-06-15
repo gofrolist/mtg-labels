@@ -291,6 +291,27 @@ class TestBodySizeCap:
                 )
                 assert response.status_code == 413
 
+    def test_413_carries_cors_headers(self):
+        """The 413 must include CORS headers so a browser can read the status."""
+        small_cap_app = _build_strict_app(max_body_bytes=128)
+        with patch("src.api.routes.scryfall_client.fetch_sets", return_value=[]):
+            with TestClient(small_cap_app) as strict_client:
+                huge_template = json.dumps({"x": "A" * 200})
+                response = strict_client.post(
+                    "/generate-pdf",
+                    data={
+                        "set_ids": ["test-set-1"],
+                        "custom_template": huge_template,
+                        "view_mode": "sets",
+                    },
+                    headers={"Origin": "https://mtg-labels.vercel.app"},
+                )
+                assert response.status_code == 413
+                assert (
+                    response.headers.get("access-control-allow-origin")
+                    == "https://mtg-labels.vercel.app"
+                )
+
 
 class TestPerItemValidation:
     """Individual set_ids / card_type_ids strings must be length-bounded."""
