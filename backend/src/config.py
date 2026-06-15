@@ -234,6 +234,13 @@ TEMPLATE_PDF_FILES: dict[str, str] = {
 # Maximum width (in points) allowed for a set symbol on a label.
 SET_SYMBOL_MAX_WIDTH = float(os.getenv("SET_SYMBOL_MAX_WIDTH", "30"))
 
+# --- Alphabet Divider Letter ---
+# Big letter drawn on alphabet divider labels. Font size scales with the label
+# height (a fraction of label height), capped at a maximum point size so it
+# stays large on tall labels and fits short ones.
+LETTER_FONT_SCALE = float(os.getenv("LETTER_FONT_SCALE", "0.5"))
+LETTER_MAX_FONT_SIZE = float(os.getenv("LETTER_MAX_FONT_SIZE", "40"))
+
 # --- Current Template Selection ---
 # Change this to "avery5160" or "a4" to select the desired label layout.
 CURRENT_LABEL_TEMPLATE = os.getenv("CURRENT_LABEL_TEMPLATE", "avery5160")

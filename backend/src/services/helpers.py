@@ -9,6 +9,8 @@ from reportlab.pdfgen import canvas
 from src.cache.cache_manager import get_cache_manager
 from src.config import (
     ABBREVIATION_MAP,
+    LETTER_FONT_SCALE,
+    LETTER_MAX_FONT_SIZE,
     MAX_SET_NAME_LENGTH,
     SCRYFALL_API_RATE_LIMIT_DELAY,
     logger,
@@ -65,6 +67,21 @@ def fit_text_to_width(
         current_text = current_text + "..."
 
     return current_text
+
+
+def letter_font_size(label_height: float) -> float:
+    """Font size (points) for the alphabet divider letter on a label.
+
+    Scales with the label height so the letter stays large on tall labels and
+    shrinks on short ones, capped at ``LETTER_MAX_FONT_SIZE``.
+
+    Args:
+        label_height: Label height in points.
+
+    Returns:
+        Font size in points.
+    """
+    return min(label_height * LETTER_FONT_SCALE, LETTER_MAX_FONT_SIZE)
 
 
 def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str) -> str | None:

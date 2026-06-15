@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect, useId } from 'react'
-import type { CustomTemplateDimensions, TemplateMeasurementUnit } from '../../types'
+import type {
+  AlphabetSelection,
+  CustomTemplateDimensions,
+  TemplateMeasurementUnit,
+} from '../../types'
 import { LABEL_TEMPLATES, DEFAULT_TEMPLATE_ID } from '../../constants/templates'
+import { parseLetterSpec } from '../../utils/letters'
 import { convertValue } from '../../utils/unitConversion'
 import { round2, presetToCustom, getPresetUnit } from '../../utils/templateUtils'
 import type { CustomTemplatesApi } from '../../hooks/useCustomTemplates'
@@ -16,6 +21,8 @@ interface TemplateCustomizerProps {
   templateId: string | null
   placeholders: number
   customTemplatesApi: CustomTemplatesApi
+  alphabet: AlphabetSelection
+  onAlphabetChange: (value: AlphabetSelection) => void
   onCustomTemplateChange: (template: CustomTemplateDimensions | null) => void
   onUseCustomTemplateChange: (value: boolean) => void
   onUseCustomQuantityChange: (value: boolean) => void
@@ -39,6 +46,8 @@ export function TemplateCustomizer({
   templateId,
   placeholders,
   customTemplatesApi,
+  alphabet,
+  onAlphabetChange,
   onCustomTemplateChange,
   onUseCustomTemplateChange,
   onUseCustomQuantityChange,
@@ -48,17 +57,26 @@ export function TemplateCustomizer({
   const loadTemplateId = useId()
   const unitId = useId()
   const quickSizeId = useId()
+  const alphabetModeId = useId()
+  const alphabetCustomId = useId()
   const [saveName, setSaveName] = useState('')
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
-  const [confirmOverwrite, setConfirmOverwrite] = useState<{ id: string; name: string } | null>(null)
+  const [confirmOverwrite, setConfirmOverwrite] = useState<{ id: string; name: string } | null>(
+    null
+  )
   const [showFullPreview, setShowFullPreview] = useState(false)
   const [previewContainerSize, setPreviewContainerSize] = useState<{
     width: number
     height: number
   } | null>(null)
   const previewContainerRef = useRef<HTMLDivElement>(null)
-  const { templates: savedTemplates, saveTemplate, updateTemplate, deleteTemplate, loadTemplate } =
-    customTemplatesApi
+  const {
+    templates: savedTemplates,
+    saveTemplate,
+    updateTemplate,
+    deleteTemplate,
+    loadTemplate,
+  } = customTemplatesApi
 
   const effectivePresetId = templateId ?? DEFAULT_TEMPLATE_ID
   const template =
@@ -130,9 +148,7 @@ export function TemplateCustomizer({
   const handleSave = () => {
     const name = saveName.trim()
     if (!name) return
-    const existing = savedTemplates.find(
-      (t) => t.name.toLowerCase() === name.toLowerCase(),
-    )
+    const existing = savedTemplates.find(t => t.name.toLowerCase() === name.toLowerCase())
     if (existing) {
       setConfirmOverwrite({ id: existing.id, name: existing.name })
       return
@@ -188,7 +204,7 @@ export function TemplateCustomizer({
   useEffect(() => {
     const el = previewContainerRef.current
     if (!el) return
-    const ro = new ResizeObserver((entries) => {
+    const ro = new ResizeObserver(entries => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect
         if (width > 0 && height > 0) {
@@ -216,7 +232,7 @@ export function TemplateCustomizer({
                 <input
                   type="checkbox"
                   checked={useCustomTemplate}
-                  onChange={(e) => handleToggle(e.target.checked)}
+                  onChange={e => handleToggle(e.target.checked)}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-600 rounded-full peer-checked:bg-mtg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-mtg-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-mtg-card-bg transition-colors" />
@@ -229,7 +245,7 @@ export function TemplateCustomizer({
                 <input
                   type="checkbox"
                   checked={useCustomQuantity}
-                  onChange={(e) => onUseCustomQuantityChange(e.target.checked)}
+                  onChange={e => onUseCustomQuantityChange(e.target.checked)}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-600 rounded-full peer-checked:bg-mtg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-mtg-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-mtg-card-bg transition-colors" />
@@ -245,24 +261,86 @@ export function TemplateCustomizer({
                 </span>
               </span>
             </label>
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor={alphabetModeId}
+                className="text-sm text-mtg-text flex items-center gap-1"
+              >
+                Alphabet divider letters
+                <span
+                  className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-mtg-text-muted/20 text-mtg-text-muted text-xs cursor-help"
+                  title="Print one divider label per letter for each selected set. Use Custom to choose letters and ranges, e.g. A-F, H, L-Z."
+                >
+                  ?
+                </span>
+              </label>
+              <select
+                id={alphabetModeId}
+                className="bg-mtg-card-bg border border-gray-600 rounded-md px-3 py-2 text-sm text-mtg-text focus-visible:ring-2 focus-visible:ring-mtg-accent"
+                value={alphabet.mode}
+                onChange={e =>
+                  onAlphabetChange({
+                    ...alphabet,
+                    mode: e.target.value as AlphabetSelection['mode'],
+                  })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="all">All (A–Z)</option>
+                <option value="custom">Custom…</option>
+              </select>
+
+              {alphabet.mode === 'custom' && (
+                <div className="flex flex-col gap-1">
+                  <input
+                    id={alphabetCustomId}
+                    type="text"
+                    aria-label="Custom divider letters"
+                    placeholder="e.g. A-F, H, L-Z"
+                    value={alphabet.customInput}
+                    onChange={e => onAlphabetChange({ ...alphabet, customInput: e.target.value })}
+                    className="bg-mtg-card-bg border border-gray-600 rounded-md px-3 py-2 text-sm text-mtg-text focus-visible:ring-2 focus-visible:ring-mtg-accent"
+                  />
+                  {alphabet.customInput.trim() === '' ? (
+                    <span className="text-xs text-mtg-text-muted">
+                      Enter letters and ranges, e.g. A-F, H, L-Z
+                    </span>
+                  ) : (
+                    (() => {
+                      const result = parseLetterSpec(alphabet.customInput)
+                      return result.ok ? (
+                        <span className="text-xs text-mtg-text-muted">
+                          {result.letters.length} divider
+                          {result.letters.length === 1 ? '' : 's'} per set
+                        </span>
+                      ) : (
+                        <span className="text-xs text-red-400">{result.message}</span>
+                      )
+                    })()
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Load template */}
           <div className="flex flex-wrap items-end gap-4 mb-6">
             <div className="min-w-[200px] flex-1">
-              <label htmlFor={loadTemplateId} className="block text-sm text-mtg-text mb-2">Load template</label>
+              <label htmlFor={loadTemplateId} className="block text-sm text-mtg-text mb-2">
+                Load template
+              </label>
               <div className="flex gap-2">
                 <select
                   id={loadTemplateId}
                   value={templateId ?? ''}
-                  onChange={(e) => handleTemplateSelect(e.target.value)}
+                  onChange={e => handleTemplateSelect(e.target.value)}
                   className={inputClasses + ' flex-1'}
                 >
                   <option value="" disabled>
                     Select a template...
                   </option>
                   <optgroup label="Presets">
-                    {Object.values(LABEL_TEMPLATES).map((t) => (
+                    {Object.values(LABEL_TEMPLATES).map(t => (
                       <option key={t.id} value={t.id}>
                         {t.name}
                       </option>
@@ -270,7 +348,7 @@ export function TemplateCustomizer({
                   </optgroup>
                   {savedTemplates.length > 0 && (
                     <optgroup label="Saved">
-                      {savedTemplates.map((t) => (
+                      {savedTemplates.map(t => (
                         <option key={t.id} value={'saved:' + t.id}>
                           {t.name}
                         </option>
@@ -278,8 +356,8 @@ export function TemplateCustomizer({
                     </optgroup>
                   )}
                 </select>
-                {selectedSavedId && (
-                  confirmingDeleteId === selectedSavedId ? (
+                {selectedSavedId &&
+                  (confirmingDeleteId === selectedSavedId ? (
                     <div className="flex gap-1 shrink-0">
                       <button
                         type="button"
@@ -306,8 +384,7 @@ export function TemplateCustomizer({
                     >
                       Delete
                     </button>
-                  )
-                )}
+                  ))}
               </div>
             </div>
             <div className="flex items-end gap-2 min-w-[200px] flex-1">
@@ -318,8 +395,8 @@ export function TemplateCustomizer({
                     type="text"
                     placeholder="Template name..."
                     value={saveName}
-                    onChange={(e) => setSaveName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    onChange={e => setSaveName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSave()}
                     aria-label="Save template as"
                     className={inputClasses + ' !h-full'}
                   />
@@ -363,7 +440,23 @@ export function TemplateCustomizer({
               {/* Page Size */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
                 <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg> Page Size
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-mtg-accent shrink-0"
+                    aria-hidden="true"
+                  >
+                    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+                    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+                  </svg>{' '}
+                  Page Size
                 </h3>
                 <div className="flex items-end gap-2 mb-3">
                   <div className="flex-1">
@@ -374,7 +467,7 @@ export function TemplateCustomizer({
                       value={template.pageWidth}
                       min={1}
                       step={0.01}
-                      onChange={(e) => {
+                      onChange={e => {
                         const v = parseFloat(e.target.value)
                         if (!isNaN(v)) update({ pageWidth: v })
                       }}
@@ -390,7 +483,7 @@ export function TemplateCustomizer({
                       value={template.pageHeight}
                       min={1}
                       step={0.01}
-                      onChange={(e) => {
+                      onChange={e => {
                         const v = parseFloat(e.target.value)
                         if (!isNaN(v)) update({ pageHeight: v })
                       }}
@@ -399,13 +492,13 @@ export function TemplateCustomizer({
                     />
                   </div>
                   <div className="w-16">
-                    <label htmlFor={unitId} className="text-xs text-mtg-text-muted block mb-1">Unit</label>
+                    <label htmlFor={unitId} className="text-xs text-mtg-text-muted block mb-1">
+                      Unit
+                    </label>
                     <select
                       id={unitId}
                       value={template.unit}
-                      onChange={(e) =>
-                        handleUnitChange(e.target.value as TemplateMeasurementUnit)
-                      }
+                      onChange={e => handleUnitChange(e.target.value as TemplateMeasurementUnit)}
                       className="w-full h-9 px-2 py-1.5 border border-mtg-border rounded-lg bg-mtg-input-bg text-mtg-text text-sm"
                     >
                       <option value="in">in</option>
@@ -414,7 +507,9 @@ export function TemplateCustomizer({
                   </div>
                 </div>
                 <div>
-                  <label htmlFor={quickSizeId} className="text-xs text-mtg-text-muted block mb-1">Quick Size</label>
+                  <label htmlFor={quickSizeId} className="text-xs text-mtg-text-muted block mb-1">
+                    Quick Size
+                  </label>
                   <select
                     id={quickSizeId}
                     value={
@@ -428,7 +523,7 @@ export function TemplateCustomizer({
                           ? 'a4'
                           : ''
                     }
-                    onChange={(e) => handlePageSize(e.target.value)}
+                    onChange={e => handlePageSize(e.target.value)}
                     className={inputClasses}
                   >
                     <option value="">Custom</option>
@@ -444,35 +539,127 @@ export function TemplateCustomizer({
               {/* Margins */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
                 <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 12h10"/><path d="M12 7v10"/></svg> Page Margins
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-mtg-accent shrink-0"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 3v18h18" />
+                    <path d="M7 12h10" />
+                    <path d="M12 7v10" />
+                  </svg>{' '}
+                  Page Margins
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <NumField label="Top" value={template.marginTop} onChange={(v) => update({ marginTop: v })} />
-                  <NumField label="Left" value={template.marginLeft} onChange={(v) => update({ marginLeft: v })} />
+                  <NumField
+                    label="Top"
+                    value={template.marginTop}
+                    onChange={v => update({ marginTop: v })}
+                  />
+                  <NumField
+                    label="Left"
+                    value={template.marginLeft}
+                    onChange={v => update({ marginLeft: v })}
+                  />
                 </div>
               </div>
 
               {/* Grid Layout */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
                 <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> Grid Layout
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-mtg-accent shrink-0"
+                    aria-hidden="true"
+                  >
+                    <rect width="18" height="18" x="3" y="3" rx="2" />
+                    <path d="M3 9h18" />
+                    <path d="M3 15h18" />
+                    <path d="M9 3v18" />
+                    <path d="M15 3v18" />
+                  </svg>{' '}
+                  Grid Layout
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <NumField label="Columns" value={template.columns} onChange={(v) => update({ columns: v })} min={1} step={1} integer />
-                  <NumField label="Rows" value={template.rows} onChange={(v) => update({ rows: v })} min={1} step={1} integer />
-                  <NumField label="H Gap" value={template.horizontalGap} onChange={(v) => update({ horizontalGap: v })} />
-                  <NumField label="V Gap" value={template.verticalGap} onChange={(v) => update({ verticalGap: v })} />
+                  <NumField
+                    label="Columns"
+                    value={template.columns}
+                    onChange={v => update({ columns: v })}
+                    min={1}
+                    step={1}
+                    integer
+                  />
+                  <NumField
+                    label="Rows"
+                    value={template.rows}
+                    onChange={v => update({ rows: v })}
+                    min={1}
+                    step={1}
+                    integer
+                  />
+                  <NumField
+                    label="H Gap"
+                    value={template.horizontalGap}
+                    onChange={v => update({ horizontalGap: v })}
+                  />
+                  <NumField
+                    label="V Gap"
+                    value={template.verticalGap}
+                    onChange={v => update({ verticalGap: v })}
+                  />
                 </div>
               </div>
 
               {/* Label Size */}
               <div className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
                 <h3 className="font-semibold text-mtg-text mb-3 flex items-center gap-2 text-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg> Label Size
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-mtg-accent shrink-0"
+                    aria-hidden="true"
+                  >
+                    <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+                    <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
+                  </svg>{' '}
+                  Label Size
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <NumField label="Width" value={template.labelWidth} onChange={(v) => update({ labelWidth: v })} min={0.1} />
-                  <NumField label="Height" value={template.labelHeight} onChange={(v) => update({ labelHeight: v })} min={0.1} />
+                  <NumField
+                    label="Width"
+                    value={template.labelWidth}
+                    onChange={v => update({ labelWidth: v })}
+                    min={0.1}
+                  />
+                  <NumField
+                    label="Height"
+                    value={template.labelHeight}
+                    onChange={v => update({ labelHeight: v })}
+                    min={0.1}
+                  />
                 </div>
               </div>
             </div>
@@ -481,7 +668,23 @@ export function TemplateCustomizer({
             <div className="rounded-lg border border-mtg-border bg-mtg-section-bg overflow-hidden flex flex-col min-h-0">
               <div className="flex items-center justify-between p-4 border-b border-mtg-border">
                 <h3 className="font-semibold text-mtg-text flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-accent shrink-0" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Page Preview
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-mtg-accent shrink-0"
+                    aria-hidden="true"
+                  >
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>{' '}
+                  Page Preview
                 </h3>
                 <button
                   onClick={() => setShowFullPreview(true)}
@@ -524,10 +727,7 @@ export function TemplateCustomizer({
           className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center"
           onClick={() => setShowFullPreview(false)}
         >
-          <div
-            className="bg-mtg-bg p-6 rounded-lg shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="bg-mtg-bg p-6 rounded-lg shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <span className="text-sm text-mtg-text">
                 {totalLabels} labels ({template.columns}&times;{template.rows}) &middot;{' '}

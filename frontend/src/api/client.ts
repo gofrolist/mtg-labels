@@ -33,6 +33,7 @@ interface GeneratePDFOptions {
   placeholders: number
   customTemplate?: Record<string, number>
   viewMode: 'sets' | 'types'
+  letters?: string[]
 }
 
 export async function generatePDF({
@@ -42,6 +43,7 @@ export async function generatePDF({
   placeholders,
   customTemplate,
   viewMode,
+  letters,
 }: GeneratePDFOptions): Promise<Blob> {
   const formData = new FormData()
 
@@ -58,6 +60,10 @@ export async function generatePDF({
   formData.append('template', template)
   formData.append('placeholders', placeholders.toString())
   formData.append('view_mode', viewMode)
+
+  if (viewMode === 'sets' && letters && letters.length > 0) {
+    formData.append('letters', letters.join(','))
+  }
 
   if (customTemplate) {
     formData.append('custom_template', JSON.stringify(customTemplate))

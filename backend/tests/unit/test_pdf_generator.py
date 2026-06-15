@@ -342,3 +342,65 @@ class TestPDFGenerator:
         # Should use custom config, not avery5160
         assert generator.template["page_width"] == 595.2
         assert generator.template["label_rows"] == 7
+
+    def test_renders_letter_label(self):
+        """A set item carrying a 'letter' renders a valid PDF."""
+        set_data = [
+            {
+                "id": "s1",
+                "name": "Modern Horizons 2",
+                "code": "MH2",
+                "released_at": "2021-06-18",
+                "letter": "Q",
+            }
+        ]
+        generator = PDFGenerator(set_data)
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            result = generator.generate()
+        assert result.read().startswith(b"%PDF")
+
+    def test_renders_letter_label_narrow_template(self):
+        """Letter rendering also works on the short narrow 94208 template."""
+        set_data = [
+            {
+                "id": "s1",
+                "name": "Modern Horizons 2",
+                "code": "MH2",
+                "released_at": "2021-06-18",
+                "letter": "Q",
+            }
+        ]
+        generator = PDFGenerator(set_data, template_name="avery94208")
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            result = generator.generate()
+        assert result.read().startswith(b"%PDF")
+
+    def test_letter_dropped_on_too_narrow_label(self):
+        """A pathologically narrow custom label drops the letter without error."""
+        custom_config: dict[str, float] = {
+            "page_width": 612,
+            "page_height": 792,
+            "labels_per_row": 1,
+            "label_rows": 1,
+            "label_width": 45,
+            "label_height": 40,
+            "label_margin_x": 5,
+            "label_margin_y": 5,
+            "left_margin": 20,
+            "top_margin": 20,
+            "horizontal_gap": 0,
+            "vertical_gap": 0,
+        }
+        set_data = [
+            {
+                "id": "s1",
+                "name": "Modern Horizons 2",
+                "code": "MH2",
+                "released_at": "2021-06-18",
+                "letter": "Q",
+            }
+        ]
+        generator = PDFGenerator(set_data, template_config=custom_config)
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            result = generator.generate()
+        assert result.read().startswith(b"%PDF")

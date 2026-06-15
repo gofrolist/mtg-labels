@@ -94,6 +94,9 @@ coverage/
 .env.test.local
 .env.production.local
 
+# Superpowers brainstorm artifacts
+.superpowers/
+
 # Auto Claude data directory
 .auto-claude/
 

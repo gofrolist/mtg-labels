@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { generatePDF } from '../../api/client'
 import { LABEL_TEMPLATES } from '../../constants/templates'
-import type { CustomTemplateDimensions } from '../../types'
+import type { AlphabetSelection, CustomTemplateDimensions } from '../../types'
+import { parseLetterSpec, resolveLetters } from '../../utils/letters'
 import { customTemplateToBackendFormat } from '../../utils/unitConversion'
 import { ErrorDisplay } from '../ErrorDisplay'
 
@@ -15,6 +16,7 @@ interface PDFGeneratorProps {
   placeholders: number
   customTemplate?: CustomTemplateDimensions | null
   useCustomTemplate?: boolean
+  alphabet?: AlphabetSelection
   onSuccess?: () => void
 }
 
@@ -28,15 +30,25 @@ export function PDFGenerator({
   placeholders,
   customTemplate,
   useCustomTemplate,
+  alphabet = { mode: 'off', customInput: '' },
   onSuccess,
 }: PDFGeneratorProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Alphabet letters apply to the sets view only, so an invalid custom spec
+  // must not block generating card-type labels.
+  const alphabetInvalid =
+    viewMode === 'sets' && alphabet.mode === 'custom' && !parseLetterSpec(alphabet.customInput).ok
+  const letters = resolveLetters(alphabet)
+
   const handleGenerate = async () => {
-    const hasSelection = viewMode === 'sets' ? selectedSetIds.length > 0 : selectedTypeIds.length > 0
+    const hasSelection =
+      viewMode === 'sets' ? selectedSetIds.length > 0 : selectedTypeIds.length > 0
     if (!hasSelection) {
-      setError(`Please select at least one ${viewMode === 'sets' ? 'set' : 'type'} before generating the PDF.`)
+      setError(
+        `Please select at least one ${viewMode === 'sets' ? 'set' : 'type'} before generating the PDF.`
+      )
       return
     }
 
@@ -62,8 +74,7 @@ export function PDFGenerator({
           ? customTemplateToBackendFormat(customTemplate)
           : undefined
 
-      const backendTemplateId =
-        templateId && LABEL_TEMPLATES[templateId] ? templateId : 'avery5160'
+      const backendTemplateId = templateId && LABEL_TEMPLATES[templateId] ? templateId : 'avery5160'
 
       let blob: Blob
 
@@ -82,6 +93,7 @@ export function PDFGenerator({
           placeholders,
           customTemplate: backendCustomTemplate,
           viewMode: 'sets',
+          letters: letters.length > 0 ? letters : undefined,
         })
       } else {
         const expandedTypeIds: string[] = []
@@ -128,12 +140,30 @@ export function PDFGenerator({
 
       <button
         onClick={handleGenerate}
-        disabled={loading || (viewMode === 'sets' ? selectedSetIds.length === 0 : selectedTypeIds.length === 0)}
+        disabled={
+          loading ||
+          alphabetInvalid ||
+          (viewMode === 'sets' ? selectedSetIds.length === 0 : selectedTypeIds.length === 0)
+        }
         className="h-9 px-4 py-0 flex items-center gap-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
       >
         {loading ? (
           <>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="animate-spin"
+              aria-hidden="true"
+            >
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
             <span>Generating PDF...</span>
           </>
         ) : (

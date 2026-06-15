@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { CustomTemplateDimensions, SelectionState } from '../types'
+import type { AlphabetSelection, CustomTemplateDimensions, SelectionState } from '../types'
 import { getStorageItem, setStorageItem, isStorageAvailable } from '../utils/localStorage'
 import { DEFAULT_TEMPLATE_ID } from '../constants/templates'
 
@@ -13,6 +13,7 @@ const initialState: SelectionState = {
   customTemplate: null,
   useCustomTemplate: false,
   useCustomQuantity: false,
+  alphabet: { mode: 'off', customInput: '' },
 }
 
 export function useSelection() {
@@ -104,6 +105,10 @@ export function useSelection() {
     setSelection((prev) => ({ ...prev, useCustomQuantity }))
   }, [])
 
+  const setAlphabet = useCallback((alphabet: AlphabetSelection) => {
+    setSelection((prev) => ({ ...prev, alphabet }))
+  }, [])
+
   return {
     selection,
     toggleSetSelection,
@@ -118,5 +123,6 @@ export function useSelection() {
     setCustomTemplate,
     setUseCustomTemplate,
     setUseCustomQuantity,
+    setAlphabet,
   }
 }

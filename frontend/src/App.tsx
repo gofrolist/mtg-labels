@@ -58,6 +58,7 @@ function App() {
     setCustomTemplate,
     setUseCustomTemplate,
     setUseCustomQuantity,
+    setAlphabet,
   } = useSelection()
 
   const {
@@ -271,6 +272,7 @@ function App() {
         placeholders={selection.placeholders}
         customTemplate={selection.customTemplate}
         useCustomTemplate={selection.useCustomTemplate}
+        alphabet={selection.alphabet}
         setFilterOpen={setFilterOpen}
         onSetFilterToggle={() => setSetFilterOpen((o) => !o)}
         setFilterModified={setFilterModified}
@@ -285,6 +287,8 @@ function App() {
           templateId={selection.templateId}
           placeholders={selection.placeholders}
           customTemplatesApi={customTemplatesApi}
+          alphabet={selection.alphabet}
+          onAlphabetChange={setAlphabet}
           onCustomTemplateChange={setCustomTemplate}
           onUseCustomTemplateChange={setUseCustomTemplate}
           onUseCustomQuantityChange={setUseCustomQuantity}

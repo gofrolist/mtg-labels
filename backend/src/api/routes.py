@@ -261,6 +261,43 @@ def _validate_id_list(ids: list[str] | None, singular: str, plural: str) -> None
             )
 
 
+def _parse_letters(raw: str | None) -> list[str]:
+    """Parse the alphabet-divider ``letters`` form value into single letters.
+
+    The frontend expands ranges (``A-F, H, L-Z``) before sending, so the value
+    here is a comma-separated list of single letters. Each token is validated as
+    a single A-Z letter, uppercased, and de-duplicated while preserving order.
+
+    Args:
+        raw: Comma-separated single letters, or ``None``/empty.
+
+    Returns:
+        Ordered, de-duplicated list of uppercase letters (empty if no input).
+
+    Raises:
+        HTTPException: 400 if the value is too long or has a non-letter token.
+    """
+    if not raw:
+        return []
+    if len(raw) > 200:
+        raise HTTPException(status_code=400, detail="Letters value too long.")
+    letters: list[str] = []
+    seen: set[str] = set()
+    for token in raw.split(","):
+        token = token.strip().upper()
+        if not token:
+            continue
+        if len(token) != 1 or not ("A" <= token <= "Z"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid letter '{token}'. Use single letters A-Z.",
+            )
+        if token not in seen:
+            seen.add(token)
+            letters.append(token)
+    return letters
+
+
 def _parse_custom_template(custom_template: str) -> dict[str, float]:
     """Parse and validate the ``custom_template`` JSON blob into a config dict.
 
@@ -346,6 +383,7 @@ def _build_label_items(
     set_ids: list[str] | None,
     card_type_ids: list[str] | None,
     placeholder_count: int,
+    letters: list[str] | None = None,
 ) -> list[dict]:
     """Build the ordered list of label entries to render.
 
@@ -374,8 +412,16 @@ def _build_label_items(
     filtered = scryfall_client.filter_non_digital(all_sets)
     sets_by_id: dict[str, dict] = {s["id"]: s for s in filtered if isinstance(s.get("id"), str)}
     for set_id in set_ids or []:
-        if set_id in sets_by_id:
-            items.append(sets_by_id[set_id])
+        if set_id not in sets_by_id:
+            continue
+        set_dict = sets_by_id[set_id]
+        if letters:
+            # One label per letter; build a new dict so the cached set is
+            # never mutated.
+            for letter in letters:
+                items.append({**set_dict, "letter": letter})
+        else:
+            items.append(set_dict)
     return items
 
 
@@ -653,6 +699,7 @@ def create_app(
         custom_template: str | None = Form(None),
         placeholders: int = Form(0),
         view_mode: str = Form("sets"),
+        letters: str | None = Form(None),
     ) -> StreamingResponse:
         """
         Generate PDF with labels for selected sets or card types.
@@ -734,8 +781,20 @@ def create_app(
         max_placeholders = max(labels_per_page - 1, 0)
         placeholder_count = min(max(0, placeholders or 0), max_placeholders)
 
+        # Parse alphabet divider letters (raises 400 on a non-letter token).
+        parsed_letters = _parse_letters(letters)
+
+        # Bound the set x letter cross-product to the same ceiling that limits a
+        # plain label request, so alphabet expansion cannot amplify a small
+        # request into a huge PDF (resource-exhaustion guard).
+        if parsed_letters and set_ids and len(set_ids) * len(parsed_letters) > MAX_INPUT_ITEMS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Too many label items. Maximum is {MAX_INPUT_ITEMS}.",
+            )
+
         selected_items_data = _build_label_items(
-            view_mode, set_ids, card_type_ids, placeholder_count
+            view_mode, set_ids, card_type_ids, placeholder_count, parsed_letters
         )
         if not selected_items_data:
             item_type = "card types" if view_mode == "types" else "sets"

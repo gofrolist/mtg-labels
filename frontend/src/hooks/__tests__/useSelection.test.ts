@@ -75,3 +75,22 @@ describe('useSelection', () => {
     expect(result.current.selection.quantities['set-1']).toBe(1)
   })
 })
+
+describe('useSelection alphabet', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('defaults alphabet to off with empty input', () => {
+    const { result } = renderHook(() => useSelection())
+    expect(result.current.selection.alphabet).toEqual({ mode: 'off', customInput: '' })
+  })
+
+  it('updates alphabet via setAlphabet', () => {
+    const { result } = renderHook(() => useSelection())
+    act(() => {
+      result.current.setAlphabet({ mode: 'custom', customInput: 'A-F' })
+    })
+    expect(result.current.selection.alphabet).toEqual({ mode: 'custom', customInput: 'A-F' })
+  })
+})
