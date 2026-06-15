@@ -47,6 +47,15 @@ export interface SavedCustomTemplate {
   template: CustomTemplateDimensions
 }
 
+// Alphabet divider labels
+export type AlphabetMode = 'off' | 'all' | 'custom'
+
+export interface AlphabetSelection {
+  mode: AlphabetMode
+  // Raw text the user typed in Custom mode, e.g. "A-F, H, L-Z".
+  customInput: string
+}
+
 // Selection State
 export interface SelectionState {
   selectedSetIds: string[]
@@ -56,6 +65,7 @@ export interface SelectionState {
   customTemplate: CustomTemplateDimensions | null
   useCustomTemplate: boolean
   useCustomQuantity: boolean // When false, all sets use quantity 1
+  alphabet?: AlphabetSelection // Alphabet divider labels (off by default); optional until the consumer is wired up
 }
 
 // Theme Preference
