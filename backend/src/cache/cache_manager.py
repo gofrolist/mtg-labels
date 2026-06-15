@@ -45,7 +45,7 @@ class CacheManager:
         self.symbol_cache_dir = Path(symbol_cache_dir) if symbol_cache_dir else SYMBOL_CACHE_DIR
 
         # In-memory cache using TTLCache
-        self._memory_cache: TTLCache[str, Any] = TTLCache(maxsize=max_size, ttl=ttl)
+        self._memory_cache: TTLCache[str, Any] = TTLCache[str, Any](maxsize=max_size, ttl=ttl)
 
         # Cache statistics
         self._hits = 0

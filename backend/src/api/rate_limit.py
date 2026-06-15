@@ -64,7 +64,7 @@ class RateLimiter:
         # it because each entry carries its own window-start timestamp. The TTL
         # is 2x the window so an actively-counting key is never evicted mid-
         # window by the cache itself.
-        self._counters: TTLCache[str, tuple[int, float]] = TTLCache(
+        self._counters: TTLCache[str, tuple[int, float]] = TTLCache[str, tuple[int, float]](
             maxsize=max_keys, ttl=window_seconds * 2
         )
         self._lock = Lock()
