@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect, useId } from 'react'
-import type { CustomTemplateDimensions, TemplateMeasurementUnit } from '../../types'
+import type {
+  AlphabetSelection,
+  CustomTemplateDimensions,
+  TemplateMeasurementUnit,
+} from '../../types'
 import { LABEL_TEMPLATES, DEFAULT_TEMPLATE_ID } from '../../constants/templates'
+import { parseLetterSpec } from '../../utils/letters'
 import { convertValue } from '../../utils/unitConversion'
 import { round2, presetToCustom, getPresetUnit } from '../../utils/templateUtils'
 import type { CustomTemplatesApi } from '../../hooks/useCustomTemplates'
@@ -16,6 +21,8 @@ interface TemplateCustomizerProps {
   templateId: string | null
   placeholders: number
   customTemplatesApi: CustomTemplatesApi
+  alphabet: AlphabetSelection
+  onAlphabetChange: (value: AlphabetSelection) => void
   onCustomTemplateChange: (template: CustomTemplateDimensions | null) => void
   onUseCustomTemplateChange: (value: boolean) => void
   onUseCustomQuantityChange: (value: boolean) => void
@@ -39,6 +46,8 @@ export function TemplateCustomizer({
   templateId,
   placeholders,
   customTemplatesApi,
+  alphabet,
+  onAlphabetChange,
   onCustomTemplateChange,
   onUseCustomTemplateChange,
   onUseCustomQuantityChange,
@@ -245,6 +254,56 @@ export function TemplateCustomizer({
                 </span>
               </span>
             </label>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-mtg-text flex items-center gap-1">
+                Alphabet divider letters
+                <span
+                  className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-mtg-text-muted/20 text-mtg-text-muted text-xs cursor-help"
+                  title="Print one divider label per letter for each selected set. Use Custom to choose letters and ranges, e.g. A-F, H, L-Z."
+                >
+                  ?
+                </span>
+              </span>
+              <select
+                className="bg-mtg-card-bg border border-gray-600 rounded-md px-3 py-2 text-sm text-mtg-text focus-visible:ring-2 focus-visible:ring-mtg-accent"
+                value={alphabet.mode}
+                onChange={(e) =>
+                  onAlphabetChange({
+                    ...alphabet,
+                    mode: e.target.value as AlphabetSelection['mode'],
+                  })
+                }
+              >
+                <option value="off">Off</option>
+                <option value="all">All (A–Z)</option>
+                <option value="custom">Custom…</option>
+              </select>
+
+              {alphabet.mode === 'custom' && (
+                <div className="flex flex-col gap-1">
+                  <input
+                    type="text"
+                    placeholder="e.g. A-F, H, L-Z"
+                    value={alphabet.customInput}
+                    onChange={(e) =>
+                      onAlphabetChange({ ...alphabet, customInput: e.target.value })
+                    }
+                    className="bg-mtg-card-bg border border-gray-600 rounded-md px-3 py-2 text-sm text-mtg-text focus-visible:ring-2 focus-visible:ring-mtg-accent"
+                  />
+                  {(() => {
+                    const result = parseLetterSpec(alphabet.customInput)
+                    return result.ok ? (
+                      <span className="text-xs text-mtg-text-muted">
+                        {result.letters.length} divider
+                        {result.letters.length === 1 ? '' : 's'} per set
+                      </span>
+                    ) : (
+                      <span className="text-xs text-red-400">{result.message}</span>
+                    )
+                  })()}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Load template */}

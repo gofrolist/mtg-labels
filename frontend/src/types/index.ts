@@ -65,7 +65,7 @@ export interface SelectionState {
   customTemplate: CustomTemplateDimensions | null
   useCustomTemplate: boolean
   useCustomQuantity: boolean // When false, all sets use quantity 1
-  alphabet?: AlphabetSelection // Alphabet divider labels (off by default); optional until the consumer is wired up
+  alphabet: AlphabetSelection // Alphabet divider labels (off by default)
 }
 
 // Theme Preference
