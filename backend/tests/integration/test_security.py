@@ -199,6 +199,29 @@ class TestRateLimiting:
                 assert blocked.status_code == 429
                 # Detail should not leak server internals — generic, brief.
                 assert "detail" in blocked.json().get("error", {})
+                # The 429 must still carry the hardening headers (security
+                # middleware wraps the rate limiter) and advertise Retry-After.
+                assert blocked.headers["X-Content-Type-Options"] == "nosniff"
+                assert "default-src 'none'" in blocked.headers.get("Content-Security-Policy", "")
+                assert blocked.headers.get("Retry-After") == "60"
+
+    def test_rate_limit_keys_on_forwarded_ip(self, sample_set_data):
+        """The limiter buckets per X-Forwarded-For value.
+
+        This documents both that distinct clients get independent budgets and
+        the known limitation that, absent a trusted proxy, rotating the header
+        yields a fresh bucket (see rate_limit module docstring).
+        """
+        strict_app = _build_strict_app(api_max=1)
+        with patch("src.api.routes.scryfall_client.fetch_sets", return_value=sample_set_data):
+            with TestClient(strict_app) as strict_client:
+                ip_a = {"X-Forwarded-For": "10.0.0.1"}
+                ip_b = {"X-Forwarded-For": "10.0.0.2"}
+                assert strict_client.get("/api/sets", headers=ip_a).status_code == 200
+                # Same forwarded IP is now blocked...
+                assert strict_client.get("/api/sets", headers=ip_a).status_code == 429
+                # ...while a different forwarded IP still has a fresh budget.
+                assert strict_client.get("/api/sets", headers=ip_b).status_code == 200
 
     def test_generate_pdf_rate_limited(self, sample_set_data):
         """/generate-pdf returns 429 after exceeding pdf_limiter budget."""
@@ -228,20 +251,45 @@ class TestBodySizeCap:
     """Oversized request bodies must be rejected before they hit handlers."""
 
     def test_rejects_oversized_body_with_413(self):
-        """A request with Content-Length above the cap returns 413."""
+        """A request with Content-Length above the cap returns 413 with headers."""
         small_cap_app = _build_strict_app(max_body_bytes=128)
-        with TestClient(small_cap_app) as strict_client:
-            # Build a JSON payload larger than 128 bytes.
-            huge_template = json.dumps({"x": "A" * 200})
-            response = strict_client.post(
-                "/generate-pdf",
-                data={
-                    "set_ids": ["test-set-1"],
-                    "custom_template": huge_template,
-                    "view_mode": "sets",
-                },
-            )
-            assert response.status_code == 413
+        # Patch fetch_sets so the lifespan icon-preload thread never makes a
+        # real Scryfall network call during this test.
+        with patch("src.api.routes.scryfall_client.fetch_sets", return_value=[]):
+            with TestClient(small_cap_app) as strict_client:
+                # Build a JSON payload larger than 128 bytes.
+                huge_template = json.dumps({"x": "A" * 200})
+                response = strict_client.post(
+                    "/generate-pdf",
+                    data={
+                        "set_ids": ["test-set-1"],
+                        "custom_template": huge_template,
+                        "view_mode": "sets",
+                    },
+                )
+                assert response.status_code == 413
+                # The 413 must still carry the hardening header set.
+                assert response.headers["X-Content-Type-Options"] == "nosniff"
+                assert "default-src 'none'" in response.headers.get("Content-Security-Policy", "")
+
+    def test_rejects_chunked_body_without_content_length(self):
+        """A chunked body (no Content-Length) is still capped by byte count."""
+        small_cap_app = _build_strict_app(max_body_bytes=128)
+        with patch("src.api.routes.scryfall_client.fetch_sets", return_value=[]):
+            with TestClient(small_cap_app) as strict_client:
+
+                def stream_body():
+                    # A generator body makes httpx use chunked transfer-encoding
+                    # with no Content-Length header — the header check alone
+                    # would miss this; the streamed byte count must catch it.
+                    yield b"x" * 500
+
+                response = strict_client.post(
+                    "/generate-pdf",
+                    content=stream_body(),
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
+                assert response.status_code == 413
 
 
 class TestPerItemValidation:

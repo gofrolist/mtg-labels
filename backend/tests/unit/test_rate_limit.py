@@ -92,3 +92,52 @@ class TestRateLimiterValidation:
     def test_rejects_non_positive_window(self):
         with pytest.raises(ValueError):
             RateLimiter(max_requests=10, window_seconds=0)
+
+
+class TestFixedWindowSemantics:
+    """The limiter is a fixed window anchored at the first request."""
+
+    def test_window_resets_after_it_elapses(self, monkeypatch):
+        """Once the window elapses, a fresh budget is granted."""
+        clock = {"t": 1000.0}
+        monkeypatch.setattr("src.api.rate_limit.time.monotonic", lambda: clock["t"])
+        rl = RateLimiter(max_requests=1, window_seconds=10)
+        assert rl.hit("ip") is True
+        assert rl.hit("ip") is False
+        # Advance past the window — the next request opens a new window.
+        clock["t"] += 11
+        assert rl.hit("ip") is True
+
+    def test_window_is_not_extended_by_steady_drip(self, monkeypatch):
+        """Requests spaced under the window still count toward the cap.
+
+        A true sliding/extending window would let a steady sub-limit drip never
+        trip; a fixed window must cap all requests inside the same window
+        regardless of spacing.
+        """
+        clock = {"t": 0.0}
+        monkeypatch.setattr("src.api.rate_limit.time.monotonic", lambda: clock["t"])
+        rl = RateLimiter(max_requests=3, window_seconds=10)
+        # Three requests at t=0, 4, 8 — all inside the first 10s window.
+        assert rl.hit("ip") is True
+        clock["t"] = 4.0
+        assert rl.hit("ip") is True
+        clock["t"] = 8.0
+        assert rl.hit("ip") is True
+        # Still inside the window (t=9) and the budget is exhausted.
+        clock["t"] = 9.0
+        assert rl.hit("ip") is False
+        # The window started at t=0, so it rolls over at t=10.
+        clock["t"] = 10.0
+        assert rl.hit("ip") is True
+
+    def test_blocked_request_does_not_extend_window(self, monkeypatch):
+        """A denied request must not push the window start forward."""
+        clock = {"t": 0.0}
+        monkeypatch.setattr("src.api.rate_limit.time.monotonic", lambda: clock["t"])
+        rl = RateLimiter(max_requests=1, window_seconds=10)
+        assert rl.hit("ip") is True
+        clock["t"] = 5.0
+        assert rl.hit("ip") is False  # denied; must not re-anchor the window
+        clock["t"] = 10.0  # 10s after the FIRST (allowed) request
+        assert rl.hit("ip") is True

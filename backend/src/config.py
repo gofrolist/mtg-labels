@@ -247,6 +247,24 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 # Enable template debug overlay feature (disabled by default)
 ENABLE_TEMPLATE_DEBUG = os.getenv("ENABLE_TEMPLATE_DEBUG", "false").lower() == "true"
 
+# --- API Hardening / Abuse Limits ---
+# Per-IP rate limits (in-memory, per app instance). PDF generation is the most
+# expensive endpoint (Scryfall I/O + cairosvg + ReportLab) so it is tighter.
+RATE_LIMIT_PDF_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_PDF_MAX_REQUESTS", "10"))
+RATE_LIMIT_API_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_API_MAX_REQUESTS", "60"))
+RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+RATE_LIMIT_MAX_KEYS = int(os.getenv("RATE_LIMIT_MAX_KEYS", "100000"))
+# Maximum accepted request body in bytes (128 KB). /generate-pdf only carries a
+# small JSON template plus short ID lists, so this is generous headroom.
+MAX_REQUEST_BODY_BYTES = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(128 * 1024)))
+# Input list and per-item bounds for /generate-pdf.
+MAX_INPUT_ITEMS = int(os.getenv("MAX_INPUT_ITEMS", "500"))
+# Scryfall IDs are 36-char UUIDs; "Color:Type" IDs are short. 64 is the ceiling.
+MAX_ITEM_LENGTH = int(os.getenv("MAX_ITEM_LENGTH", "64"))
+# Custom-template dimension ceilings (resource-exhaustion guard). 5000pt ~= 69in.
+MAX_TEMPLATE_DIMENSION = float(os.getenv("MAX_TEMPLATE_DIMENSION", "5000"))
+MAX_LABELS_PER_AXIS = float(os.getenv("MAX_LABELS_PER_AXIS", "100"))
+
 # --- Scryfall API Settings ---
 SCRYFALL_API_BASE_URL = os.getenv("SCRYFALL_API_BASE_URL", "https://api.scryfall.com/sets")
 SCRYFALL_API_TIMEOUT = int(os.getenv("SCRYFALL_API_TIMEOUT", "30"))  # seconds
