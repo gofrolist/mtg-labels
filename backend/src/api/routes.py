@@ -381,6 +381,7 @@ def _build_label_items(
     set_ids: list[str] | None,
     card_type_ids: list[str] | None,
     placeholder_count: int,
+    letters: list[str] | None = None,
 ) -> list[dict]:
     """Build the ordered list of label entries to render.
 
@@ -409,8 +410,16 @@ def _build_label_items(
     filtered = scryfall_client.filter_non_digital(all_sets)
     sets_by_id: dict[str, dict] = {s["id"]: s for s in filtered if isinstance(s.get("id"), str)}
     for set_id in set_ids or []:
-        if set_id in sets_by_id:
-            items.append(sets_by_id[set_id])
+        if set_id not in sets_by_id:
+            continue
+        set_dict = sets_by_id[set_id]
+        if letters:
+            # One label per letter; build a new dict so the cached set is
+            # never mutated.
+            for letter in letters:
+                items.append({**set_dict, "letter": letter})
+        else:
+            items.append(set_dict)
     return items
 
 
