@@ -8,7 +8,7 @@ import { PDFGenerator } from '../PDFGenerator/PDFGenerator'
 const DonateModal = lazy(() =>
   import('../DonateModal').then((m) => ({ default: m.DonateModal })),
 )
-import type { CustomTemplateDimensions } from '../../types'
+import type { AlphabetSelection, CustomTemplateDimensions } from '../../types'
 
 interface HeaderProps {
   searchQuery: string
@@ -25,6 +25,7 @@ interface HeaderProps {
   placeholders: number
   customTemplate: CustomTemplateDimensions | null
   useCustomTemplate: boolean
+  alphabet: AlphabetSelection
   setFilterOpen: boolean
   onSetFilterToggle: () => void
   setFilterModified: boolean
@@ -45,6 +46,7 @@ export function Header({
   placeholders,
   customTemplate,
   useCustomTemplate,
+  alphabet,
   setFilterOpen,
   onSetFilterToggle,
   setFilterModified,
@@ -120,6 +122,7 @@ export function Header({
               placeholders={placeholders}
               customTemplate={customTemplate}
               useCustomTemplate={useCustomTemplate}
+              alphabet={alphabet}
               onSuccess={() => setShowDonateModal(true)}
             />
           </div>

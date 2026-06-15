@@ -272,6 +272,7 @@ function App() {
         placeholders={selection.placeholders}
         customTemplate={selection.customTemplate}
         useCustomTemplate={selection.useCustomTemplate}
+        alphabet={selection.alphabet}
         setFilterOpen={setFilterOpen}
         onSetFilterToggle={() => setSetFilterOpen((o) => !o)}
         setFilterModified={setFilterModified}
