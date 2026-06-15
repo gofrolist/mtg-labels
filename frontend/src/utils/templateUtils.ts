@@ -14,7 +14,7 @@ export function getPresetUnit(presetId: string): TemplateMeasurementUnit {
 export function snapPageSize(
   width: number,
   height: number,
-  unit: TemplateMeasurementUnit,
+  unit: TemplateMeasurementUnit
 ): { width: number; height: number } {
   if (unit === 'mm' && Math.abs(width - 210) < 0.1 && Math.abs(height - 297) < 0.1) {
     return { width: 210, height: 297 }
@@ -27,7 +27,7 @@ export function snapPageSize(
 
 export function presetToCustom(
   presetId: string,
-  unit: TemplateMeasurementUnit,
+  unit: TemplateMeasurementUnit
 ): CustomTemplateDimensions {
   const t = LABEL_TEMPLATES[presetId] ?? LABEL_TEMPLATES.avery5160
   const rawW = fromPoints(t.page_width, unit)

@@ -71,7 +71,7 @@ describe('PDFGenerator', () => {
   it('shows loading state during generation', async () => {
     const mockBlob = new Blob(['pdf content'], { type: 'application/pdf' })
     let resolvePromise: (value: Blob) => void
-    const promise = new Promise<Blob>((resolve) => {
+    const promise = new Promise<Blob>(resolve => {
       resolvePromise = resolve
     })
     vi.mocked(generatePDF).mockReturnValue(promise)

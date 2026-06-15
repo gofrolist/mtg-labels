@@ -29,8 +29,7 @@ export function filterSetsByQuery(sets: MTGSet[], query: string): MTGSet[] {
   const lowerQuery = query.toLowerCase()
 
   return sets.filter(
-    (set) =>
-      set.name.toLowerCase().includes(lowerQuery) ||
-      set.code.toLowerCase().includes(lowerQuery)
+    set =>
+      set.name.toLowerCase().includes(lowerQuery) || set.code.toLowerCase().includes(lowerQuery)
   )
 }

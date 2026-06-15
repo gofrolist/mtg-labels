@@ -58,7 +58,7 @@ describe('SetFilterCustomizer', () => {
     const coreCheckbox = screen.getByRole('checkbox', { name: /^core/i })
     fireEvent.click(coreCheckbox)
     expect(onActiveSetTypesChange).toHaveBeenCalledWith(
-      defaultPrefs.activeSetTypes.filter((t) => t !== 'core'),
+      defaultPrefs.activeSetTypes.filter(t => t !== 'core')
     )
   })
 
@@ -71,7 +71,7 @@ describe('SetFilterCustomizer', () => {
     })
     fireEvent.click(cmb1Checkbox)
     expect(onIgnoredSetCodesChange).toHaveBeenCalledWith(
-      defaultPrefs.ignoredSetCodes.filter((c) => c !== 'cmb1'),
+      defaultPrefs.ignoredSetCodes.filter(c => c !== 'cmb1')
     )
   })
 

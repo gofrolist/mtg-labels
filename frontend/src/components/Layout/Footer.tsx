@@ -12,8 +12,8 @@ export function Footer() {
           >
             Fan Content Policy
           </a>
-          . Not approved/endorsed by Wizards. Portions of the materials used are property of
-          Wizards of the Coast. &copy;Wizards of the Coast LLC. Set information provided by{' '}
+          . Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards
+          of the Coast. &copy;Wizards of the Coast LLC. Set information provided by{' '}
           <a
             href="https://scryfall.com/"
             target="_blank"

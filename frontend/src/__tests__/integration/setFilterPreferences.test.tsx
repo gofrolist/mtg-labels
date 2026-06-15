@@ -49,40 +49,27 @@ describe('integration: useSetFilterPreferences + applyFilters', () => {
       makeSet({ id: 'c', set_type: 'core' }),
     ]
     const { result } = renderHook(() => useSetFilterPreferences())
-    expect(applyFilters(sets, result.current.preferences).map((s) => s.id)).toEqual([
-      'a',
-      'b',
-      'c',
-    ])
+    expect(applyFilters(sets, result.current.preferences).map(s => s.id)).toEqual(['a', 'b', 'c'])
 
     act(() => {
       result.current.setActiveSetTypes(
-        result.current.preferences.activeSetTypes.filter((t) => t !== 'expansion'),
+        result.current.preferences.activeSetTypes.filter(t => t !== 'expansion')
       )
     })
 
-    expect(applyFilters(sets, result.current.preferences).map((s) => s.id)).toEqual(['c'])
+    expect(applyFilters(sets, result.current.preferences).map(s => s.id)).toEqual(['c'])
   })
 
   it('removes sets when the user adds the code to ignoredSetCodes', () => {
-    const sets = [
-      makeSet({ id: 'keep', code: 'keep' }),
-      makeSet({ id: 'drop', code: 'drop' }),
-    ]
+    const sets = [makeSet({ id: 'keep', code: 'keep' }), makeSet({ id: 'drop', code: 'drop' })]
     const { result } = renderHook(() => useSetFilterPreferences())
-    expect(applyFilters(sets, result.current.preferences).map((s) => s.id)).toEqual([
-      'keep',
-      'drop',
-    ])
+    expect(applyFilters(sets, result.current.preferences).map(s => s.id)).toEqual(['keep', 'drop'])
 
     act(() => {
-      result.current.setIgnoredSetCodes([
-        ...result.current.preferences.ignoredSetCodes,
-        'drop',
-      ])
+      result.current.setIgnoredSetCodes([...result.current.preferences.ignoredSetCodes, 'drop'])
     })
 
-    expect(applyFilters(sets, result.current.preferences).map((s) => s.id)).toEqual(['keep'])
+    expect(applyFilters(sets, result.current.preferences).map(s => s.id)).toEqual(['keep'])
   })
 
   it('removes sets below the user-set minimum size', () => {
@@ -93,7 +80,7 @@ describe('integration: useSetFilterPreferences + applyFilters', () => {
       result.current.setMinimumSetSize(100)
     })
 
-    expect(applyFilters(sets, result.current.preferences).map((s) => s.id)).toEqual(['big'])
+    expect(applyFilters(sets, result.current.preferences).map(s => s.id)).toEqual(['big'])
   })
 
   it('reset() restores the filtered list to defaults', () => {
@@ -110,6 +97,6 @@ describe('integration: useSetFilterPreferences + applyFilters', () => {
       result.current.reset()
     })
     expect(result.current.preferences.minimumSetSize).toBe(DEFAULT_MINIMUM_SET_SIZE)
-    expect(applyFilters(sets, result.current.preferences).map((s) => s.id)).toEqual(['a'])
+    expect(applyFilters(sets, result.current.preferences).map(s => s.id)).toEqual(['a'])
   })
 })

@@ -23,16 +23,19 @@ React frontend for the MTG Label Generator application, deployed to Vercel.
 ### Setup
 
 1. Install dependencies:
+
 ```bash
 bun install
 ```
 
 2. Create `.env` file (copy from `.env.example`):
+
 ```bash
 cp .env.example .env
 ```
 
 3. Update `.env` with your backend API URL:
+
 ```
 VITE_API_BASE_URL=http://localhost:8080
 ```
@@ -86,21 +89,25 @@ This frontend is configured for deployment to Vercel.
 ### Environment Variables
 
 **Production (Vercel)**:
+
 - No environment variables needed by default
 - API defaults to `https://mtg-labels.fly.dev`
 - Optional: Set `VITE_API_BASE_URL` if using a different API URL
 
 **Development**:
+
 - Set `VITE_API_BASE_URL=http://localhost:8080` in `.env` file
 
 ### Manual Deployment
 
 1. Install Vercel CLI:
+
 ```bash
 bun install --global vercel
 ```
 
 2. Deploy:
+
 ```bash
 cd frontend
 vercel

@@ -5,9 +5,7 @@ import { TemplateNavButton } from '../TemplateCustomizer/TemplateNavButton'
 import { SetFilterNavButton } from '../SetFilterCustomizer/SetFilterNavButton'
 import { PDFGenerator } from '../PDFGenerator/PDFGenerator'
 
-const DonateModal = lazy(() =>
-  import('../DonateModal').then((m) => ({ default: m.DonateModal })),
-)
+const DonateModal = lazy(() => import('../DonateModal').then(m => ({ default: m.DonateModal })))
 import type { AlphabetSelection, CustomTemplateDimensions } from '../../types'
 
 interface HeaderProps {
@@ -95,14 +93,28 @@ export function Header({
               onClick={() => {
                 if (navMenuOpen && templateCustomizerOpen) onTemplateToggle()
                 if (navMenuOpen && setFilterOpen) onSetFilterToggle()
-                setNavMenuOpen((o) => !o)
+                setNavMenuOpen(o => !o)
               }}
               className="min-[880px]:hidden h-9 w-9 flex items-center justify-center rounded border border-white/30 hover:bg-white/10 transition-colors"
               aria-label="Toggle menu"
               aria-expanded={navMenuOpen}
             >
               {navMenuOpen ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
               ) : (
                 <span className="flex flex-col gap-1">
                   <span className="block w-4 h-0.5 bg-current" />

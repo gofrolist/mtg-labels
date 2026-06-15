@@ -16,12 +16,24 @@ export const KNOWN_SET_TYPES: readonly SetTypeMeta[] = [
   { key: 'eternal', label: 'Eternal', description: 'New cards added to high-power formats' },
   { key: 'masterpiece', label: 'Masterpiece', description: 'Premium foil card series' },
   { key: 'arsenal', label: 'Arsenal', description: 'Commander-oriented gift set' },
-  { key: 'from_the_vault', label: 'From the Vault', description: 'Limited-print premium gift sets' },
+  {
+    key: 'from_the_vault',
+    label: 'From the Vault',
+    description: 'Limited-print premium gift sets',
+  },
   { key: 'spellbook', label: 'Spellbook', description: 'Signature Spellbook gift sets' },
   { key: 'premium_deck', label: 'Premium Deck', description: 'Premium Deck Series decks' },
   { key: 'duel_deck', label: 'Duel Deck', description: 'Duel Decks' },
-  { key: 'draft_innovation', label: 'Draft Innovation', description: 'Special draft sets (Conspiracy, Battlebond, etc.)' },
-  { key: 'treasure_chest', label: 'Treasure Chest', description: 'Magic Online treasure chest prize sets' },
+  {
+    key: 'draft_innovation',
+    label: 'Draft Innovation',
+    description: 'Special draft sets (Conspiracy, Battlebond, etc.)',
+  },
+  {
+    key: 'treasure_chest',
+    label: 'Treasure Chest',
+    description: 'Magic Online treasure chest prize sets',
+  },
   { key: 'commander', label: 'Commander', description: 'Commander preconstructed decks' },
   { key: 'planechase', label: 'Planechase', description: 'Planechase sets' },
   { key: 'archenemy', label: 'Archenemy', description: 'Archenemy sets' },
@@ -31,12 +43,16 @@ export const KNOWN_SET_TYPES: readonly SetTypeMeta[] = [
   { key: 'box', label: 'Box Set', description: 'Gift box sets' },
   { key: 'promo', label: 'Promo', description: 'Purely promotional cards' },
   { key: 'token', label: 'Token', description: 'Tokens and emblems' },
-  { key: 'memorabilia', label: 'Memorabilia', description: 'Gold-bordered, oversize, or trophy cards (not tournament legal)' },
+  {
+    key: 'memorabilia',
+    label: 'Memorabilia',
+    description: 'Gold-bordered, oversize, or trophy cards (not tournament legal)',
+  },
   { key: 'minigame', label: 'Minigame', description: 'Minigame card inserts from booster packs' },
 ] as const
 
 const META_BY_KEY: Record<string, SetTypeMeta> = Object.fromEntries(
-  KNOWN_SET_TYPES.map((t) => [t.key, t]),
+  KNOWN_SET_TYPES.map(t => [t.key, t])
 )
 
 export function getSetTypeMeta(key: string): SetTypeMeta {

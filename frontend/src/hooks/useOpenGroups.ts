@@ -4,7 +4,7 @@ import type { MTGSet } from '../types'
 export function useOpenGroups(
   searchQuery: string,
   groupedSets: Record<string, MTGSet[]>,
-  selectedSetIds: string[],
+  selectedSetIds: string[]
 ) {
   const [manualOpenGroups, setManualOpenGroups] = useState<Set<string> | null>(null)
 
@@ -16,7 +16,7 @@ export function useOpenGroups(
     if (selectedSetIds.length > 0) {
       const groupsToOpen = new Set<string>()
       for (const [groupName, groupSets] of Object.entries(groupedSets)) {
-        if (groupSets.some((set) => selectedSetIds.includes(set.id))) {
+        if (groupSets.some(set => selectedSetIds.includes(set.id))) {
           groupsToOpen.add(groupName)
         }
       }
@@ -27,7 +27,7 @@ export function useOpenGroups(
 
   const toggleGroup = useCallback(
     (groupName: string) => {
-      setManualOpenGroups((prev) => {
+      setManualOpenGroups(prev => {
         const base = prev ?? openGroups
         const next = new Set(base)
         if (next.has(groupName)) {
@@ -38,7 +38,7 @@ export function useOpenGroups(
         return next
       })
     },
-    [openGroups],
+    [openGroups]
   )
 
   const resetManualGroups = useCallback(() => {

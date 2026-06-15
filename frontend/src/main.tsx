@@ -61,5 +61,5 @@ createRoot(document.getElementById('root')!).render(
         <App />
       </ErrorBoundary>
     </QueryClientProvider>
-  </StrictMode>,
+  </StrictMode>
 )

@@ -9,7 +9,14 @@ interface AccordionGroupProps {
   children: ReactNode
 }
 
-export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onToggle, onSelectGroup, isGroupSelected, children }: AccordionGroupProps) {
+export const AccordionGroup = memo(function AccordionGroup({
+  title,
+  isOpen,
+  onToggle,
+  onSelectGroup,
+  isGroupSelected,
+  children,
+}: AccordionGroupProps) {
   const [hasBeenOpened, setHasBeenOpened] = useState(isOpen)
   if (isOpen && !hasBeenOpened) setHasBeenOpened(true)
   const headingId = `heading-${title}`
@@ -27,7 +34,21 @@ export const AccordionGroup = memo(function AccordionGroup({ title, isOpen, onTo
           aria-controls={collapseId}
         >
           <span className="font-medium truncate">{title}</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`mx-2 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`mx-2 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
+            aria-hidden="true"
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
         </button>
 
         {onSelectGroup && (

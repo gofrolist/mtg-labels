@@ -30,7 +30,7 @@ export function SetFilterCustomizer({
 
   // Union of known set types and any set_type observed in the data.
   const setTypeKeys = useMemo(() => {
-    const keys = new Set<string>(KNOWN_SET_TYPES.map((t) => t.key))
+    const keys = new Set<string>(KNOWN_SET_TYPES.map(t => t.key))
     for (const s of allSets) keys.add(s.set_type)
     return [...keys].sort()
   }, [allSets])
@@ -51,16 +51,16 @@ export function SetFilterCustomizer({
 
   const activeTypeSet = useMemo(
     () => new Set(preferences.activeSetTypes),
-    [preferences.activeSetTypes],
+    [preferences.activeSetTypes]
   )
   const ignoredCodeSet = useMemo(
-    () => new Set(preferences.ignoredSetCodes.map((c) => c.toLowerCase())),
-    [preferences.ignoredSetCodes],
+    () => new Set(preferences.ignoredSetCodes.map(c => c.toLowerCase())),
+    [preferences.ignoredSetCodes]
   )
 
   const toggleSetType = (key: string) => {
     if (activeTypeSet.has(key)) {
-      onActiveSetTypesChange(preferences.activeSetTypes.filter((t) => t !== key))
+      onActiveSetTypesChange(preferences.activeSetTypes.filter(t => t !== key))
     } else {
       onActiveSetTypesChange([...preferences.activeSetTypes, key])
     }
@@ -69,9 +69,7 @@ export function SetFilterCustomizer({
   const toggleIgnoredCode = (code: string) => {
     const lower = code.toLowerCase()
     if (ignoredCodeSet.has(lower)) {
-      onIgnoredSetCodesChange(
-        preferences.ignoredSetCodes.filter((c) => c.toLowerCase() !== lower),
-      )
+      onIgnoredSetCodesChange(preferences.ignoredSetCodes.filter(c => c.toLowerCase() !== lower))
     } else {
       onIgnoredSetCodesChange([...preferences.ignoredSetCodes, lower])
     }
@@ -90,7 +88,7 @@ export function SetFilterCustomizer({
             <section className="rounded-lg border border-mtg-border bg-mtg-section-bg p-4">
               <h3 className="font-semibold text-mtg-text mb-3 text-sm">Set Types</h3>
               <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
-                {setTypeKeys.map((key) => {
+                {setTypeKeys.map(key => {
                   const meta = getSetTypeMeta(key)
                   const checked = activeTypeSet.has(key)
                   const inputId = `set-type-${key}`
@@ -125,7 +123,7 @@ export function SetFilterCustomizer({
                 Uncheck a row to include that set in the list.
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
-                {ignoredCodeRows.map((code) => {
+                {ignoredCodeRows.map(code => {
                   const checked = ignoredCodeSet.has(code.toLowerCase())
                   const set = setByCode[code.toLowerCase()]
                   const name = set ? set.name : code.toUpperCase()
@@ -157,10 +155,7 @@ export function SetFilterCustomizer({
 
           {/* Minimum Set Size */}
           <div className="mt-4 rounded-lg border border-mtg-border bg-mtg-section-bg p-4 max-w-md">
-            <label
-              htmlFor={minSizeId}
-              className="block font-semibold text-mtg-text mb-2 text-sm"
-            >
+            <label htmlFor={minSizeId} className="block font-semibold text-mtg-text mb-2 text-sm">
               Minimum set size
             </label>
             <p className="text-xs text-mtg-text-muted mb-2">
@@ -172,7 +167,7 @@ export function SetFilterCustomizer({
               min={SIZE_INPUT_MIN}
               max={SIZE_INPUT_MAX}
               value={preferences.minimumSetSize}
-              onChange={(e) => {
+              onChange={e => {
                 const v = parseInt(e.target.value, 10)
                 if (Number.isNaN(v)) return
                 const clamped = Math.max(SIZE_INPUT_MIN, Math.min(SIZE_INPUT_MAX, v))

@@ -26,7 +26,7 @@ export function fromPoints(value: number, unit: TemplateMeasurementUnit): number
 export function convertValue(
   value: number,
   fromUnit: TemplateMeasurementUnit,
-  toUnit: TemplateMeasurementUnit,
+  toUnit: TemplateMeasurementUnit
 ): number {
   if (fromUnit === toUnit) return value
   const pts = toPoints(value, fromUnit)
@@ -34,7 +34,7 @@ export function convertValue(
 }
 
 export function customTemplateToBackendFormat(
-  template: CustomTemplateDimensions,
+  template: CustomTemplateDimensions
 ): Record<string, number> {
   const u = template.unit
   return {

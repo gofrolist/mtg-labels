@@ -38,14 +38,18 @@ export function SetList({
             title={groupName}
             isOpen={openGroups.has(groupName)}
             onToggle={() => onToggleGroup(groupName)}
-            onSelectGroup={onSelectGroup ? () => {
-              const setIds = sets.map(s => s.id)
-              onSelectGroup(groupName, setIds)
-            } : undefined}
+            onSelectGroup={
+              onSelectGroup
+                ? () => {
+                    const setIds = sets.map(s => s.id)
+                    onSelectGroup(groupName, setIds)
+                  }
+                : undefined
+            }
             isGroupSelected={sets.length > 0 && sets.every(s => selectedSet.has(s.id))}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
-              {sets.map((set) => (
+              {sets.map(set => (
                 <div key={set.id} className="col">
                   <SetItem
                     set={set}
@@ -53,7 +57,7 @@ export function SetList({
                     quantity={quantities[set.id] || 1}
                     showQuantityInput={useCustomQuantity}
                     onToggle={() => onToggleSet(set.id)}
-                    onQuantityChange={(quantity) => onQuantityChange(set.id, quantity)}
+                    onQuantityChange={quantity => onQuantityChange(set.id, quantity)}
                     iconSvg={setIconsMap?.[set.id]}
                     iconsLoaded={setIconsMap !== undefined}
                   />

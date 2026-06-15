@@ -31,7 +31,7 @@ export function TypeList({
   const groupsWithIds = useMemo(() => {
     return Object.entries(groupedTypes).map(([color, types]) => ({
       color,
-      types: types.map((type) => ({
+      types: types.map(type => ({
         id: `${color}:${type}`,
         name: type,
       })),
@@ -49,15 +49,15 @@ export function TypeList({
             onSelectGroup={
               onSelectGroup
                 ? () => {
-                    const typeIds = types.map((t) => t.id)
+                    const typeIds = types.map(t => t.id)
                     onSelectGroup(color, typeIds)
                   }
                 : undefined
             }
-            isGroupSelected={types.length > 0 && types.every((t) => selectedSet.has(t.id))}
+            isGroupSelected={types.length > 0 && types.every(t => selectedSet.has(t.id))}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
-              {types.map((type) => (
+              {types.map(type => (
                 <div key={type.id} className="col">
                   <TypeItem
                     typeId={type.id}
@@ -66,7 +66,7 @@ export function TypeList({
                     quantity={quantities[type.id] || 1}
                     showQuantityInput={useCustomQuantity}
                     onToggle={() => onToggleType(type.id)}
-                    onQuantityChange={(quantity) => onQuantityChange(type.id, quantity)}
+                    onQuantityChange={quantity => onQuantityChange(type.id, quantity)}
                   />
                 </div>
               ))}
