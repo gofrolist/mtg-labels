@@ -14,6 +14,8 @@ import {
   DEFAULT_MINIMUM_SET_SIZE,
 } from './constants/setFilterDefaults'
 import { groupSetsByType, filterSetsByQuery } from './utils/grouping'
+import { resolveLetters } from './utils/letters'
+import { countLabelItems } from './utils/labelCount'
 import { LABEL_TEMPLATES } from './constants/templates'
 import { Header } from './components/Layout/Header'
 import { Footer } from './components/Layout/Footer'
@@ -104,13 +106,25 @@ function App() {
     selection.selectedSetIds
   )
 
-  const totalLabels = useMemo(() => {
-    let labels = 0
-    for (const setId of selection.selectedSetIds) {
-      labels += selection.useCustomQuantity ? selection.quantities[setId] || 1 : 1
-    }
-    return labels
-  }, [selection.selectedSetIds, selection.quantities, selection.useCustomQuantity])
+  // Alphabet dividers add one label per chosen letter for each set, so the
+  // label/page totals must reflect the set x letter cross-product.
+  const dividerLetters = useMemo(() => resolveLetters(selection.alphabet), [selection.alphabet])
+
+  const totalLabels = useMemo(
+    () =>
+      countLabelItems(
+        selection.selectedSetIds,
+        selection.quantities,
+        selection.useCustomQuantity,
+        dividerLetters.length
+      ),
+    [
+      selection.selectedSetIds,
+      selection.quantities,
+      selection.useCustomQuantity,
+      dividerLetters.length,
+    ]
+  )
 
   const labelsPerPage = useMemo(() => {
     if (selection.useCustomTemplate && selection.customTemplate) {

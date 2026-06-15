@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { generatePDF } from '../../api/client'
+import { MAX_LABEL_ITEMS } from '../../constants/limits'
 import { LABEL_TEMPLATES } from '../../constants/templates'
 import type { AlphabetSelection, CustomTemplateDimensions } from '../../types'
+import { countLabelItems } from '../../utils/labelCount'
 import { parseLetterSpec, resolveLetters } from '../../utils/letters'
 import { customTemplateToBackendFormat } from '../../utils/unitConversion'
 import { ErrorDisplay } from '../ErrorDisplay'
@@ -42,6 +44,21 @@ export function PDFGenerator({
     viewMode === 'sets' && alphabet.mode === 'custom' && !parseLetterSpec(alphabet.customInput).ok
   const letters = resolveLetters(alphabet)
 
+  // Mirror the backend cap up front: one label per set, or per set x divider
+  // letter. Going over would 400, so block and explain instead of failing late.
+  const selectedIds = viewMode === 'sets' ? selectedSetIds : selectedTypeIds
+  const labelItemCount = countLabelItems(
+    selectedIds,
+    quantities,
+    useCustomQuantity,
+    viewMode === 'sets' ? letters.length : 0
+  )
+  const overLimit = labelItemCount > MAX_LABEL_ITEMS
+  const overLimitMessage = overLimit
+    ? `This selection makes ${labelItemCount.toLocaleString()} labels, over the ${MAX_LABEL_ITEMS} maximum. ` +
+      `Reduce the number of ${viewMode === 'sets' ? 'sets or divider letters' : 'types'}.`
+    : null
+
   const handleGenerate = async () => {
     const hasSelection =
       viewMode === 'sets' ? selectedSetIds.length > 0 : selectedTypeIds.length > 0
@@ -49,6 +66,11 @@ export function PDFGenerator({
       setError(
         `Please select at least one ${viewMode === 'sets' ? 'set' : 'type'} before generating the PDF.`
       )
+      return
+    }
+
+    if (overLimitMessage) {
+      setError(overLimitMessage)
       return
     }
 
@@ -134,15 +156,20 @@ export function PDFGenerator({
     }
   }
 
+  // Show a click-triggered error, or proactively explain the disabled button
+  // when the selection is over the label cap.
+  const displayMessage = error ?? overLimitMessage
+
   return (
     <>
-      {error && <ErrorDisplay message={error} />}
+      {displayMessage && <ErrorDisplay message={displayMessage} />}
 
       <button
         onClick={handleGenerate}
         disabled={
           loading ||
           alphabetInvalid ||
+          overLimit ||
           (viewMode === 'sets' ? selectedSetIds.length === 0 : selectedTypeIds.length === 0)
         }
         className="h-9 px-4 py-0 flex items-center gap-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
