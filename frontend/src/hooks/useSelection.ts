@@ -34,19 +34,19 @@ export function useSelection() {
   }, [selection])
 
   const toggleSetSelection = useCallback((setId: string) => {
-    setSelection((prev) => {
+    setSelection(prev => {
       const isSelected = prev.selectedSetIds.includes(setId)
       return {
         ...prev,
         selectedSetIds: isSelected
-          ? prev.selectedSetIds.filter((id) => id !== setId)
+          ? prev.selectedSetIds.filter(id => id !== setId)
           : [...prev.selectedSetIds, setId],
       }
     })
   }, [])
 
   const selectSets = useCallback((ids: string[]) => {
-    setSelection((prev) => {
+    setSelection(prev => {
       const existing = new Set(prev.selectedSetIds)
       for (const id of ids) existing.add(id)
       return { ...prev, selectedSetIds: [...existing] }
@@ -54,17 +54,17 @@ export function useSelection() {
   }, [])
 
   const deselectSets = useCallback((ids: string[]) => {
-    setSelection((prev) => {
+    setSelection(prev => {
       const toRemove = new Set(ids)
       return {
         ...prev,
-        selectedSetIds: prev.selectedSetIds.filter((id) => !toRemove.has(id)),
+        selectedSetIds: prev.selectedSetIds.filter(id => !toRemove.has(id)),
       }
     })
   }, [])
 
   const setQuantity = useCallback((itemId: string, quantity: number) => {
-    setSelection((prev) => ({
+    setSelection(prev => ({
       ...prev,
       quantities: {
         ...prev.quantities,
@@ -74,39 +74,42 @@ export function useSelection() {
   }, [])
 
   const setTemplate = useCallback((templateId: string | null) => {
-    setSelection((prev) => ({ ...prev, templateId }))
+    setSelection(prev => ({ ...prev, templateId }))
   }, [])
 
   const setPlaceholders = useCallback((placeholders: number) => {
-    setSelection((prev) => ({ ...prev, placeholders: Math.max(0, placeholders) }))
+    setSelection(prev => ({ ...prev, placeholders: Math.max(0, placeholders) }))
   }, [])
 
   const selectAllSets = useCallback((setIds: string[]) => {
-    setSelection((prev) => ({ ...prev, selectedSetIds: setIds }))
+    setSelection(prev => ({ ...prev, selectedSetIds: setIds }))
   }, [])
 
   const deselectAllSets = useCallback(() => {
-    setSelection((prev) => ({ ...prev, selectedSetIds: [] }))
+    setSelection(prev => ({ ...prev, selectedSetIds: [] }))
   }, [])
 
-  const isAllSetsSelected = useCallback((setIds: string[]) => {
-    return setIds.length > 0 && setIds.every((id) => selection.selectedSetIds.includes(id))
-  }, [selection.selectedSetIds])
+  const isAllSetsSelected = useCallback(
+    (setIds: string[]) => {
+      return setIds.length > 0 && setIds.every(id => selection.selectedSetIds.includes(id))
+    },
+    [selection.selectedSetIds]
+  )
 
   const setCustomTemplate = useCallback((customTemplate: CustomTemplateDimensions | null) => {
-    setSelection((prev) => ({ ...prev, customTemplate }))
+    setSelection(prev => ({ ...prev, customTemplate }))
   }, [])
 
   const setUseCustomTemplate = useCallback((useCustomTemplate: boolean) => {
-    setSelection((prev) => ({ ...prev, useCustomTemplate }))
+    setSelection(prev => ({ ...prev, useCustomTemplate }))
   }, [])
 
   const setUseCustomQuantity = useCallback((useCustomQuantity: boolean) => {
-    setSelection((prev) => ({ ...prev, useCustomQuantity }))
+    setSelection(prev => ({ ...prev, useCustomQuantity }))
   }, [])
 
   const setAlphabet = useCallback((alphabet: AlphabetSelection) => {
-    setSelection((prev) => ({ ...prev, alphabet }))
+    setSelection(prev => ({ ...prev, alphabet }))
   }, [])
 
   return {

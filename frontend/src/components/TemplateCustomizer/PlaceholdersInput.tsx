@@ -30,7 +30,10 @@ export function PlaceholdersInput({
 
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor="placeholders-input" className="text-sm text-mtg-text whitespace-nowrap flex items-center gap-1">
+      <label
+        htmlFor="placeholders-input"
+        className="text-sm text-mtg-text whitespace-nowrap flex items-center gap-1"
+      >
         Skip labels:
         <span
           className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-mtg-text-muted/20 text-mtg-text-muted text-xs cursor-help"

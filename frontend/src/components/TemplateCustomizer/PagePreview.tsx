@@ -10,7 +10,12 @@ interface PagePreviewProps {
   placeholders?: number
 }
 
-export function PagePreview({ template, fullscreen, containerSize, placeholders = 0 }: PagePreviewProps) {
+export function PagePreview({
+  template,
+  fullscreen,
+  containerSize,
+  placeholders = 0,
+}: PagePreviewProps) {
   const u = template.unit
   const pageW = toPoints(template.pageWidth, u)
   const pageH = toPoints(template.pageHeight, u)
@@ -67,9 +72,7 @@ export function PagePreview({ template, fullscreen, containerSize, placeholders 
               <div
                 key={i}
                 className={`border border-dashed flex items-center justify-center overflow-hidden ${
-                  isEmpty
-                    ? 'border-gray-400 bg-gray-200'
-                    : 'border-gray-300 bg-[#d4af37]/10'
+                  isEmpty ? 'border-gray-400 bg-gray-200' : 'border-gray-300 bg-[#d4af37]/10'
                 }`}
               >
                 {showNumbers && (

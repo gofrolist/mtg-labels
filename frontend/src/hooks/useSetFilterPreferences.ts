@@ -48,17 +48,17 @@ export function useSetFilterPreferences() {
 
   const setActiveSetTypes = useCallback(
     (types: string[]) => persist({ ...preferences, activeSetTypes: types }),
-    [preferences, persist],
+    [preferences, persist]
   )
 
   const setIgnoredSetCodes = useCallback(
     (codes: string[]) => persist({ ...preferences, ignoredSetCodes: codes }),
-    [preferences, persist],
+    [preferences, persist]
   )
 
   const setMinimumSetSize = useCallback(
     (size: number) => persist({ ...preferences, minimumSetSize: size }),
-    [preferences, persist],
+    [preferences, persist]
   )
 
   const reset = useCallback(() => {

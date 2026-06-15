@@ -21,14 +21,14 @@ import { SetList } from './components/SetList/SetList'
 import { TypeList } from './components/TypeList/TypeList'
 import { ViewToggle, type ViewMode } from './components/ViewToggle/ViewToggle'
 const TemplateCustomizer = lazy(() =>
-  import('./components/TemplateCustomizer/TemplateCustomizer').then((m) => ({
+  import('./components/TemplateCustomizer/TemplateCustomizer').then(m => ({
     default: m.TemplateCustomizer,
-  })),
+  }))
 )
 const SetFilterCustomizer = lazy(() =>
-  import('./components/SetFilterCustomizer/SetFilterCustomizer').then((m) => ({
+  import('./components/SetFilterCustomizer/SetFilterCustomizer').then(m => ({
     default: m.SetFilterCustomizer,
-  })),
+  }))
 )
 import { ErrorDisplay } from './components/ErrorDisplay'
 import { LoadingSkeleton } from './components/LoadingSkeleton'
@@ -37,12 +37,16 @@ import type { MTGSet } from './types'
 function sameElements(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) return false
   const setB = new Set(b)
-  return a.every((x) => setB.has(x))
+  return a.every(x => setB.has(x))
 }
 
 function App() {
   const { data: setsResponse, isLoading: setsLoading, error: setsError } = useApiSetsApiSetsGet()
-  const { data: typesResponse, isLoading: typesLoading, error: typesError } = useApiCardTypesApiCardTypesGet()
+  const {
+    data: typesResponse,
+    isLoading: typesLoading,
+    error: typesError,
+  } = useApiCardTypesApiCardTypesGet()
   const { data: setIconsMap } = useSetIcons()
   const {
     selection,
@@ -72,9 +76,12 @@ function App() {
   const rawSets: MTGSet[] = useMemo(() => setsResponse?.data ?? [], [setsResponse?.data])
   const sets: MTGSet[] = useMemo(
     () => applyFilters(rawSets, setFilterPreferences),
-    [rawSets, setFilterPreferences],
+    [rawSets, setFilterPreferences]
   )
-  const cardTypes: Record<string, string[]> = useMemo(() => typesResponse?.data ?? {}, [typesResponse?.data])
+  const cardTypes: Record<string, string[]> = useMemo(
+    () => typesResponse?.data ?? {},
+    [typesResponse?.data]
+  )
   const [searchQuery, setSearchQuery] = useState('')
   const [templateCustomizerOpen, setTemplateCustomizerOpen] = useState(false)
   const [templateCustomizerMounted, setTemplateCustomizerMounted] = useState(false)
@@ -94,13 +101,13 @@ function App() {
   const { openGroups, toggleGroup, resetManualGroups } = useOpenGroups(
     searchQuery,
     groupedSets,
-    selection.selectedSetIds,
+    selection.selectedSetIds
   )
 
   const totalLabels = useMemo(() => {
     let labels = 0
     for (const setId of selection.selectedSetIds) {
-      labels += selection.useCustomQuantity ? (selection.quantities[setId] || 1) : 1
+      labels += selection.useCustomQuantity ? selection.quantities[setId] || 1 : 1
     }
     return labels
   }, [selection.selectedSetIds, selection.quantities, selection.useCustomQuantity])
@@ -124,8 +131,8 @@ function App() {
   const customTemplatesApi = useCustomTemplates()
   const templateBadgeLabel = selection.useCustomTemplate
     ? selection.templateId?.startsWith('saved:')
-      ? customTemplatesApi.templates.find((t) => t.id === selection.templateId!.slice(6))?.name ??
-        'custom'
+      ? (customTemplatesApi.templates.find(t => t.id === selection.templateId!.slice(6))?.name ??
+        'custom')
       : 'custom'
     : selection.templateId
       ? LABEL_TEMPLATES[selection.templateId]?.name
@@ -136,8 +143,8 @@ function App() {
     if (!sameElements(setFilterPreferences.activeSetTypes, DEFAULT_SET_TYPES)) return true
     if (
       !sameElements(
-        setFilterPreferences.ignoredSetCodes.map((c) => c.toLowerCase()),
-        DEFAULT_IGNORED_SET_CODES,
+        setFilterPreferences.ignoredSetCodes.map(c => c.toLowerCase()),
+        DEFAULT_IGNORED_SET_CODES
       )
     ) {
       return true
@@ -146,7 +153,7 @@ function App() {
   }, [setFilterPreferences])
 
   const handleSelectAllSets = () => {
-    const allSetIds = filteredSets.map((set) => set.id)
+    const allSetIds = filteredSets.map(set => set.id)
     resetManualGroups()
     if (isAllSetsSelected(allSetIds)) {
       deselectAllSets()
@@ -157,7 +164,7 @@ function App() {
   }
 
   const handleSelectGroup = (_groupName: string, setIds: string[]) => {
-    const allSelected = setIds.every((id) => selection.selectedSetIds.includes(id))
+    const allSelected = setIds.every(id => selection.selectedSetIds.includes(id))
     if (allSelected) {
       deselectSets(setIds)
     } else {
@@ -168,17 +175,17 @@ function App() {
 
   // Types handlers
   const toggleTypeSelection = (typeId: string) => {
-    setSelectedTypeIds((prev) =>
-      prev.includes(typeId) ? prev.filter((id) => id !== typeId) : [...prev, typeId],
+    setSelectedTypeIds(prev =>
+      prev.includes(typeId) ? prev.filter(id => id !== typeId) : [...prev, typeId]
     )
   }
 
   const handleTypeQuantityChange = (typeId: string, quantity: number) => {
-    setTypeQuantities((prev) => ({ ...prev, [typeId]: quantity }))
+    setTypeQuantities(prev => ({ ...prev, [typeId]: quantity }))
   }
 
   const toggleTypeGroup = (groupName: string) => {
-    setTypeOpenGroups((prev) => {
+    setTypeOpenGroups(prev => {
       const next = new Set(prev)
       if (next.has(groupName)) {
         next.delete(groupName)
@@ -190,27 +197,27 @@ function App() {
   }
 
   const handleSelectTypeGroup = (groupName: string, typeIds: string[]) => {
-    const allSelected = typeIds.every((id) => selectedTypeIds.includes(id))
+    const allSelected = typeIds.every(id => selectedTypeIds.includes(id))
     if (allSelected) {
-      setSelectedTypeIds((prev) => prev.filter((id) => !typeIds.includes(id)))
+      setSelectedTypeIds(prev => prev.filter(id => !typeIds.includes(id)))
       // Close the group when deselecting
-      setTypeOpenGroups((prev) => {
+      setTypeOpenGroups(prev => {
         const next = new Set(prev)
         next.delete(groupName)
         return next
       })
     } else {
-      setSelectedTypeIds((prev) => [...new Set([...prev, ...typeIds])])
+      setSelectedTypeIds(prev => [...new Set([...prev, ...typeIds])])
       // Open the group when selecting
-      setTypeOpenGroups((prev) => new Set([...prev, groupName]))
+      setTypeOpenGroups(prev => new Set([...prev, groupName]))
     }
   }
 
   const handleSelectAllTypes = () => {
     const allTypeIds = Object.entries(cardTypes).flatMap(([color, types]) =>
-      types.map((type) => `${color}:${type}`),
+      types.map(type => `${color}:${type}`)
     )
-    const allSelected = allTypeIds.every((id) => selectedTypeIds.includes(id))
+    const allSelected = allTypeIds.every(id => selectedTypeIds.includes(id))
     if (allSelected) {
       setSelectedTypeIds([])
       // Close all groups when deselecting all
@@ -229,7 +236,7 @@ function App() {
     const result: Record<string, string[]> = {}
     for (const [color, types] of Object.entries(cardTypes)) {
       const filtered = types.filter(
-        (type) => type.toLowerCase().includes(query) || color.toLowerCase().includes(query),
+        type => type.toLowerCase().includes(query) || color.toLowerCase().includes(query)
       )
       if (filtered.length > 0) {
         result[color] = filtered
@@ -242,7 +249,7 @@ function App() {
   const totalTypeLabels = useMemo(() => {
     let labels = 0
     for (const typeId of selectedTypeIds) {
-      labels += selection.useCustomQuantity ? (typeQuantities[typeId] || 1) : 1
+      labels += selection.useCustomQuantity ? typeQuantities[typeId] || 1 : 1
     }
     return labels
   }, [selectedTypeIds, typeQuantities, selection.useCustomQuantity])
@@ -261,7 +268,7 @@ function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         templateCustomizerOpen={templateCustomizerOpen}
-        onTemplateToggle={() => setTemplateCustomizerOpen((o) => !o)}
+        onTemplateToggle={() => setTemplateCustomizerOpen(o => !o)}
         templateBadgeLabel={templateBadgeLabel}
         selectedSetIds={selection.selectedSetIds}
         selectedTypeIds={selectedTypeIds}
@@ -274,7 +281,7 @@ function App() {
         useCustomTemplate={selection.useCustomTemplate}
         alphabet={selection.alphabet}
         setFilterOpen={setFilterOpen}
-        onSetFilterToggle={() => setSetFilterOpen((o) => !o)}
+        onSetFilterToggle={() => setSetFilterOpen(o => !o)}
         setFilterModified={setFilterModified}
       />
 
@@ -312,7 +319,6 @@ function App() {
       </Suspense>
 
       <main className="container mx-auto px-4 py-4 flex-1 min-h-[50vh]">
-
         <div className="flex items-center justify-between mb-4 min-h-9 flex-wrap gap-2">
           <div className="flex items-center gap-4">
             <ViewToggle viewMode={viewMode} onChange={setViewMode} />
@@ -328,7 +334,8 @@ function App() {
                 </>
               ) : (
                 <>
-                  {totalTypeLabels} labels / {typePageCount} {typePageCount === 1 ? 'page' : 'pages'}
+                  {totalTypeLabels} labels / {typePageCount}{' '}
+                  {typePageCount === 1 ? 'page' : 'pages'}
                   {searchQuery.trim() && (
                     <span className="ml-2">
                       ({Object.values(filteredTypes).flat().length} types found)
@@ -343,9 +350,7 @@ function App() {
               onClick={handleSelectAllSets}
               className={`h-9 px-3 py-0 flex items-center border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors text-sm focus-visible:ring-2 focus-visible:ring-mtg-accent ${filteredSets.length === 0 ? 'invisible' : ''}`}
             >
-              {isAllSetsSelected(filteredSets.map((s) => s.id))
-                ? 'Deselect All'
-                : 'Select All'}
+              {isAllSetsSelected(filteredSets.map(s => s.id)) ? 'Deselect All' : 'Select All'}
             </button>
           ) : (
             <button
@@ -353,8 +358,8 @@ function App() {
               className={`h-9 px-3 py-0 flex items-center border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors text-sm focus-visible:ring-2 focus-visible:ring-mtg-accent ${Object.keys(filteredTypes).length === 0 ? 'invisible' : ''}`}
             >
               {Object.entries(cardTypes)
-                .flatMap(([color, types]) => types.map((type) => `${color}:${type}`))
-                .every((id) => selectedTypeIds.includes(id))
+                .flatMap(([color, types]) => types.map(type => `${color}:${type}`))
+                .every(id => selectedTypeIds.includes(id))
                 ? 'Deselect All'
                 : 'Select All'}
             </button>
@@ -370,7 +375,22 @@ function App() {
         ) : viewMode === 'sets' ? (
           filteredSets.length === 0 && searchQuery.trim() ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-text-muted mb-4" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-mtg-text-muted mb-4"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
               <p className="text-lg font-medium text-mtg-text mb-1">No sets found</p>
               <p className="text-sm text-mtg-text-muted mb-4">
                 No results for &ldquo;{searchQuery.trim()}&rdquo;
@@ -379,13 +399,41 @@ function App() {
                 onClick={() => setSearchQuery('')}
                 className="h-9 px-4 py-0 flex items-center gap-2 text-sm border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
                 Clear search
               </button>
             </div>
           ) : sets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-text-muted mb-4" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-mtg-text-muted mb-4"
+                aria-hidden="true"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
               <p className="text-lg font-medium text-mtg-text mb-1">No sets match your filters</p>
               <p className="text-sm text-mtg-text-muted mb-4">
                 All sets were excluded by your current filter preferences.
@@ -413,7 +461,22 @@ function App() {
           )
         ) : Object.keys(filteredTypes).length === 0 && searchQuery.trim() ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-mtg-text-muted mb-4" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-mtg-text-muted mb-4"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
             <p className="text-lg font-medium text-mtg-text mb-1">No types found</p>
             <p className="text-sm text-mtg-text-muted mb-4">
               No results for &ldquo;{searchQuery.trim()}&rdquo;
@@ -422,7 +485,21 @@ function App() {
               onClick={() => setSearchQuery('')}
               className="h-9 px-4 py-0 flex items-center gap-2 text-sm border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
               Clear search
             </button>
           </div>

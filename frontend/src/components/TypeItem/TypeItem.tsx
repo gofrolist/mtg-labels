@@ -50,7 +50,7 @@ export const TypeItem = memo(function TypeItem({
           max="100"
           value={quantity}
           onChange={handleQuantityChange}
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
           className="w-12 ml-auto px-1 py-0.5 text-xs border border-mtg-border rounded bg-mtg-card-bg text-mtg-text flex-shrink-0"
           aria-label={`Quantity for ${typeName}`}
         />

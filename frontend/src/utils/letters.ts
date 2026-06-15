@@ -1,13 +1,11 @@
 import type { AlphabetSelection } from '../types'
 
-export type ParseResult =
-  | { ok: true; letters: string[] }
-  | { ok: false; message: string }
+export type ParseResult = { ok: true; letters: string[] } | { ok: false; message: string }
 
 const EMPTY_MESSAGE = 'Enter at least one letter, e.g. A-F, H, L-Z'
 
 export const LETTERS_AZ: string[] = Array.from({ length: 26 }, (_, i) =>
-  String.fromCharCode('A'.charCodeAt(0) + i),
+  String.fromCharCode('A'.charCodeAt(0) + i)
 )
 
 function isLetter(token: string): boolean {

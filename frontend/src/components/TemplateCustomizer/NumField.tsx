@@ -16,7 +16,9 @@ export function NumField({ label, value, onChange, min = 0, step = 0.01, integer
   const id = useId()
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-xs text-mtg-text-muted">{label}</label>
+      <label htmlFor={id} className="text-xs text-mtg-text-muted">
+        {label}
+      </label>
       <input
         id={id}
         type="number"
@@ -24,7 +26,7 @@ export function NumField({ label, value, onChange, min = 0, step = 0.01, integer
         value={value}
         min={min}
         step={step}
-        onChange={(e) => {
+        onChange={e => {
           const v = integer ? parseInt(e.target.value, 10) : parseFloat(e.target.value)
           if (!isNaN(v)) onChange(v)
         }}
