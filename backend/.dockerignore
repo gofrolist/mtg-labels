@@ -1,4 +1,11 @@
-# Python
+# ============================================================================
+# Build-context excludes for the backend image.
+# Keeps the `COPY . .` in the builder stage lean and the build cache stable.
+# Anything not listed here that the app needs at runtime (src/, fonts/,
+# pdf-templates/, static/, main.py, pyproject.toml, uv.lock) is shipped.
+# ============================================================================
+
+# --- Python build/byte artifacts ---
 **/__pycache__/
 *.py[cod]
 **/*.py[cod]
@@ -24,69 +31,73 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual Environments
+# --- Virtual environments (rebuilt inside the image) ---
 .venv/
 venv/
 ENV/
 env/
 .ENV
 
-# Testing
+# --- Testing / coverage ---
+tests/
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
+.nox/
 .hypothesis/
 *.cover
 *.py,cover
-.cache
+.cache/
 nosetests.xml
 coverage.xml
 
-# IDEs
+# --- Linters / type checkers ---
+.ruff_cache/
+.mypy_cache/
+.pyright/
+
+# --- IDE / editor / OS ---
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
 **/.DS_Store
 
-# Git
+# --- VCS ---
 .git/
 .gitignore
 .gitattributes
 
-# Documentation
+# --- Docs (README is allowed back in if ever needed) ---
 *.md
 !README.md
 specs/
+.specify/
 
-# CI/CD
+# --- CI/CD & deploy config (not needed in the image) ---
 .github/
+fly.toml
+Makefile
 
-# Environment variables
+# --- Tooling config ---
+.pre-commit-config.yaml
+.python-version
+
+# --- Secrets / local env (never bake into an image) ---
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
-# Logs
+# --- Logs & temp ---
 *.log
 *.log.*
-
-# Temporary files
 *.tmp
 *.bak
-*.swp
 
-# Project specific
-.cursor
-.pre-commit-config.yaml
-.ruff_cache
-.specify
-Makefile
-fly.toml
-tests
-
-# Docker
+# --- Docker (the build recipe itself doesn't belong inside the image) ---
 Dockerfile*
 .dockerignore
