@@ -503,23 +503,31 @@ class PDFGenerator:
         if drawing is None:
             return
 
-        # Get dimensions
-        dimensions = get_svg_intrinsic_dimensions(local_file)
-        if dimensions:
-            intrinsic_width, intrinsic_height = dimensions
-            logger.debug(f"Extracted viewBox dimensions: {intrinsic_width}x{intrinsic_height}")
-        else:
+        # Size the symbol in the drawing's OWN coordinate space — that is what
+        # renderPDF.draw() renders in. The file viewBox is the wrong reference
+        # whenever svglib's drawing coordinates differ from it: svglib 2.0
+        # rescales coordinates (px -> pt), and any SVG whose width/height attrs
+        # differ from its viewBox already decouples the two. Scaling by the
+        # viewBox there mis-sizes the symbol (~25% too small on svglib >= 2).
+        intrinsic_width = drawing.width
+        intrinsic_height = drawing.height
+        if intrinsic_width <= 0 or intrinsic_height <= 0:
+            # Fallbacks for drawings that don't report a usable size: the tight
+            # content bounds, then the file viewBox.
             try:
                 bounds = drawing.getBounds()
                 intrinsic_width = bounds[2] - bounds[0]
                 intrinsic_height = bounds[3] - bounds[1]
-                logger.debug(f"Extracted bounds dimensions: {intrinsic_width}x{intrinsic_height}")
             except Exception as e:
                 logger.error(f"Error getting bounds from drawing for set '{set_name}': {e}")
-                intrinsic_height = drawing.height
-                intrinsic_width = drawing.width
-                logger.debug(f"Fallback dimensions: {intrinsic_width}x{intrinsic_height}")
+                intrinsic_width = intrinsic_height = 0
+            if intrinsic_width <= 0 or intrinsic_height <= 0:
+                dimensions = get_svg_intrinsic_dimensions(local_file)
+                if dimensions:
+                    intrinsic_width, intrinsic_height = dimensions
 
+        if intrinsic_width <= 0:
+            intrinsic_width = 1
         if intrinsic_height <= 0:
             intrinsic_height = 1
 
