@@ -2,32 +2,31 @@
 # ============================================================================
 # MTG Label Generator — multi-stage image
 #
+#   pybase  : the pinned Python/Alpine base, shared by builder and runtime so
+#             the venv's compiled .so files stay ABI-compatible with the
+#             runtime interpreter (one digest — the two stages can't drift).
 #   builder : compiles the pycairo / cairosvg C extensions and resolves the
-#             locked dependency set with uv. All compilers and -dev headers
-#             live here and are thrown away.
+#             locked dependency set with uv. Compilers and -dev headers live
+#             here and are thrown away.
 #   runtime : minimal Alpine image carrying only the runtime shared libs, the
 #             prebuilt virtualenv, and the application assets. Runs non-root.
 #
-# Versions live in build args; images are additionally pinned by immutable
-# digest for reproducible, supply-chain-safe builds (bumped by Dependabot's
-# docker ecosystem — see .github/dependabot.yml). Both stages share the SAME
-# base digest so the venv's compiled .so files stay ABI-compatible with the
-# runtime interpreter.
+# Base images are pinned by literal tag + immutable @sha256 digest, so builds
+# are reproducible and supply-chain-safe. The tags are LITERAL (not built from
+# ARGs) so Dependabot's docker ecosystem can parse them and bump tag+digest
+# together — its parser rejects ARG-interpolated tags. See .github/dependabot.yml.
 # ============================================================================
 
-ARG PYTHON_VERSION=3.13
-ARG ALPINE_VERSION=3.21
-ARG UV_VERSION=0.11.22
+# uv binary as a pinned alias stage (copied into the builder below).
+FROM ghcr.io/astral-sh/uv:0.11.22@sha256:16b63af0e7342dd372da9ca989ea9fa542fc68f4640972d59a8450a5240fe42e AS uvbin
 
-# uv binary as a pinned alias stage. ARG + immutable digest both resolve in a
-# FROM (unlike `COPY --from`, which can't combine an ARG with a digest), so we
-# get an authoritative, bumpable version AND bit-for-bit reproducibility.
-FROM ghcr.io/astral-sh/uv:${UV_VERSION}@sha256:16b63af0e7342dd372da9ca989ea9fa542fc68f4640972d59a8450a5240fe42e AS uvbin
+# Shared, pinned Python base — one digest for both builder and runtime.
+FROM python:3.13-alpine3.21@sha256:e77011e08668411a8db356ec6bae7d39cdb0ff531db49bf1de9d5a64d8f75a6a AS pybase
 
 # ---------------------------------------------------------------------------
 # Build stage
 # ---------------------------------------------------------------------------
-FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION}@sha256:e77011e08668411a8db356ec6bae7d39cdb0ff531db49bf1de9d5a64d8f75a6a AS builder
+FROM pybase AS builder
 
 # Pinned uv binary — never :latest (see the uvbin alias stage above).
 COPY --from=uvbin /uv /usr/local/bin/uv
@@ -58,18 +57,20 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-# Pre-compile the app source. UV_COMPILE_BYTECODE only compiles installed
-# packages, not the modules imported from /app/src at runtime; compileall
-# writes .pyc explicitly (unaffected by PYTHONDONTWRITEBYTECODE). The emitted
-# __pycache__/ rides along with the `COPY --from=builder /app/src` below, so
-# cold starts skip import-time compilation. unchecked-hash keeps .pyc validity
-# independent of source mtimes for deterministic rebuilds.
-RUN python -m compileall -q --invalidation-mode unchecked-hash /app/src /app/main.py
+# Pre-compile the app source so cold starts skip import-time compilation.
+# UV_COMPILE_BYTECODE only compiles installed packages, not the modules imported
+# from /app/src; compileall writes .pyc explicitly (unaffected by
+# PYTHONDONTWRITEBYTECODE). The emitted src/**/__pycache__ rides along with the
+# `COPY --from=builder /app/src` below. main.py is intentionally excluded — its
+# .pyc would land in /app/__pycache__, which the runtime stage doesn't copy, and
+# the module is trivial. unchecked-hash keeps .pyc valid regardless of source
+# mtimes for deterministic rebuilds.
+RUN python -m compileall -q --invalidation-mode unchecked-hash /app/src
 
 # ---------------------------------------------------------------------------
 # Runtime stage
 # ---------------------------------------------------------------------------
-FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION}@sha256:e77011e08668411a8db356ec6bae7d39cdb0ff531db49bf1de9d5a64d8f75a6a AS runtime
+FROM pybase AS runtime
 
 LABEL org.opencontainers.image.title="mtg-labels" \
       org.opencontainers.image.source="https://github.com/gofrolist/mtg-labels" \

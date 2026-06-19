@@ -8,6 +8,7 @@
 # --- Python build/byte artifacts ---
 **/__pycache__/
 *.py[cod]
+**/*.py[cod]
 *$py.class
 *.so
 .Python
