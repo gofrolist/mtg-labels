@@ -228,13 +228,19 @@ class TestPDFGenerator:
             ]
         }
 
-        with patch("requests.get", return_value=mock_response):
+        with patch("requests.get", return_value=mock_response) as mock_get:
             # First call should fetch and cache
             result = generator._get_mana_symbol_uri_from_api("{W}", "White")
             assert result == "https://svgs.scryfall.io/card-symbols/W.svg"
             # Second call should use cache
             result2 = generator._get_mana_symbol_uri_from_api("{W}", "White")
             assert result2 == "https://svgs.scryfall.io/card-symbols/W.svg"
+
+            # Scryfall's api.scryfall.com rejects requests without a User-Agent
+            # (HTTP 400); the symbology request must send the required headers.
+            headers = mock_get.call_args.kwargs["headers"]
+            assert headers["User-Agent"]
+            assert headers["Accept"] == "application/json"
 
     def test_pdf_generator_get_mana_symbol_uri_from_api_multicolor_pw(self):
         """Test _get_mana_symbol_uri_from_api for multicolor with PW symbol."""

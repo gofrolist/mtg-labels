@@ -23,6 +23,7 @@ from src.config import (
     FONT_SIZE_ROW2,
     FONT_SOURCE_SANS_PRO_REGULAR,
     LABEL_TEMPLATES,
+    SCRYFALL_API_HEADERS,
     SCRYFALL_API_RATE_LIMIT_DELAY,
     SCRYFALL_API_TIMEOUT,
     SET_SYMBOL_MAX_WIDTH,
@@ -413,7 +414,11 @@ class PDFGenerator:
             symbology_url = "https://api.scryfall.com/symbology"
             try:
                 time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
-                response = requests.get(symbology_url, timeout=SCRYFALL_API_TIMEOUT)
+                response = requests.get(
+                    symbology_url,
+                    timeout=SCRYFALL_API_TIMEOUT,
+                    headers=SCRYFALL_API_HEADERS,
+                )
                 if response.status_code == 200:
                     data = response.json()
                     # Build a cache of symbol -> svg_uri

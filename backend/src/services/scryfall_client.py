@@ -10,6 +10,7 @@ from urllib3.util.retry import Retry
 from src.cache.cache_manager import get_cache_manager
 from src.config import (
     SCRYFALL_API_BASE_URL,
+    SCRYFALL_API_HEADERS,
     SCRYFALL_API_RATE_LIMIT_DELAY,
     SCRYFALL_API_RETRY_ATTEMPTS,
     SCRYFALL_API_TIMEOUT,
@@ -52,8 +53,7 @@ class ScryfallClient:
         # User-Agent and Accept headers are required by Scryfall API
         self.session.headers.update(
             {
-                "User-Agent": "MTG-Label-Generator/1.0",
-                "Accept": "application/json",
+                **SCRYFALL_API_HEADERS,
                 "Connection": "keep-alive",
             }
         )
