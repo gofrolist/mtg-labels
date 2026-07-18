@@ -1,15 +1,26 @@
 name: Dependabot auto-merge
 
-on: pull_request_target
+on:
+  # Arm auto-merge when Dependabot opens/updates a PR.
+  pull_request_target:
+  # Re-arm auto-merge after checks finish. GitHub disables auto-merge whenever
+  # a required check fails; the pull_request_target trigger only fires on
+  # push/open/reopen, so without this a one-time transient failure would leave
+  # an eligible PR stuck open forever.
+  check_suite:
+    types: [completed]
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  auto-merge:
+  # Initial arming: approve + enable auto-merge for eligible Dependabot PRs.
+  # Excludes semver-major bumps; docker minor/patch are allowed (only docker
+  # majors are gated, via the same semver-major check).
+  arm:
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
       - name: Dependabot metadata
         id: metadata
@@ -18,15 +29,45 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Approve PR
-        if: steps.metadata.outputs.update-type != 'version-update:semver-major' && steps.metadata.outputs.package-ecosystem != 'docker'
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr review --approve "$PR_URL"
 
       - name: Enable auto-merge
-        if: steps.metadata.outputs.update-type != 'version-update:semver-major' && steps.metadata.outputs.package-ecosystem != 'docker'
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge --auto --squash "$PR_URL"
+
+  # Re-arming: when a check suite finishes successfully, re-enable auto-merge on
+  # any open Dependabot PR the arm job already approved (approval == eligible,
+  # so semver-major bumps — never approved — are never re-armed). Idempotent:
+  # PRs that already have auto-merge enabled are skipped.
+  rearm:
+    if: github.event_name == 'check_suite' && github.event.check_suite.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-enable auto-merge on eligible Dependabot PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          prs=$(jq -r '.check_suite.pull_requests[].number' "$GITHUB_EVENT_PATH" | sort -u)
+          for pr in $prs; do
+            data=$(gh pr view "$pr" --repo "$REPO" \
+              --json state,author,autoMergeRequest,reviews 2>/dev/null) || continue
+            state=$(jq -r '.state' <<<"$data")
+            author=$(jq -r '.author.login' <<<"$data")
+            has_automerge=$(jq -r 'if .autoMergeRequest == null then "no" else "yes" end' <<<"$data")
+            approved=$(jq -r '[.reviews[] | select(.state == "APPROVED")] | length' <<<"$data")
+            if [ "$state" = "OPEN" ] && [ "$author" = "dependabot[bot]" ] \
+               && [ "$has_automerge" = "no" ] && [ "$approved" -gt 0 ]; then
+              echo "Re-arming auto-merge on #$pr"
+              gh pr merge --auto --squash "$pr" --repo "$REPO" || true
+            else
+              echo "Skipping #$pr (state=$state author=$author automerge=$has_automerge approved=$approved)"
+            fi
+          done
