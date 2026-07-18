@@ -9,6 +9,7 @@ Provides multi-layer caching:
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from cachetools import TTLCache
 
@@ -163,6 +164,62 @@ class CacheManager:
         Only allows alphanumeric characters, hyphens, and underscores.
         """
         return "".join(c for c in set_id if c.isalnum() or c in "-_")
+
+    @staticmethod
+    def symbol_cache_key(base_id: str, symbol_url: str | None) -> str:
+        """Build a version-aware cache key for a symbol.
+
+        Scryfall's icon URLs carry a version query string (e.g.
+        ``.../msh.svg?1783915200``) that changes whenever the artwork is
+        updated. Folding that version into the cache key means a bumped icon
+        yields a fresh cache entry instead of serving a stale file forever
+        (the bug where preview-era placeholder icons never refreshed).
+
+        Falls back to ``base_id`` when the URL has no version query.
+
+        Args:
+            base_id: Stable identity for the symbol (set id or mana symbol key)
+            symbol_url: Source URL the symbol is downloaded from
+
+        Returns:
+            Cache key, version-suffixed when a version is present
+        """
+        if symbol_url:
+            version = urlparse(symbol_url).query
+            if version:
+                return f"{base_id}-{version}"
+        return base_id
+
+    def purge_stale_symbols(self, base_id: str, keep_key: str) -> None:
+        """Remove cached symbol files for ``base_id`` other than ``keep_key``.
+
+        Deletes the legacy unversioned file (``{base_id}.svg``) and any
+        older-version files (``{base_id}-*.svg``), keeping only the current
+        version. This self-heals entries cached before version-awareness and
+        prevents stale-version files from accumulating on disk.
+
+        Args:
+            base_id: Stable identity for the symbol
+            keep_key: Cache key of the current version to keep
+        """
+        safe_base = self._sanitize_symbol_id(base_id)
+        safe_keep = self._sanitize_symbol_id(keep_key)
+        if not safe_base:
+            return
+        for symbol_file in self.symbol_cache_dir.glob(f"{safe_base}*.svg"):
+            stem = symbol_file.stem
+            # Only touch this symbol's own files: exact legacy id or a
+            # version-suffixed variant. Guards against a longer id that merely
+            # shares this prefix.
+            if stem != safe_base and not stem.startswith(f"{safe_base}-"):
+                continue
+            if stem == safe_keep:
+                continue
+            try:
+                symbol_file.unlink()
+                logger.debug(f"Purged stale symbol cache: {symbol_file}")
+            except Exception as e:
+                logger.error(f"Error purging stale symbol {symbol_file}: {e}")
 
     def get_symbol(self, set_id: str) -> str | None:
         """

@@ -7,6 +7,7 @@ import pytest
 import requests
 from reportlab.pdfgen import canvas
 
+from src.cache.cache_manager import CacheManager
 from src.config import ABBREVIATION_MAP, MAX_SET_NAME_LENGTH
 from src.services.helpers import (
     abbreviate_set_name,
@@ -147,6 +148,7 @@ class TestGetSymbolFile:
 
         # Mock cache manager to return cached file
         mock_cache_manager = Mock()
+        mock_cache_manager.symbol_cache_key = CacheManager.symbol_cache_key
         mock_cache_manager.get_symbol.return_value = str(cached_file)
         monkeypatch.setattr("src.services.helpers.get_cache_manager", lambda: mock_cache_manager)
 
@@ -169,6 +171,7 @@ class TestGetSymbolFile:
 
         # Mock cache manager - no cached file, but save_symbol succeeds
         mock_cache_manager = Mock()
+        mock_cache_manager.symbol_cache_key = CacheManager.symbol_cache_key
         mock_cache_manager.get_symbol.return_value = None  # Not cached
         mock_cache_manager.save_symbol.return_value = str(cached_file)  # Save succeeds
 
@@ -196,6 +199,7 @@ class TestGetSymbolFile:
         """Test handling of download errors."""
         # Mock cache manager - no cached file
         mock_cache_manager = Mock()
+        mock_cache_manager.symbol_cache_key = CacheManager.symbol_cache_key
         mock_cache_manager.get_symbol.return_value = None  # Not cached
 
         monkeypatch.setattr("src.services.helpers.get_cache_manager", lambda: mock_cache_manager)

@@ -136,6 +136,75 @@ class TestFileBasedSymbolCache:
         assert symbol_file.exists()
 
 
+class TestVersionAwareSymbolCache:
+    """Tests for version-aware symbol cache keys and stale-version purging."""
+
+    def test_symbol_cache_key_appends_version(self):
+        """A URL with a version query is folded into the cache key."""
+        key = CacheManager.symbol_cache_key(
+            "set-id", "https://svgs.scryfall.io/sets/msh.svg?1783915200"
+        )
+        assert key == "set-id-1783915200"
+
+    def test_symbol_cache_key_no_version(self):
+        """A URL without a version query falls back to the base id."""
+        assert (
+            CacheManager.symbol_cache_key("set-id", "https://svgs.scryfall.io/sets/msh.svg")
+            == "set-id"
+        )
+
+    def test_symbol_cache_key_none_url(self):
+        """A missing URL falls back to the base id."""
+        assert CacheManager.symbol_cache_key("set-id", None) == "set-id"
+
+    def test_symbol_cache_key_changes_with_version(self):
+        """Different versions produce different keys (drives re-download)."""
+        base = "https://svgs.scryfall.io/sets/msh.svg"
+        assert CacheManager.symbol_cache_key("id", f"{base}?1") != CacheManager.symbol_cache_key(
+            "id", f"{base}?2"
+        )
+
+    def test_purge_removes_legacy_and_stale_versions(self, tmp_path):
+        """Legacy unversioned and older-version files are removed; current kept."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+        base = "abc-123"
+        (cache_dir / f"{base}.svg").write_bytes(b"<svg>legacy</svg>")
+        (cache_dir / f"{base}-111.svg").write_bytes(b"<svg>old</svg>")
+        (cache_dir / f"{base}-222.svg").write_bytes(b"<svg>current</svg>")
+
+        cache_manager.purge_stale_symbols(base, f"{base}-222")
+
+        assert not (cache_dir / f"{base}.svg").exists()
+        assert not (cache_dir / f"{base}-111.svg").exists()
+        assert (cache_dir / f"{base}-222.svg").exists()
+
+    def test_purge_does_not_touch_other_symbols(self, tmp_path):
+        """A different symbol that shares a name prefix is left untouched."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+        # "abc" and "abcd" share a prefix but are distinct symbols.
+        (cache_dir / "abc-222.svg").write_bytes(b"<svg>keep</svg>")
+        (cache_dir / "abcd.svg").write_bytes(b"<svg>other</svg>")
+        (cache_dir / "abcd-999.svg").write_bytes(b"<svg>other</svg>")
+
+        cache_manager.purge_stale_symbols("abc", "abc-222")
+
+        assert (cache_dir / "abc-222.svg").exists()
+        assert (cache_dir / "abcd.svg").exists()
+        assert (cache_dir / "abcd-999.svg").exists()
+
+    def test_purge_empty_base_id_is_noop(self, tmp_path):
+        """An id that sanitizes to empty does not delete anything."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+        (cache_dir / "keep.svg").write_bytes(b"<svg></svg>")
+
+        cache_manager.purge_stale_symbols("///", "///")
+
+        assert (cache_dir / "keep.svg").exists()
+
+
 class TestCacheExpirationAndInvalidation:
     """Tests for cache expiration and invalidation."""
 
