@@ -129,7 +129,12 @@ def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str)
     """
     cache_manager = get_cache_manager()
 
-    cached_path = cache_manager.get_symbol(symbol_id)
+    # Version-aware key: a changed Scryfall icon URL (version query) yields a
+    # new cache entry, so refreshed artwork is re-downloaded instead of
+    # serving a stale preview-era placeholder forever.
+    cache_key = cache_manager.symbol_cache_key(symbol_id, symbol_url)
+
+    cached_path = cache_manager.get_symbol(cache_key)
     if cached_path:
         logger.debug(f"Symbol file found in cache: {cached_path}")
         return cached_path
@@ -163,9 +168,11 @@ def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str)
         logger.warning("Downloaded content is not valid SVG, rejecting")
         return None
 
-    cached_path = cache_manager.save_symbol(symbol_id, response.content)
+    cached_path = cache_manager.save_symbol(cache_key, response.content)
     if cached_path:
         logger.info(f"Saved symbol to cache: {cached_path}")
+        # Drop any older-version or legacy unversioned files for this symbol.
+        cache_manager.purge_stale_symbols(symbol_id, cache_key)
         return cached_path
     else:
         logger.error("Failed to save symbol to cache")
