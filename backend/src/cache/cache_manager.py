@@ -7,7 +7,9 @@ Provides multi-layer caching:
 """
 
 import json
-from collections.abc import Callable
+import threading
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -49,8 +51,14 @@ class CacheManager:
         # In-memory cache using TTLCache
         self._memory_cache: TTLCache[str, Any] = TTLCache[str, Any](maxsize=max_size, ttl=ttl)
 
-        # Lazily-loaded symbol version manifest ({symbol_id: version}).
+        # Lazily-loaded symbol version manifest ({symbol_id: version}). Shared
+        # between the background icon-preload thread and request threads, so all
+        # access is guarded by a reentrant lock. `_defer_manifest_write` batches
+        # persistence during the preload (see `batch_symbol_writes`).
         self._symbol_versions: dict[str, str] | None = None
+        self._symbol_lock = threading.RLock()
+        self._defer_manifest_write = False
+        self._manifest_dirty = False
 
         # Cache statistics
         self._hits = 0
@@ -196,25 +204,45 @@ class CacheManager:
         sidecar manifest lets a committed warm cache stay valid across restarts
         — only genuinely bumped icons re-download, rather than the whole set
         being re-fetched on every boot.
+
+        Callers must hold ``self._symbol_lock`` before mutating the returned
+        dict.
         """
-        if self._symbol_versions is None:
-            path = self._versions_path()
-            try:
-                if path.exists():
-                    data = json.loads(path.read_text(encoding="utf-8"))
-                    # Guard against a corrupt/unexpected manifest shape.
-                    self._symbol_versions = (
-                        {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
-                    )
-                else:
+        with self._symbol_lock:
+            if self._symbol_versions is None:
+                path = self._versions_path()
+                try:
+                    if path.exists():
+                        data = json.loads(path.read_text(encoding="utf-8"))
+                        # Guard against a corrupt/unexpected manifest shape.
+                        self._symbol_versions = (
+                            {str(k): str(v) for k, v in data.items()}
+                            if isinstance(data, dict)
+                            else {}
+                        )
+                    else:
+                        self._symbol_versions = {}
+                except (json.JSONDecodeError, OSError) as e:
+                    logger.warning(f"Failed to read symbol version manifest: {e}")
                     self._symbol_versions = {}
-            except (json.JSONDecodeError, OSError) as e:
-                logger.warning(f"Failed to read symbol version manifest: {e}")
-                self._symbol_versions = {}
-        return self._symbol_versions
+            return self._symbol_versions
 
     def _save_symbol_versions(self) -> None:
-        """Atomically persist the symbol version manifest."""
+        """Persist the symbol version manifest, or defer if batching.
+
+        During a batch (see :meth:`batch_symbol_writes`) the write is coalesced
+        into a single flush at the end, avoiding a full rewrite per download.
+        """
+        with self._symbol_lock:
+            if self._symbol_versions is None:
+                return
+            if self._defer_manifest_write:
+                self._manifest_dirty = True
+                return
+            self._write_symbol_versions_locked()
+
+    def _write_symbol_versions_locked(self) -> None:
+        """Atomically write the manifest. Caller must hold ``_symbol_lock``."""
         if self._symbol_versions is None:
             return
         path = self._versions_path()
@@ -227,6 +255,26 @@ class CacheManager:
             tmp.replace(path)  # atomic on POSIX
         except OSError as e:
             logger.error(f"Error saving symbol version manifest: {e}")
+
+    @contextmanager
+    def batch_symbol_writes(self) -> Iterator[None]:
+        """Defer manifest persistence to a single write when the block exits.
+
+        The startup preload saves many symbols in a row; without batching each
+        save rewrites the whole manifest (O(N^2) I/O on the boot path). Nesting
+        is safe — only the outermost block flushes.
+        """
+        with self._symbol_lock:
+            outer = self._defer_manifest_write
+            self._defer_manifest_write = True
+        try:
+            yield
+        finally:
+            with self._symbol_lock:
+                self._defer_manifest_write = outer
+                if not outer and self._manifest_dirty:
+                    self._write_symbol_versions_locked()
+                    self._manifest_dirty = False
 
     def get_symbol(self, set_id: str, expected_version: str | None = None) -> str | None:
         """
@@ -255,8 +303,9 @@ class CacheManager:
         # Version check: a stale/missing manifest entry is a miss, triggering
         # a re-download of the current icon.
         if expected_version is not None:
-            if self._load_symbol_versions().get(safe_id) != expected_version:
-                return None
+            with self._symbol_lock:
+                if self._load_symbol_versions().get(safe_id) != expected_version:
+                    return None
 
         # Validate file (check if it's not empty and readable)
         try:
@@ -308,8 +357,9 @@ class CacheManager:
             return None
 
         if version is not None:
-            self._load_symbol_versions()[safe_id] = version
-            self._save_symbol_versions()
+            with self._symbol_lock:
+                self._load_symbol_versions()[safe_id] = version
+                self._save_symbol_versions()
 
         return str(symbol_file)
 

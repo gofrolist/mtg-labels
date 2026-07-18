@@ -64,18 +64,20 @@ def _preload_icon_cache() -> None:
 
         downloaded = 0
         skipped = 0
-        for s in filtered:
-            set_id = s.get("id")
-            symbol_url = s.get("icon_svg_uri")
-            if not set_id or not symbol_url:
-                continue
+        # Coalesce the many per-download manifest writes into a single flush.
+        with cache_manager.batch_symbol_writes():
+            for s in filtered:
+                set_id = s.get("id")
+                symbol_url = s.get("icon_svg_uri")
+                if not set_id or not symbol_url:
+                    continue
 
-            if cache_manager.get_symbol(set_id, cache_manager.symbol_version(symbol_url)):
-                skipped += 1
-                continue
+                if cache_manager.get_symbol(set_id, cache_manager.symbol_version(symbol_url)):
+                    skipped += 1
+                    continue
 
-            download_and_cache_symbol(set_id, symbol_url, f"set '{s.get('name')}'")
-            downloaded += 1
+                download_and_cache_symbol(set_id, symbol_url, f"set '{s.get('name')}'")
+                downloaded += 1
 
         logger.info(
             f"Icon cache preload complete: {downloaded} downloaded, {skipped} already cached"
@@ -674,8 +676,10 @@ def create_app(
             set_id = s.get("id")
             if not set_id:
                 continue
-            version = cache_manager.symbol_version(s.get("icon_svg_uri"))
-            cached_path = cache_manager.get_symbol(set_id, version)
+            # Display endpoint: serve whatever icon is cached rather than
+            # dropping it during a version-bump window. Freshness is the
+            # background preload's job (it re-downloads on a version change).
+            cached_path = cache_manager.get_symbol(set_id)
             if cached_path:
                 try:
                     svg_content = Path(cached_path).read_text(encoding="utf-8")

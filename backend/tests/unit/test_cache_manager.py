@@ -222,6 +222,37 @@ class TestVersionAwareSymbolCache:
         fresh = CacheManager(symbol_cache_dir=cache_dir)
         assert fresh.get_symbol("set-id", "111") == str(cache_dir / "set-id.svg")
 
+    def test_batch_defers_manifest_write_to_single_flush(self, tmp_path):
+        """Inside a batch, saves update memory (hits work) but the file is
+        written once, on exit."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+
+        with cache_manager.batch_symbol_writes():
+            cache_manager.save_symbol("a", b"<svg></svg>", "1")
+            cache_manager.save_symbol("b", b"<svg></svg>", "2")
+            # In-memory lookup hits immediately...
+            assert cache_manager.get_symbol("a", "1") is not None
+            # ...but the manifest file has not been written yet.
+            assert not (cache_dir / "versions.json").exists()
+
+        # A single flush persisted both entries.
+        manifest = json.loads((cache_dir / "versions.json").read_text())
+        assert manifest == {"a": "1", "b": "2"}
+
+    def test_nested_batch_flushes_once_at_outermost_exit(self, tmp_path):
+        """Only the outermost batch flushes; the inner exit does not."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+
+        with cache_manager.batch_symbol_writes():
+            with cache_manager.batch_symbol_writes():
+                cache_manager.save_symbol("a", b"<svg></svg>", "1")
+            # Inner block exited but outer batch is still active.
+            assert not (cache_dir / "versions.json").exists()
+
+        assert (cache_dir / "versions.json").exists()
+
     def test_corrupt_manifest_is_tolerated(self, tmp_path):
         """A corrupt manifest is treated as empty rather than raising."""
         cache_dir = tmp_path / "cache"
