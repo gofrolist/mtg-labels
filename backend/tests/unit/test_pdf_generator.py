@@ -270,6 +270,34 @@ class TestPDFGenerator:
             result = generator._get_mana_symbol_uri_from_api("{PW}", "Multicolor")
             assert result == "https://svgs.scryfall.io/card-symbols/PW.svg"
 
+    def test_get_mana_symbol_file_falls_back_to_cache_when_api_down(self):
+        """When the symbology API is unavailable, a cached mana symbol is served."""
+        generator = PDFGenerator([], view_mode="types")
+
+        with (
+            patch.object(generator, "_get_mana_symbol_uri_from_api", return_value=None),
+            patch("src.services.pdf_generator.get_cache_manager") as mock_gcm,
+        ):
+            mock_gcm.return_value.get_symbol.return_value = "/cache/mana_white_W.svg"
+
+            result = generator._get_mana_symbol_file("White")
+
+            assert result == "/cache/mana_white_W.svg"
+            # Version-agnostic lookup: serve whatever is cached.
+            mock_gcm.return_value.get_symbol.assert_called_once_with("mana_white_W")
+
+    def test_get_mana_symbol_file_none_when_api_down_and_uncached(self):
+        """No URI and no cached copy -> None (nothing to draw)."""
+        generator = PDFGenerator([], view_mode="types")
+
+        with (
+            patch.object(generator, "_get_mana_symbol_uri_from_api", return_value=None),
+            patch("src.services.pdf_generator.get_cache_manager") as mock_gcm,
+        ):
+            mock_gcm.return_value.get_symbol.return_value = None
+
+            assert generator._get_mana_symbol_file("White") is None
+
     def test_pdf_generator_draw_raster_symbol(self, sample_set_data, tmp_path):
         """Test _draw_raster_symbol method (lines 598-634)."""
         # Create a mock PNG file

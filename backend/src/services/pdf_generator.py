@@ -16,6 +16,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from svglib.svglib import svg2rlg
 
+from src.cache.cache_manager import get_cache_manager
 from src.config import (
     CURRENT_LABEL_TEMPLATE,
     FONT_EB_GARAMOND_BOLD,
@@ -387,13 +388,23 @@ class PDFGenerator:
         # Use cache key based on color name and symbol code to ensure correct symbol
         symbol_id = f"mana_{color.lower()}_{symbol_code.replace('{', '').replace('}', '')}"
 
-        # Get symbol URI from Scryfall symbology API
+        # Get symbol URI from Scryfall symbology API, then download/cache it.
         symbol_url = self._get_mana_symbol_uri_from_api(symbol_code, color)
-        if not symbol_url:
-            logger.warning(f"Could not get symbol URI for {color} ({symbol_code})")
-            return None
+        if symbol_url:
+            path = download_and_cache_symbol(symbol_id, symbol_url, f"color '{color}'")
+            if path:
+                return path
 
-        return download_and_cache_symbol(symbol_id, symbol_url, f"color '{color}'")
+        # Live fetch failed (symbology API down, or the SVG download failed).
+        # Fall back to a previously cached copy rather than dropping the symbol
+        # from the label — version-agnostic, since mana symbols rarely change.
+        cached = get_cache_manager().get_symbol(symbol_id)
+        if cached:
+            logger.warning(f"Live mana symbol fetch failed for {color}; using cached copy")
+            return cached
+
+        logger.warning(f"Could not resolve mana symbol for {color} ({symbol_code})")
+        return None
 
     def _get_mana_symbol_uri_from_api(self, symbol_code: str, color: str) -> str | None:
         """
