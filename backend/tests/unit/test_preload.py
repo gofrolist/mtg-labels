@@ -23,10 +23,8 @@ class TestPreloadIconCache:
     def test_skips_cached_downloads_uncached(self, filtered_sets, tmp_path):
         """Preload skips already-cached icons and downloads uncached ones."""
         cm = CacheManager(symbol_cache_dir=tmp_path)
-        # Pre-cache set-a
-        (tmp_path / "set-a.svg").write_text(
-            '<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>'
-        )
+        # Pre-cache set-a: file + manifest entry (its URL has no version, so "").
+        cm.save_symbol("set-a", b'<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>', "")
 
         with (
             patch("src.api.routes.scryfall_client") as mock_client,

@@ -148,7 +148,7 @@ class TestGetSymbolFile:
 
         # Mock cache manager to return cached file
         mock_cache_manager = Mock()
-        mock_cache_manager.symbol_cache_key = CacheManager.symbol_cache_key
+        mock_cache_manager.symbol_version = CacheManager.symbol_version
         mock_cache_manager.get_symbol.return_value = str(cached_file)
         monkeypatch.setattr("src.services.helpers.get_cache_manager", lambda: mock_cache_manager)
 
@@ -160,7 +160,7 @@ class TestGetSymbolFile:
         result = get_symbol_file(set_data)
         assert result is not None
         assert "test-set-id.svg" in result
-        mock_cache_manager.get_symbol.assert_called_once_with("test-set-id")
+        mock_cache_manager.get_symbol.assert_called_once_with("test-set-id", "")
 
     def test_get_symbol_file_downloads(self, tmp_path, monkeypatch):
         """Test that symbol is downloaded if not cached."""
@@ -171,7 +171,7 @@ class TestGetSymbolFile:
 
         # Mock cache manager - no cached file, but save_symbol succeeds
         mock_cache_manager = Mock()
-        mock_cache_manager.symbol_cache_key = CacheManager.symbol_cache_key
+        mock_cache_manager.symbol_version = CacheManager.symbol_version
         mock_cache_manager.get_symbol.return_value = None  # Not cached
         mock_cache_manager.save_symbol.return_value = str(cached_file)  # Save succeeds
 
@@ -192,14 +192,16 @@ class TestGetSymbolFile:
             # Should attempt to download
             assert result is not None
             assert result == str(cached_file)
-            mock_cache_manager.get_symbol.assert_called_once_with("test-set-id")
-            mock_cache_manager.save_symbol.assert_called_once_with("test-set-id", b"<svg></svg>")
+            mock_cache_manager.get_symbol.assert_called_once_with("test-set-id", "")
+            mock_cache_manager.save_symbol.assert_called_once_with(
+                "test-set-id", b"<svg></svg>", ""
+            )
 
     def test_get_symbol_file_download_error(self, tmp_path, monkeypatch):
         """Test handling of download errors."""
         # Mock cache manager - no cached file
         mock_cache_manager = Mock()
-        mock_cache_manager.symbol_cache_key = CacheManager.symbol_cache_key
+        mock_cache_manager.symbol_version = CacheManager.symbol_version
         mock_cache_manager.get_symbol.return_value = None  # Not cached
 
         monkeypatch.setattr("src.services.helpers.get_cache_manager", lambda: mock_cache_manager)
@@ -216,7 +218,7 @@ class TestGetSymbolFile:
         ):
             result = get_symbol_file(set_data)
             assert result is None
-            mock_cache_manager.get_symbol.assert_called_once_with("test-set-id")
+            mock_cache_manager.get_symbol.assert_called_once_with("test-set-id", "")
             # save_symbol should not be called on error
             mock_cache_manager.save_symbol.assert_not_called()
 

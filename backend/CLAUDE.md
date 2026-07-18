@@ -47,4 +47,4 @@ pytest with markers (`@pytest.mark.unit`, `integration`, `contract`, `performanc
 - Label templates (Avery 5160, L7160, L7157, J8158, 94208, 64x30-R) defined in `config.py` LABEL_TEMPLATES with point-based dimensions
 - Long set names have abbreviation mappings in `config.py` ABBREVIATION_MAP
 - PDF uses EB Garamond Bold (set name) and Source Sans Pro Regular (set code/date) fonts from `fonts/`
-- SVG set symbols cached to `static/images/`
+- SVG set symbols cached to `static/images/` as `{set_id}.svg`, with `static/images/versions.json` mapping each id to Scryfall's icon version. Lookups pass the current version; a mismatch re-downloads. Keeping filenames stable lets the committed cache serve as a warm cache across restarts (no mass re-download on boot); the startup preload only fetches genuinely changed icons

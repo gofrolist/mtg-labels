@@ -6,6 +6,7 @@ Provides multi-layer caching:
 - Cache hit rate monitoring
 """
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,9 @@ class CacheManager:
 
         # In-memory cache using TTLCache
         self._memory_cache: TTLCache[str, Any] = TTLCache[str, Any](maxsize=max_size, ttl=ttl)
+
+        # Lazily-loaded symbol version manifest ({symbol_id: version}).
+        self._symbol_versions: dict[str, str] | None = None
 
         # Cache statistics
         self._hits = 0
@@ -166,70 +170,78 @@ class CacheManager:
         return "".join(c for c in set_id if c.isalnum() or c in "-_")
 
     @staticmethod
-    def symbol_cache_key(base_id: str, symbol_url: str | None) -> str:
-        """Build a version-aware cache key for a symbol.
+    def symbol_version(symbol_url: str | None) -> str:
+        """Extract the icon version from a Scryfall symbol URL.
 
         Scryfall's icon URLs carry a version query string (e.g.
         ``.../msh.svg?1783915200``) that changes whenever the artwork is
-        updated. Folding that version into the cache key means a bumped icon
-        yields a fresh cache entry instead of serving a stale file forever
-        (the bug where preview-era placeholder icons never refreshed).
+        updated. That version is stored in the manifest alongside the cached
+        file so a bumped icon is re-downloaded instead of serving a stale file
+        forever (the bug where preview-era placeholder icons never refreshed).
 
-        Falls back to ``base_id`` when the URL has no version query.
-
-        Args:
-            base_id: Stable identity for the symbol (set id or mana symbol key)
-            symbol_url: Source URL the symbol is downloaded from
-
-        Returns:
-            Cache key, version-suffixed when a version is present
+        Returns an empty string when the URL is missing or has no version query.
         """
         if symbol_url:
-            version = urlparse(symbol_url).query
-            if version:
-                return f"{base_id}-{version}"
-        return base_id
+            return urlparse(symbol_url).query
+        return ""
 
-    def purge_stale_symbols(self, base_id: str, keep_key: str) -> None:
-        """Remove cached symbol files for ``base_id`` other than ``keep_key``.
+    def _versions_path(self) -> Path:
+        """Path to the JSON manifest mapping symbol id -> cached version."""
+        return self.symbol_cache_dir / "versions.json"
 
-        Deletes the legacy unversioned file (``{base_id}.svg``) and any
-        older-version files (``{base_id}-*.svg``), keeping only the current
-        version. This self-heals entries cached before version-awareness and
-        prevents stale-version files from accumulating on disk.
+    def _load_symbol_versions(self) -> dict[str, str]:
+        """Load (and memoize) the symbol version manifest.
 
-        Args:
-            base_id: Stable identity for the symbol
-            keep_key: Cache key of the current version to keep
+        Keeping filenames stable (``{id}.svg``) while recording the version in a
+        sidecar manifest lets a committed warm cache stay valid across restarts
+        — only genuinely bumped icons re-download, rather than the whole set
+        being re-fetched on every boot.
         """
-        safe_base = self._sanitize_symbol_id(base_id)
-        safe_keep = self._sanitize_symbol_id(keep_key)
-        if not safe_base:
-            return
-        for symbol_file in self.symbol_cache_dir.glob(f"{safe_base}*.svg"):
-            stem = symbol_file.stem
-            # Only touch this symbol's own files: exact legacy id or a
-            # version-suffixed variant. Guards against a longer id that merely
-            # shares this prefix.
-            if stem != safe_base and not stem.startswith(f"{safe_base}-"):
-                continue
-            if stem == safe_keep:
-                continue
+        if self._symbol_versions is None:
+            path = self._versions_path()
             try:
-                symbol_file.unlink()
-                logger.debug(f"Purged stale symbol cache: {symbol_file}")
-            except Exception as e:
-                logger.error(f"Error purging stale symbol {symbol_file}: {e}")
+                if path.exists():
+                    data = json.loads(path.read_text(encoding="utf-8"))
+                    # Guard against a corrupt/unexpected manifest shape.
+                    self._symbol_versions = (
+                        {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
+                    )
+                else:
+                    self._symbol_versions = {}
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning(f"Failed to read symbol version manifest: {e}")
+                self._symbol_versions = {}
+        return self._symbol_versions
 
-    def get_symbol(self, set_id: str) -> str | None:
+    def _save_symbol_versions(self) -> None:
+        """Atomically persist the symbol version manifest."""
+        if self._symbol_versions is None:
+            return
+        path = self._versions_path()
+        tmp = path.with_name(f"{path.name}.tmp")
+        try:
+            tmp.write_text(
+                json.dumps(self._symbol_versions, sort_keys=True, indent=0) + "\n",
+                encoding="utf-8",
+            )
+            tmp.replace(path)  # atomic on POSIX
+        except OSError as e:
+            logger.error(f"Error saving symbol version manifest: {e}")
+
+    def get_symbol(self, set_id: str, expected_version: str | None = None) -> str | None:
         """
         Get cached symbol file path.
 
         Args:
             set_id: Set ID
+            expected_version: If given, the cached file is only returned when the
+                manifest records this exact version. A mismatch (or missing
+                manifest entry) is treated as a cache miss so the caller
+                re-downloads the current artwork. Pass ``None`` to ignore
+                versioning entirely.
 
         Returns:
-            Path to cached symbol file or None if not cached/invalid
+            Path to cached symbol file or None if not cached/invalid/stale
         """
         safe_id = self._sanitize_symbol_id(set_id)
         if not safe_id:
@@ -239,6 +251,12 @@ class CacheManager:
 
         if not symbol_file.exists():
             return None
+
+        # Version check: a stale/missing manifest entry is a miss, triggering
+        # a re-download of the current icon.
+        if expected_version is not None:
+            if self._load_symbol_versions().get(safe_id) != expected_version:
+                return None
 
         # Validate file (check if it's not empty and readable)
         try:
@@ -261,13 +279,17 @@ class CacheManager:
             logger.error(f"Error validating symbol file {symbol_file}: {e}")
             return None
 
-    def save_symbol(self, set_id: str, content: bytes) -> str | None:
+    def save_symbol(self, set_id: str, content: bytes, version: str | None = None) -> str | None:
         """
         Save symbol to file cache.
 
         Args:
             set_id: Set ID
             content: SVG file content
+            version: Icon version to record in the manifest (see
+                :meth:`symbol_version`). When provided, subsequent
+                :meth:`get_symbol` calls with a different version miss and
+                re-download. Pass ``None`` to leave the manifest untouched.
 
         Returns:
             Path to saved file or None on error
@@ -281,10 +303,15 @@ class CacheManager:
         try:
             symbol_file.write_bytes(content)
             logger.debug(f"Saved symbol to cache: {symbol_file}")
-            return str(symbol_file)
         except Exception as e:
             logger.error(f"Error saving symbol to cache {symbol_file}: {e}")
             return None
+
+        if version is not None:
+            self._load_symbol_versions()[safe_id] = version
+            self._save_symbol_versions()
+
+        return str(symbol_file)
 
     def invalidate_symbol(self, set_id: str) -> None:
         """

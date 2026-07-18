@@ -70,7 +70,7 @@ def _preload_icon_cache() -> None:
             if not set_id or not symbol_url:
                 continue
 
-            if cache_manager.get_symbol(cache_manager.symbol_cache_key(set_id, symbol_url)):
+            if cache_manager.get_symbol(set_id, cache_manager.symbol_version(symbol_url)):
                 skipped += 1
                 continue
 
@@ -674,8 +674,8 @@ def create_app(
             set_id = s.get("id")
             if not set_id:
                 continue
-            cache_key = cache_manager.symbol_cache_key(set_id, s.get("icon_svg_uri"))
-            cached_path = cache_manager.get_symbol(cache_key)
+            version = cache_manager.symbol_version(s.get("icon_svg_uri"))
+            cached_path = cache_manager.get_symbol(set_id, version)
             if cached_path:
                 try:
                     svg_content = Path(cached_path).read_text(encoding="utf-8")
