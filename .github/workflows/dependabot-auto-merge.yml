@@ -3,11 +3,14 @@ name: Dependabot auto-merge
 on:
   # Arm auto-merge when Dependabot opens/updates a PR.
   pull_request_target:
-  # Re-arm auto-merge after checks finish. GitHub disables auto-merge whenever
-  # a required check fails; the pull_request_target trigger only fires on
+  # Re-arm auto-merge after CI finishes. GitHub disables auto-merge whenever a
+  # required check fails; the pull_request_target trigger only fires on
   # push/open/reopen, so without this a one-time transient failure would leave
-  # an eligible PR stuck open forever.
-  check_suite:
+  # an eligible PR stuck open forever. workflow_run is used (not check_suite,
+  # which GitHub suppresses for Actions-created suites to prevent recursion) so
+  # this reliably fires when the CI workflows complete.
+  workflow_run:
+    workflows: ["Backend CI", "Frontend CI"]
     types: [completed]
 
 permissions:
@@ -42,21 +45,31 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge --auto --squash "$PR_URL"
 
-  # Re-arming: when a check suite finishes successfully, re-enable auto-merge on
+  # Re-arming: when a CI workflow finishes successfully, re-enable auto-merge on
   # any open Dependabot PR the arm job already approved (approval == eligible,
   # so semver-major bumps — never approved — are never re-armed). Idempotent:
-  # PRs that already have auto-merge enabled are skipped.
+  # PRs that already have auto-merge enabled are skipped. Native auto-merge still
+  # gates the actual merge on ALL required checks, so re-arming after a single
+  # workflow's success is safe.
   rearm:
-    if: github.event_name == 'check_suite' && github.event.check_suite.conclusion == 'success'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Re-enable auto-merge on eligible Dependabot PRs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          prs=$(jq -r '.check_suite.pull_requests[].number' "$GITHUB_EVENT_PATH" | sort -u)
-          for pr in $prs; do
+          # PRs associated with the completed run (populated for same-repo
+          # branches, which Dependabot uses); fall back to a head-branch lookup.
+          prs=$(jq -r '.workflow_run.pull_requests[].number' "$GITHUB_EVENT_PATH")
+          if [ -z "$prs" ]; then
+            prs=$(gh pr list --repo "$REPO" --head "$HEAD_BRANCH" --state open \
+              --json number --jq '.[].number')
+          fi
+          for pr in $(echo "$prs" | sort -u); do
+            [ -n "$pr" ] || continue
             data=$(gh pr view "$pr" --repo "$REPO" \
               --json state,author,autoMergeRequest,reviews 2>/dev/null) || continue
             state=$(jq -r '.state' <<<"$data")
