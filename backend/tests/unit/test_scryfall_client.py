@@ -296,6 +296,73 @@ class TestScryfallClientFetchCardTypesCatalog:
             assert "Unexpected response format" in exc_info.value.detail
 
 
+class TestScryfallClientFetchSymbology:
+    """Tests for ScryfallClient.fetch_symbology() method."""
+
+    def _mock_response(self):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": [
+                {
+                    "object": "card_symbol",
+                    "symbol": "{W}",
+                    "svg_uri": "https://svgs.scryfall.io/card-symbols/W.svg",
+                },
+                # Nullable svg_uri -> skipped.
+                {"object": "card_symbol", "symbol": "{X}", "svg_uri": None},
+                # Non-Scryfall host -> skipped.
+                {"object": "card_symbol", "symbol": "{Y}", "svg_uri": "https://evil.example/y.svg"},
+                # Wrong object type -> skipped.
+                {"object": "other", "symbol": "{Z}", "svg_uri": "https://svgs.scryfall.io/z.svg"},
+            ]
+        }
+        return mock_response
+
+    def test_fetch_symbology_success_filters_map(self):
+        """Returns a {symbol: svg_uri} map, keeping only Scryfall-hosted SVGs."""
+        get_cache_manager().clear()
+        client = ScryfallClient()
+
+        with patch.object(client.session, "get", return_value=self._mock_response()):
+            result = client.fetch_symbology()
+
+        assert result == {"{W}": "https://svgs.scryfall.io/card-symbols/W.svg"}
+
+    def test_fetch_symbology_uses_cache(self):
+        """Second call is served from cache (one API hit)."""
+        get_cache_manager().clear()
+        client = ScryfallClient()
+
+        with patch.object(client.session, "get", return_value=self._mock_response()) as mock_get:
+            client.fetch_symbology()
+            client.fetch_symbology()
+
+        assert mock_get.call_count == 1
+
+    def test_fetch_symbology_api_error_raises(self):
+        """A non-200 status raises HTTPException."""
+        get_cache_manager().clear()
+        client = ScryfallClient()
+        mock_response = Mock()
+        mock_response.status_code = 503
+
+        with patch.object(client.session, "get", return_value=mock_response):
+            with pytest.raises(HTTPException) as exc_info:
+                client.fetch_symbology()
+
+        assert exc_info.value.status_code == 500
+
+    def test_fetch_symbology_network_error_raises(self):
+        """A network error raises HTTPException."""
+        get_cache_manager().clear()
+        client = ScryfallClient()
+
+        with patch.object(client.session, "get", side_effect=requests.RequestException("boom")):
+            with pytest.raises(HTTPException):
+                client.fetch_symbology()
+
+
 class TestScryfallClientGetCardTypesByColor:
     """Tests for ScryfallClient.get_card_types_by_color() method."""
 

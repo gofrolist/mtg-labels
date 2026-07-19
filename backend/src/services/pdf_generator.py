@@ -7,7 +7,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import requests
 from pypdf import PdfReader, PdfWriter
 from reportlab.graphics import renderPDF
 from reportlab.lib.utils import ImageReader
@@ -24,9 +23,6 @@ from src.config import (
     FONT_SIZE_ROW2,
     FONT_SOURCE_SANS_PRO_REGULAR,
     LABEL_TEMPLATES,
-    SCRYFALL_API_HEADERS,
-    SCRYFALL_API_RATE_LIMIT_DELAY,
-    SCRYFALL_API_TIMEOUT,
     SET_SYMBOL_MAX_WIDTH,
     SVG_DRAWING_CACHE_MAX_SIZE,
     logger,
@@ -40,6 +36,7 @@ from src.services.helpers import (
     letter_baseline_y,
     letter_font_size,
 )
+from src.services.scryfall_client import ScryfallClient
 
 # LRU cache for SVG drawings to avoid re-parsing (memory-efficient)
 # Uses OrderedDict for O(1) access and LRU eviction
@@ -116,6 +113,9 @@ class PDFGenerator:
 
         # Symbology cache for mana symbols (lazily populated from Scryfall API)
         self._symbology_cache: dict[str, str] | None = None
+        # Scryfall client for the symbology fetch (lazily created; only the
+        # "types" view needs it), reused across colors within one generation.
+        self._scryfall_client: ScryfallClient | None = None
 
         # Performance metrics
         self.start_time: float | None = None
@@ -406,6 +406,12 @@ class PDFGenerator:
         logger.warning(f"Could not resolve mana symbol for {color} ({symbol_code})")
         return None
 
+    def _get_scryfall_client(self) -> ScryfallClient:
+        """Lazily create the Scryfall client used for the symbology fetch."""
+        if self._scryfall_client is None:
+            self._scryfall_client = ScryfallClient()
+        return self._scryfall_client
+
     def _get_mana_symbol_uri_from_api(self, symbol_code: str, color: str) -> str | None:
         """
         Get mana symbol SVG URI from Scryfall symbology API.
@@ -420,44 +426,14 @@ class PDFGenerator:
         Returns:
             SVG URI string or None if not found
         """
-        # Fetch symbology data if not cached
+        # Fetch symbology once per generator; memoize {} on failure so the other
+        # colors skip the API (and its timeout) and go straight to the fallback.
         if self._symbology_cache is None:
-            symbology_url = "https://api.scryfall.com/symbology"
             try:
-                time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
-                response = requests.get(
-                    symbology_url,
-                    timeout=SCRYFALL_API_TIMEOUT,
-                    headers=SCRYFALL_API_HEADERS,
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    # Build a cache of symbol -> svg_uri
-                    # According to Scryfall docs (https://scryfall.com/docs/api/card-symbols):
-                    # - object: "card_symbol"
-                    # - symbol: plaintext symbol (e.g., "{W}")
-                    # - svg_uri: URI to SVG image (nullable)
-                    self._symbology_cache = {}
-                    for symbol_obj in data.get("data", []):
-                        # Validate object type
-                        if symbol_obj.get("object") != "card_symbol":
-                            continue
-                        symbol_text = symbol_obj.get("symbol", "")
-                        svg_uri = symbol_obj.get("svg_uri")
-                        # svg_uri is nullable; only cache if it exists and is from Scryfall
-                        if (
-                            symbol_text
-                            and svg_uri
-                            and svg_uri.startswith("https://svgs.scryfall.io/")
-                        ):
-                            self._symbology_cache[symbol_text] = svg_uri
-                    logger.debug(f"Cached {len(self._symbology_cache)} symbols from symbology API")
-                else:
-                    logger.warning(f"Failed to fetch symbology API, status: {response.status_code}")
-                    return None
+                self._symbology_cache = self._get_scryfall_client().fetch_symbology()
             except Exception as e:
                 logger.error(f"Error fetching symbology API: {e}")
-                return None
+                self._symbology_cache = {}
 
         # Look up the symbol
         if self._symbology_cache and symbol_code in self._symbology_cache:

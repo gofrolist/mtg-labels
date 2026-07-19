@@ -210,65 +210,47 @@ class TestPDFGenerator:
         assert pdf_content.startswith(b"%PDF")
 
     def test_pdf_generator_get_mana_symbol_uri_from_api_success(self):
-        """Test _get_mana_symbol_uri_from_api successful fetch."""
-        card_types = [
-            {"color": "White", "type": "Creature", "name": "Creature", "id": "White:Creature"},
-        ]
-        generator = PDFGenerator(card_types, view_mode="types")
+        """_get_mana_symbol_uri_from_api resolves a symbol and memoizes the map."""
+        generator = PDFGenerator([], view_mode="types")
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": [
-                {
-                    "object": "card_symbol",
-                    "symbol": "{W}",
-                    "svg_uri": "https://svgs.scryfall.io/card-symbols/W.svg",
-                }
-            ]
+        mock_client = Mock()
+        mock_client.fetch_symbology.return_value = {
+            "{W}": "https://svgs.scryfall.io/card-symbols/W.svg"
         }
 
-        with patch("requests.get", return_value=mock_response) as mock_get:
-            # First call should fetch and cache
+        with patch.object(generator, "_get_scryfall_client", return_value=mock_client):
             result = generator._get_mana_symbol_uri_from_api("{W}", "White")
             assert result == "https://svgs.scryfall.io/card-symbols/W.svg"
-            # Second call should use cache
+            # Second call reuses the per-generator memoized map.
             result2 = generator._get_mana_symbol_uri_from_api("{W}", "White")
             assert result2 == "https://svgs.scryfall.io/card-symbols/W.svg"
-
-            # Scryfall's api.scryfall.com rejects requests without a User-Agent
-            # (HTTP 400); the symbology request must send the required headers.
-            headers = mock_get.call_args.kwargs["headers"]
-            assert headers["User-Agent"]
-            assert headers["Accept"] == "application/json"
+            mock_client.fetch_symbology.assert_called_once()
 
     def test_pdf_generator_get_mana_symbol_uri_from_api_multicolor_pw(self):
         """Test _get_mana_symbol_uri_from_api for multicolor with PW symbol."""
-        card_types = [
-            {
-                "color": "Multicolor",
-                "type": "Creature",
-                "name": "Creature",
-                "id": "Multicolor:Creature",
-            },
-        ]
-        generator = PDFGenerator(card_types, view_mode="types")
+        generator = PDFGenerator([], view_mode="types")
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": [
-                {
-                    "object": "card_symbol",
-                    "symbol": "{PW}",
-                    "svg_uri": "https://svgs.scryfall.io/card-symbols/PW.svg",
-                }
-            ]
+        mock_client = Mock()
+        mock_client.fetch_symbology.return_value = {
+            "{PW}": "https://svgs.scryfall.io/card-symbols/PW.svg"
         }
 
-        with patch("requests.get", return_value=mock_response):
+        with patch.object(generator, "_get_scryfall_client", return_value=mock_client):
             result = generator._get_mana_symbol_uri_from_api("{PW}", "Multicolor")
             assert result == "https://svgs.scryfall.io/card-symbols/PW.svg"
+
+    def test_symbology_failure_is_memoized(self):
+        """A symbology fetch failure is cached, so other colors skip the API."""
+        generator = PDFGenerator([], view_mode="types")
+
+        mock_client = Mock()
+        mock_client.fetch_symbology.side_effect = Exception("symbology unavailable")
+
+        with patch.object(generator, "_get_scryfall_client", return_value=mock_client):
+            assert generator._get_mana_symbol_uri_from_api("{W}", "White") is None
+            assert generator._get_mana_symbol_uri_from_api("{U}", "Blue") is None
+            # Fetched once despite two colors -> failure memoized (no re-hit/timeout).
+            mock_client.fetch_symbology.assert_called_once()
 
     def test_get_mana_symbol_file_falls_back_to_cache_when_api_down(self):
         """When the symbology API is unavailable, a cached mana symbol is served."""

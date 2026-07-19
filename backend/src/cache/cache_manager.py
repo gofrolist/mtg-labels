@@ -7,6 +7,7 @@ Provides multi-layer caching:
 """
 
 import json
+import os
 import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -53,12 +54,12 @@ class CacheManager:
 
         # Lazily-loaded symbol version manifest ({symbol_id: version}). Shared
         # between the background icon-preload thread and request threads, so all
-        # access is guarded by a reentrant lock. `_defer_manifest_write` batches
-        # persistence during the preload (see `batch_symbol_writes`).
+        # access is guarded by a reentrant lock. Batching (see
+        # `batch_symbol_writes`) is per-thread so the preload deferring its own
+        # writes never withholds an unrelated request thread's write.
         self._symbol_versions: dict[str, str] | None = None
         self._symbol_lock = threading.RLock()
-        self._defer_manifest_write = False
-        self._manifest_dirty = False
+        self._batch = threading.local()
 
         # Cache statistics
         self._hits = 0
@@ -232,12 +233,13 @@ class CacheManager:
 
         During a batch (see :meth:`batch_symbol_writes`) the write is coalesced
         into a single flush at the end, avoiding a full rewrite per download.
+        Batching is per-thread, so only the batching thread's writes defer.
         """
         with self._symbol_lock:
             if self._symbol_versions is None:
                 return
-            if self._defer_manifest_write:
-                self._manifest_dirty = True
+            if getattr(self._batch, "depth", 0) > 0:
+                self._batch.dirty = True
                 return
             self._write_symbol_versions_locked()
 
@@ -258,23 +260,23 @@ class CacheManager:
 
     @contextmanager
     def batch_symbol_writes(self) -> Iterator[None]:
-        """Defer manifest persistence to a single write when the block exits.
+        """Defer *this thread's* manifest persistence to one write on exit.
 
         The startup preload saves many symbols in a row; without batching each
-        save rewrites the whole manifest (O(N^2) I/O on the boot path). Nesting
-        is safe — only the outermost block flushes.
+        save rewrites the whole manifest (O(N^2) I/O on the boot path). The
+        defer state is thread-local, so a request thread saving concurrently
+        still persists immediately. Nesting is safe — only the outermost block
+        flushes.
         """
-        with self._symbol_lock:
-            outer = self._defer_manifest_write
-            self._defer_manifest_write = True
+        self._batch.depth = getattr(self._batch, "depth", 0) + 1
         try:
             yield
         finally:
-            with self._symbol_lock:
-                self._defer_manifest_write = outer
-                if not outer and self._manifest_dirty:
+            self._batch.depth -= 1
+            if self._batch.depth == 0 and getattr(self._batch, "dirty", False):
+                self._batch.dirty = False
+                with self._symbol_lock:
                     self._write_symbol_versions_locked()
-                    self._manifest_dirty = False
 
     def get_symbol(self, set_id: str, expected_version: str | None = None) -> str | None:
         """
@@ -349,11 +351,19 @@ class CacheManager:
             return None
         symbol_file = self.symbol_cache_dir / f"{safe_id}.svg"
 
+        # Write atomically (unique temp + rename) so a concurrent get_symbol
+        # reader never observes a partial file and wrongly deletes it as invalid.
+        tmp = symbol_file.with_name(f"{symbol_file.name}.{os.getpid()}.{threading.get_ident()}.tmp")
         try:
-            symbol_file.write_bytes(content)
+            tmp.write_bytes(content)
+            tmp.replace(symbol_file)  # atomic on POSIX
             logger.debug(f"Saved symbol to cache: {symbol_file}")
         except Exception as e:
             logger.error(f"Error saving symbol to cache {symbol_file}: {e}")
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
             return None
 
         if version is not None:
