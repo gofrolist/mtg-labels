@@ -1,5 +1,6 @@
 """Unit tests for CacheManager."""
 
+import json
 import time
 from unittest.mock import patch
 
@@ -137,72 +138,132 @@ class TestFileBasedSymbolCache:
 
 
 class TestVersionAwareSymbolCache:
-    """Tests for version-aware symbol cache keys and stale-version purging."""
+    """Tests for version-aware symbol caching via the version manifest."""
 
-    def test_symbol_cache_key_appends_version(self):
-        """A URL with a version query is folded into the cache key."""
-        key = CacheManager.symbol_cache_key(
-            "set-id", "https://svgs.scryfall.io/sets/msh.svg?1783915200"
-        )
-        assert key == "set-id-1783915200"
-
-    def test_symbol_cache_key_no_version(self):
-        """A URL without a version query falls back to the base id."""
+    def test_symbol_version_extracts_query(self):
+        """The version is the URL query string."""
         assert (
-            CacheManager.symbol_cache_key("set-id", "https://svgs.scryfall.io/sets/msh.svg")
-            == "set-id"
+            CacheManager.symbol_version("https://svgs.scryfall.io/sets/msh.svg?1783915200")
+            == "1783915200"
         )
 
-    def test_symbol_cache_key_none_url(self):
-        """A missing URL falls back to the base id."""
-        assert CacheManager.symbol_cache_key("set-id", None) == "set-id"
+    def test_symbol_version_no_query(self):
+        """A URL without a query yields an empty version."""
+        assert CacheManager.symbol_version("https://svgs.scryfall.io/sets/msh.svg") == ""
 
-    def test_symbol_cache_key_changes_with_version(self):
-        """Different versions produce different keys (drives re-download)."""
-        base = "https://svgs.scryfall.io/sets/msh.svg"
-        assert CacheManager.symbol_cache_key("id", f"{base}?1") != CacheManager.symbol_cache_key(
-            "id", f"{base}?2"
-        )
+    def test_symbol_version_none_url(self):
+        """A missing URL yields an empty version."""
+        assert CacheManager.symbol_version(None) == ""
 
-    def test_purge_removes_legacy_and_stale_versions(self, tmp_path):
-        """Legacy unversioned and older-version files are removed; current kept."""
+    def test_save_records_version_and_get_hits_on_match(self, tmp_path):
+        """save_symbol writes the manifest; get_symbol hits on a matching version."""
         cache_dir = tmp_path / "cache"
         cache_manager = CacheManager(symbol_cache_dir=cache_dir)
-        base = "abc-123"
-        (cache_dir / f"{base}.svg").write_bytes(b"<svg>legacy</svg>")
-        (cache_dir / f"{base}-111.svg").write_bytes(b"<svg>old</svg>")
-        (cache_dir / f"{base}-222.svg").write_bytes(b"<svg>current</svg>")
 
-        cache_manager.purge_stale_symbols(base, f"{base}-222")
+        cache_manager.save_symbol("set-id", b"<svg></svg>", "1783915200")
 
-        assert not (cache_dir / f"{base}.svg").exists()
-        assert not (cache_dir / f"{base}-111.svg").exists()
-        assert (cache_dir / f"{base}-222.svg").exists()
+        # Manifest persisted to disk.
+        manifest = json.loads((cache_dir / "versions.json").read_text())
+        assert manifest == {"set-id": "1783915200"}
+        # Matching version is a hit.
+        assert cache_manager.get_symbol("set-id", "1783915200") == str(cache_dir / "set-id.svg")
 
-    def test_purge_does_not_touch_other_symbols(self, tmp_path):
-        """A different symbol that shares a name prefix is left untouched."""
+    def test_get_misses_on_version_mismatch(self, tmp_path):
+        """A file present but with a different recorded version is a cache miss."""
         cache_dir = tmp_path / "cache"
         cache_manager = CacheManager(symbol_cache_dir=cache_dir)
-        # "abc" and "abcd" share a prefix but are distinct symbols.
-        (cache_dir / "abc-222.svg").write_bytes(b"<svg>keep</svg>")
-        (cache_dir / "abcd.svg").write_bytes(b"<svg>other</svg>")
-        (cache_dir / "abcd-999.svg").write_bytes(b"<svg>other</svg>")
+        cache_manager.save_symbol("set-id", b"<svg></svg>", "111")
 
-        cache_manager.purge_stale_symbols("abc", "abc-222")
+        # Same file on disk, but the current icon version differs -> miss.
+        assert cache_manager.get_symbol("set-id", "222") is None
 
-        assert (cache_dir / "abc-222.svg").exists()
-        assert (cache_dir / "abcd.svg").exists()
-        assert (cache_dir / "abcd-999.svg").exists()
-
-    def test_purge_empty_base_id_is_noop(self, tmp_path):
-        """An id that sanitizes to empty does not delete anything."""
+    def test_get_misses_when_no_manifest_entry(self, tmp_path):
+        """A committed file with no manifest entry misses when a version is expected."""
         cache_dir = tmp_path / "cache"
         cache_manager = CacheManager(symbol_cache_dir=cache_dir)
-        (cache_dir / "keep.svg").write_bytes(b"<svg></svg>")
+        # Legacy file present, no manifest.
+        (cache_dir / "set-id.svg").write_bytes(b"<svg></svg>")
 
-        cache_manager.purge_stale_symbols("///", "///")
+        assert cache_manager.get_symbol("set-id", "111") is None
 
-        assert (cache_dir / "keep.svg").exists()
+    def test_get_ignores_version_when_none(self, tmp_path):
+        """expected_version=None returns the file regardless of the manifest."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+        (cache_dir / "set-id.svg").write_bytes(b"<svg></svg>")
+
+        assert cache_manager.get_symbol("set-id") == str(cache_dir / "set-id.svg")
+
+    def test_save_without_version_leaves_manifest_untouched(self, tmp_path):
+        """Passing version=None does not create a manifest."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+
+        cache_manager.save_symbol("set-id", b"<svg></svg>")
+
+        assert not (cache_dir / "versions.json").exists()
+
+    def test_updated_version_overwrites_file_and_manifest(self, tmp_path):
+        """Re-saving with a new version overwrites content and the manifest entry."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+        cache_manager.save_symbol("set-id", b"<svg>old</svg>", "111")
+        cache_manager.save_symbol("set-id", b"<svg>new</svg>", "222")
+
+        assert (cache_dir / "set-id.svg").read_bytes() == b"<svg>new</svg>"
+        assert cache_manager.get_symbol("set-id", "222") is not None
+        assert cache_manager.get_symbol("set-id", "111") is None
+
+    def test_manifest_survives_new_manager_instance(self, tmp_path):
+        """A fresh manager reads the persisted manifest (warm-cache across restart)."""
+        cache_dir = tmp_path / "cache"
+        CacheManager(symbol_cache_dir=cache_dir).save_symbol("set-id", b"<svg></svg>", "111")
+
+        fresh = CacheManager(symbol_cache_dir=cache_dir)
+        assert fresh.get_symbol("set-id", "111") == str(cache_dir / "set-id.svg")
+
+    def test_batch_defers_manifest_write_to_single_flush(self, tmp_path):
+        """Inside a batch, saves update memory (hits work) but the file is
+        written once, on exit."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+
+        with cache_manager.batch_symbol_writes():
+            cache_manager.save_symbol("a", b"<svg></svg>", "1")
+            cache_manager.save_symbol("b", b"<svg></svg>", "2")
+            # In-memory lookup hits immediately...
+            assert cache_manager.get_symbol("a", "1") is not None
+            # ...but the manifest file has not been written yet.
+            assert not (cache_dir / "versions.json").exists()
+
+        # A single flush persisted both entries.
+        manifest = json.loads((cache_dir / "versions.json").read_text())
+        assert manifest == {"a": "1", "b": "2"}
+
+    def test_nested_batch_flushes_once_at_outermost_exit(self, tmp_path):
+        """Only the outermost batch flushes; the inner exit does not."""
+        cache_dir = tmp_path / "cache"
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+
+        with cache_manager.batch_symbol_writes():
+            with cache_manager.batch_symbol_writes():
+                cache_manager.save_symbol("a", b"<svg></svg>", "1")
+            # Inner block exited but outer batch is still active.
+            assert not (cache_dir / "versions.json").exists()
+
+        assert (cache_dir / "versions.json").exists()
+
+    def test_corrupt_manifest_is_tolerated(self, tmp_path):
+        """A corrupt manifest is treated as empty rather than raising."""
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir()
+        (cache_dir / "versions.json").write_text("{ not json")
+        (cache_dir / "set-id.svg").write_bytes(b"<svg></svg>")
+        cache_manager = CacheManager(symbol_cache_dir=cache_dir)
+
+        # No entry -> versioned lookup misses, but the manager still works.
+        assert cache_manager.get_symbol("set-id", "111") is None
+        assert cache_manager.get_symbol("set-id") == str(cache_dir / "set-id.svg")
 
 
 class TestCacheExpirationAndInvalidation:

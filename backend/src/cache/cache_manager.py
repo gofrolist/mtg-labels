@@ -6,7 +6,11 @@ Provides multi-layer caching:
 - Cache hit rate monitoring
 """
 
-from collections.abc import Callable
+import json
+import os
+import threading
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -47,6 +51,15 @@ class CacheManager:
 
         # In-memory cache using TTLCache
         self._memory_cache: TTLCache[str, Any] = TTLCache[str, Any](maxsize=max_size, ttl=ttl)
+
+        # Lazily-loaded symbol version manifest ({symbol_id: version}). Shared
+        # between the background icon-preload thread and request threads, so all
+        # access is guarded by a reentrant lock. Batching (see
+        # `batch_symbol_writes`) is per-thread so the preload deferring its own
+        # writes never withholds an unrelated request thread's write.
+        self._symbol_versions: dict[str, str] | None = None
+        self._symbol_lock = threading.RLock()
+        self._batch = threading.local()
 
         # Cache statistics
         self._hits = 0
@@ -166,70 +179,119 @@ class CacheManager:
         return "".join(c for c in set_id if c.isalnum() or c in "-_")
 
     @staticmethod
-    def symbol_cache_key(base_id: str, symbol_url: str | None) -> str:
-        """Build a version-aware cache key for a symbol.
+    def symbol_version(symbol_url: str | None) -> str:
+        """Extract the icon version from a Scryfall symbol URL.
 
         Scryfall's icon URLs carry a version query string (e.g.
         ``.../msh.svg?1783915200``) that changes whenever the artwork is
-        updated. Folding that version into the cache key means a bumped icon
-        yields a fresh cache entry instead of serving a stale file forever
-        (the bug where preview-era placeholder icons never refreshed).
+        updated. That version is stored in the manifest alongside the cached
+        file so a bumped icon is re-downloaded instead of serving a stale file
+        forever (the bug where preview-era placeholder icons never refreshed).
 
-        Falls back to ``base_id`` when the URL has no version query.
-
-        Args:
-            base_id: Stable identity for the symbol (set id or mana symbol key)
-            symbol_url: Source URL the symbol is downloaded from
-
-        Returns:
-            Cache key, version-suffixed when a version is present
+        Returns an empty string when the URL is missing or has no version query.
         """
         if symbol_url:
-            version = urlparse(symbol_url).query
-            if version:
-                return f"{base_id}-{version}"
-        return base_id
+            return urlparse(symbol_url).query
+        return ""
 
-    def purge_stale_symbols(self, base_id: str, keep_key: str) -> None:
-        """Remove cached symbol files for ``base_id`` other than ``keep_key``.
+    def _versions_path(self) -> Path:
+        """Path to the JSON manifest mapping symbol id -> cached version."""
+        return self.symbol_cache_dir / "versions.json"
 
-        Deletes the legacy unversioned file (``{base_id}.svg``) and any
-        older-version files (``{base_id}-*.svg``), keeping only the current
-        version. This self-heals entries cached before version-awareness and
-        prevents stale-version files from accumulating on disk.
+    def _load_symbol_versions(self) -> dict[str, str]:
+        """Load (and memoize) the symbol version manifest.
 
-        Args:
-            base_id: Stable identity for the symbol
-            keep_key: Cache key of the current version to keep
+        Keeping filenames stable (``{id}.svg``) while recording the version in a
+        sidecar manifest lets a committed warm cache stay valid across restarts
+        — only genuinely bumped icons re-download, rather than the whole set
+        being re-fetched on every boot.
+
+        Callers must hold ``self._symbol_lock`` before mutating the returned
+        dict.
         """
-        safe_base = self._sanitize_symbol_id(base_id)
-        safe_keep = self._sanitize_symbol_id(keep_key)
-        if not safe_base:
-            return
-        for symbol_file in self.symbol_cache_dir.glob(f"{safe_base}*.svg"):
-            stem = symbol_file.stem
-            # Only touch this symbol's own files: exact legacy id or a
-            # version-suffixed variant. Guards against a longer id that merely
-            # shares this prefix.
-            if stem != safe_base and not stem.startswith(f"{safe_base}-"):
-                continue
-            if stem == safe_keep:
-                continue
-            try:
-                symbol_file.unlink()
-                logger.debug(f"Purged stale symbol cache: {symbol_file}")
-            except Exception as e:
-                logger.error(f"Error purging stale symbol {symbol_file}: {e}")
+        with self._symbol_lock:
+            if self._symbol_versions is None:
+                path = self._versions_path()
+                try:
+                    if path.exists():
+                        data = json.loads(path.read_text(encoding="utf-8"))
+                        # Guard against a corrupt/unexpected manifest shape.
+                        self._symbol_versions = (
+                            {str(k): str(v) for k, v in data.items()}
+                            if isinstance(data, dict)
+                            else {}
+                        )
+                    else:
+                        self._symbol_versions = {}
+                except (json.JSONDecodeError, OSError) as e:
+                    logger.warning(f"Failed to read symbol version manifest: {e}")
+                    self._symbol_versions = {}
+            return self._symbol_versions
 
-    def get_symbol(self, set_id: str) -> str | None:
+    def _save_symbol_versions(self) -> None:
+        """Persist the symbol version manifest, or defer if batching.
+
+        During a batch (see :meth:`batch_symbol_writes`) the write is coalesced
+        into a single flush at the end, avoiding a full rewrite per download.
+        Batching is per-thread, so only the batching thread's writes defer.
+        """
+        with self._symbol_lock:
+            if self._symbol_versions is None:
+                return
+            if getattr(self._batch, "depth", 0) > 0:
+                self._batch.dirty = True
+                return
+            self._write_symbol_versions_locked()
+
+    def _write_symbol_versions_locked(self) -> None:
+        """Atomically write the manifest. Caller must hold ``_symbol_lock``."""
+        if self._symbol_versions is None:
+            return
+        path = self._versions_path()
+        tmp = path.with_name(f"{path.name}.tmp")
+        try:
+            tmp.write_text(
+                json.dumps(self._symbol_versions, sort_keys=True, indent=0) + "\n",
+                encoding="utf-8",
+            )
+            tmp.replace(path)  # atomic on POSIX
+        except OSError as e:
+            logger.error(f"Error saving symbol version manifest: {e}")
+
+    @contextmanager
+    def batch_symbol_writes(self) -> Iterator[None]:
+        """Defer *this thread's* manifest persistence to one write on exit.
+
+        The startup preload saves many symbols in a row; without batching each
+        save rewrites the whole manifest (O(N^2) I/O on the boot path). The
+        defer state is thread-local, so a request thread saving concurrently
+        still persists immediately. Nesting is safe — only the outermost block
+        flushes.
+        """
+        self._batch.depth = getattr(self._batch, "depth", 0) + 1
+        try:
+            yield
+        finally:
+            self._batch.depth -= 1
+            if self._batch.depth == 0 and getattr(self._batch, "dirty", False):
+                self._batch.dirty = False
+                with self._symbol_lock:
+                    self._write_symbol_versions_locked()
+
+    def get_symbol(self, set_id: str, expected_version: str | None = None) -> str | None:
         """
         Get cached symbol file path.
 
         Args:
             set_id: Set ID
+            expected_version: If given, the cached file is only returned when the
+                manifest records this exact version. A mismatch (or missing
+                manifest entry) is treated as a cache miss so the caller
+                re-downloads the current artwork. Pass ``None`` to ignore
+                versioning entirely.
 
         Returns:
-            Path to cached symbol file or None if not cached/invalid
+            Path to cached symbol file or None if not cached/invalid/stale
         """
         safe_id = self._sanitize_symbol_id(set_id)
         if not safe_id:
@@ -239,6 +301,13 @@ class CacheManager:
 
         if not symbol_file.exists():
             return None
+
+        # Version check: a stale/missing manifest entry is a miss, triggering
+        # a re-download of the current icon.
+        if expected_version is not None:
+            with self._symbol_lock:
+                if self._load_symbol_versions().get(safe_id) != expected_version:
+                    return None
 
         # Validate file (check if it's not empty and readable)
         try:
@@ -261,13 +330,17 @@ class CacheManager:
             logger.error(f"Error validating symbol file {symbol_file}: {e}")
             return None
 
-    def save_symbol(self, set_id: str, content: bytes) -> str | None:
+    def save_symbol(self, set_id: str, content: bytes, version: str | None = None) -> str | None:
         """
         Save symbol to file cache.
 
         Args:
             set_id: Set ID
             content: SVG file content
+            version: Icon version to record in the manifest (see
+                :meth:`symbol_version`). When provided, subsequent
+                :meth:`get_symbol` calls with a different version miss and
+                re-download. Pass ``None`` to leave the manifest untouched.
 
         Returns:
             Path to saved file or None on error
@@ -278,13 +351,27 @@ class CacheManager:
             return None
         symbol_file = self.symbol_cache_dir / f"{safe_id}.svg"
 
+        # Write atomically (unique temp + rename) so a concurrent get_symbol
+        # reader never observes a partial file and wrongly deletes it as invalid.
+        tmp = symbol_file.with_name(f"{symbol_file.name}.{os.getpid()}.{threading.get_ident()}.tmp")
         try:
-            symbol_file.write_bytes(content)
+            tmp.write_bytes(content)
+            tmp.replace(symbol_file)  # atomic on POSIX
             logger.debug(f"Saved symbol to cache: {symbol_file}")
-            return str(symbol_file)
         except Exception as e:
             logger.error(f"Error saving symbol to cache {symbol_file}: {e}")
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
             return None
+
+        if version is not None:
+            with self._symbol_lock:
+                self._load_symbol_versions()[safe_id] = version
+                self._save_symbol_versions()
+
+        return str(symbol_file)
 
     def invalidate_symbol(self, set_id: str) -> None:
         """

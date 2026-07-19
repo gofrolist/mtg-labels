@@ -26,9 +26,9 @@ def cache_with_symbols(tmp_path):
     """Create a cache manager with some pre-cached symbols."""
     cm = CacheManager(symbol_cache_dir=tmp_path)
 
-    # Write valid SVG files for two sets
-    (tmp_path / "set-a.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>')
-    (tmp_path / "set-b.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>')
+    # Cache two sets: file + manifest entry (their URLs have no version, so "").
+    cm.save_symbol("set-a", b'<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>', "")
+    cm.save_symbol("set-b", b'<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>', "")
     return cm
 
 

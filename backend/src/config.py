@@ -280,6 +280,12 @@ SCRYFALL_API_RETRY_ATTEMPTS = int(os.getenv("SCRYFALL_API_RETRY_ATTEMPTS", "3"))
 SCRYFALL_API_RATE_LIMIT_DELAY = float(
     os.getenv("SCRYFALL_API_RATE_LIMIT_DELAY", "0.075")
 )  # 75ms default
+# Scryfall requires User-Agent and Accept headers on api.scryfall.com requests
+# (missing them returns HTTP 400).
+SCRYFALL_API_HEADERS = {
+    "User-Agent": "MTG-Label-Generator/1.0",
+    "Accept": "application/json",
+}
 
 # --- Cache Settings ---
 # Scryfall recommends caching data for at least 24 hours

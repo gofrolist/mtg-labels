@@ -10,6 +10,7 @@ from urllib3.util.retry import Retry
 from src.cache.cache_manager import get_cache_manager
 from src.config import (
     SCRYFALL_API_BASE_URL,
+    SCRYFALL_API_HEADERS,
     SCRYFALL_API_RATE_LIMIT_DELAY,
     SCRYFALL_API_RETRY_ATTEMPTS,
     SCRYFALL_API_TIMEOUT,
@@ -52,8 +53,7 @@ class ScryfallClient:
         # User-Agent and Accept headers are required by Scryfall API
         self.session.headers.update(
             {
-                "User-Agent": "MTG-Label-Generator/1.0",
-                "Accept": "application/json",
+                **SCRYFALL_API_HEADERS,
                 "Connection": "keep-alive",
             }
         )
@@ -241,6 +241,63 @@ class ScryfallClient:
             raise HTTPException(
                 status_code=500, detail="Error fetching card types catalog from Scryfall."
             )
+
+    def fetch_symbology(self) -> dict[str, str]:
+        """
+        Fetch card symbols and return a {symbol: svg_uri} map, with caching.
+
+        Uses the shared session (connection pooling + retry/backoff) and the
+        in-memory TTL cache, so mana-symbol lookups get the same resilience as
+        every other Scryfall call. Only Scryfall-hosted SVG URIs are kept.
+
+        Returns:
+            Mapping of plaintext symbol (e.g. "{W}") to its SVG URI
+
+        Raises:
+            HTTPException: If the API request fails or returns an error status
+        """
+        cache_key = "symbology"
+
+        def fetch_from_api() -> dict[str, str]:
+            self._apply_rate_limit()
+            url = "https://api.scryfall.com/symbology"
+
+            try:
+                response = self.session.get(url, timeout=SCRYFALL_API_TIMEOUT)
+            except requests.RequestException as e:
+                self.logger.error(f"Network error while fetching symbology: {e}")
+                raise HTTPException(
+                    status_code=500, detail="Error fetching symbology from Scryfall."
+                )
+
+            if response.status_code != 200:
+                self.logger.error(f"Failed to fetch symbology, status code: {response.status_code}")
+                raise HTTPException(
+                    status_code=500, detail="Error fetching symbology from Scryfall."
+                )
+
+            data = response.json()
+            symbols: dict[str, str] = {}
+            for symbol_obj in data.get("data", []):
+                if symbol_obj.get("object") != "card_symbol":
+                    continue
+                symbol_text = symbol_obj.get("symbol", "")
+                svg_uri = symbol_obj.get("svg_uri")
+                # svg_uri is nullable; only keep Scryfall-hosted SVGs.
+                if symbol_text and svg_uri and svg_uri.startswith("https://svgs.scryfall.io/"):
+                    symbols[symbol_text] = svg_uri
+            self.logger.info(f"Fetched {len(symbols)} card symbols from symbology")
+            return symbols
+
+        try:
+            return self.cache_manager.get_or_fetch(cache_key, fetch_from_api)
+        except HTTPException:
+            self.cache_manager.invalidate_on_error(cache_key)
+            raise
+        except Exception as e:
+            self.cache_manager.invalidate_on_error(cache_key)
+            self.logger.error(f"Unexpected error fetching symbology: {e}")
+            raise HTTPException(status_code=500, detail="Error fetching symbology from Scryfall.")
 
     def _apply_rate_limit(self) -> None:
         """
