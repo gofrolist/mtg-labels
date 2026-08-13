@@ -18,7 +18,7 @@
 # ============================================================================
 
 # uv binary as a pinned alias stage (copied into the builder below).
-FROM ghcr.io/astral-sh/uv:0.12.1@sha256:cf4eedcaa81655197f625739489effcbe71b61ceb1506f332c3facae5deceded AS uvbin
+FROM ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5fc6d657da05ffaa45d82797b53fa3abc AS uvbin
 
 # Shared, pinned Python base — one digest for both builder and runtime.
 FROM python:3.14-alpine3.21@sha256:fd8407cacb1028c803566276ae25eb7c2a00fbaa210a0a5670994f6866e29278 AS pybase
