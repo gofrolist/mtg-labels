@@ -43,7 +43,7 @@ from src.config import (
 )
 from src.models.set_data import MTGSetResponse
 from src.mtg_labels import __version__
-from src.services.helpers import download_and_cache_symbol
+from src.services.helpers import fetch_symbol
 from src.services.pdf_generator import PDFGenerator
 from src.services.scryfall_client import ScryfallClient
 
@@ -54,17 +54,17 @@ scryfall_client = ScryfallClient()
 def _preload_icon_cache() -> None:
     """Preload SVG icon cache in background.
 
-    Iterates filtered sets and downloads any uncached icons.
-    Rate limiting is built into download_and_cache_symbol.
+    Iterates filtered sets and fetches any icon that is not already cached at
+    the current version. An icon whose version merely rolled is revalidated
+    (304) rather than re-downloaded. Rate limiting is built into fetch_symbol.
     """
     try:
         all_sets = scryfall_client.fetch_sets()
         filtered = scryfall_client.filter_non_digital(all_sets)
         cache_manager = get_cache_manager()
 
-        downloaded = 0
-        skipped = 0
-        # Coalesce the many per-download manifest writes into a single flush.
+        counts = {"cached": 0, "revalidated": 0, "downloaded": 0, "failed": 0}
+        # Coalesce the many per-fetch manifest writes into a single flush.
         with cache_manager.batch_symbol_writes():
             for s in filtered:
                 set_id = s.get("id")
@@ -73,14 +73,16 @@ def _preload_icon_cache() -> None:
                     continue
 
                 if cache_manager.get_symbol(set_id, cache_manager.symbol_version(symbol_url)):
-                    skipped += 1
+                    counts["cached"] += 1
                     continue
 
-                download_and_cache_symbol(set_id, symbol_url, f"set '{s.get('name')}'")
-                downloaded += 1
+                outcome = fetch_symbol(set_id, symbol_url, f"set '{s.get('name')}'").outcome
+                counts[outcome] = counts.get(outcome, 0) + 1
 
         logger.info(
-            f"Icon cache preload complete: {downloaded} downloaded, {skipped} already cached"
+            f"Icon cache preload complete: {counts['downloaded']} downloaded, "
+            f"{counts['revalidated']} revalidated, {counts['cached']} already cached, "
+            f"{counts['failed']} failed"
         )
     except Exception as e:
         logger.error(f"Icon cache preload failed: {e}")
