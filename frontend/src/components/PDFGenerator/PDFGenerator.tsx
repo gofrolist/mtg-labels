@@ -3,7 +3,7 @@ import { generatePDF } from '../../api/client'
 import { MAX_LABEL_ITEMS } from '../../constants/limits'
 import { LABEL_TEMPLATES } from '../../constants/templates'
 import type { AlphabetSelection, CustomTemplateDimensions } from '../../types'
-import { countLabelItems } from '../../utils/labelCount'
+import { countDividersPerSet, countLabelItems } from '../../utils/labelCount'
 import { parseLetterSpec, resolveLetters } from '../../utils/letters'
 import { customTemplateToBackendFormat } from '../../utils/unitConversion'
 import { ErrorDisplay } from '../ErrorDisplay'
@@ -11,7 +11,7 @@ import { ErrorDisplay } from '../ErrorDisplay'
 interface PDFGeneratorProps {
   selectedSetIds: string[]
   selectedTypeIds?: string[]
-  viewMode?: 'sets' | 'types'
+  viewMode?: 'sets' | 'types' | 'matrix'
   quantities: Record<string, number>
   useCustomQuantity: boolean
   templateId: string | null
@@ -38,33 +38,39 @@ export function PDFGenerator({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Alphabet letters apply to the sets view only, so an invalid custom spec
-  // must not block generating card-type labels.
+  // The matrix view prints set labels, so it posts the sets view mode with the
+  // divider axes attached — the letters chosen there and the types chosen in
+  // the Types tab. Those axes are ignored everywhere else, and an invalid
+  // custom letter spec must not block the other two views.
+  const isMatrix = viewMode === 'matrix'
   const alphabetInvalid =
-    viewMode === 'sets' && alphabet.mode === 'custom' && !parseLetterSpec(alphabet.customInput).ok
-  const letters = resolveLetters(alphabet)
+    isMatrix && alphabet.mode === 'custom' && !parseLetterSpec(alphabet.customInput).ok
+  const letters = isMatrix ? resolveLetters(alphabet) : []
+  const dividerTypes = isMatrix ? selectedTypeIds : []
 
   // Mirror the backend cap up front: one label per set, or per set x divider
-  // letter. Going over would 400, so block and explain instead of failing late.
-  const selectedIds = viewMode === 'sets' ? selectedSetIds : selectedTypeIds
+  // letter x divider type. Going over would 400, so block and explain instead
+  // of failing late.
+  const selectedIds = viewMode === 'types' ? selectedTypeIds : selectedSetIds
   const labelItemCount = countLabelItems(
     selectedIds,
     quantities,
     useCustomQuantity,
-    viewMode === 'sets' ? letters.length : 0
+    isMatrix ? countDividersPerSet(letters.length, dividerTypes.length) : 0
   )
   const overLimit = labelItemCount > MAX_LABEL_ITEMS
   const overLimitMessage = overLimit
     ? `This selection makes ${labelItemCount.toLocaleString()} labels, over the ${MAX_LABEL_ITEMS} maximum. ` +
-      `Reduce the number of ${viewMode === 'sets' ? 'sets or divider letters' : 'types'}.`
+      `Reduce the number of ${
+        isMatrix ? 'sets, types or divider letters' : viewMode === 'sets' ? 'sets' : 'types'
+      }.`
     : null
 
   const handleGenerate = async () => {
-    const hasSelection =
-      viewMode === 'sets' ? selectedSetIds.length > 0 : selectedTypeIds.length > 0
+    const hasSelection = selectedIds.length > 0
     if (!hasSelection) {
       setError(
-        `Please select at least one ${viewMode === 'sets' ? 'set' : 'type'} before generating the PDF.`
+        `Please select at least one ${viewMode === 'types' ? 'type' : 'set'} before generating the PDF.`
       )
       return
     }
@@ -100,7 +106,7 @@ export function PDFGenerator({
 
       let blob: Blob
 
-      if (viewMode === 'sets') {
+      if (viewMode !== 'types') {
         const expandedSetIds: string[] = []
         for (const id of selectedSetIds) {
           const qty = useCustomQuantity ? (quantities[id] ?? 1) : 1
@@ -116,6 +122,7 @@ export function PDFGenerator({
           customTemplate: backendCustomTemplate,
           viewMode: 'sets',
           letters: letters.length > 0 ? letters : undefined,
+          dividerTypes: dividerTypes.length > 0 ? dividerTypes : undefined,
         })
       } else {
         const expandedTypeIds: string[] = []
@@ -166,12 +173,7 @@ export function PDFGenerator({
 
       <button
         onClick={handleGenerate}
-        disabled={
-          loading ||
-          alphabetInvalid ||
-          overLimit ||
-          (viewMode === 'sets' ? selectedSetIds.length === 0 : selectedTypeIds.length === 0)
-        }
+        disabled={loading || alphabetInvalid || overLimit || selectedIds.length === 0}
         className="h-9 px-4 py-0 flex items-center gap-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
       >
         {loading ? (

@@ -16,7 +16,7 @@ interface HeaderProps {
   templateBadgeLabel?: string
   selectedSetIds: string[]
   selectedTypeIds: string[]
-  viewMode: 'sets' | 'types'
+  viewMode: 'sets' | 'types' | 'matrix'
   quantities: Record<string, number>
   useCustomQuantity: boolean
   templateId: string | null

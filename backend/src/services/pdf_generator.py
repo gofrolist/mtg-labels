@@ -222,6 +222,44 @@ class PDFGenerator:
             )
             padding = 3
 
+        # Resolve the label's text and symbols before laying them out. The set
+        # symbol (sets view) keeps the top-right corner; a color's mana symbol
+        # always sits on the left edge, ahead of the text.
+        letter = set_data.get("letter") if self.view_mode == "sets" else None
+        divider_color = set_data.get("divider_color") if self.view_mode == "sets" else None
+        divider_type = set_data.get("divider_type") if self.view_mode == "sets" else None
+
+        if self.view_mode == "types":
+            card_type = set_data.get("type", set_data.get("name", ""))
+            color = set_data.get("color", "")
+            line1_text = card_type
+            line2_text = color or ""
+            corner_symbol_file = None
+            symbol_label = f"{color} {card_type}"
+            mana_color = color
+        else:
+            full_set_name = set_data.get("name", "")
+            line1_text = abbreviate_set_name(full_set_name)
+            if divider_type:
+                # A type divider names the section within the set, so it takes
+                # the second line instead of the set code and release date.
+                line2_text = f"{divider_color} - {divider_type}" if divider_color else divider_type
+            else:
+                set_code = set_data.get("code", "").upper()
+                release_date_str = ""
+                released_at = set_data.get("released_at")
+                if released_at:
+                    try:
+                        release_date_str = datetime.strptime(released_at, "%Y-%m-%d").strftime(
+                            "%B %Y"
+                        )
+                    except ValueError:
+                        release_date_str = released_at
+                line2_text = f"{set_code} - {release_date_str}"
+            corner_symbol_file = get_symbol_file(set_data)
+            symbol_label = full_set_name
+            mana_color = divider_color
+
         symbol_area_start = (
             label_x
             + self.template["label_width"]
@@ -230,25 +268,42 @@ class PDFGenerator:
             - padding
         )
 
-        # Reserve space for the alphabet divider letter, drawn just left of the set
-        # symbol. Only the "sets" view carries a letter.
-        letter = set_data.get("letter") if self.view_mode == "sets" else None
+        # Right edge of the span still free for text. The sets view keeps the
+        # corner reserved whether or not the set has an icon, so a missing icon
+        # never changes where the text is truncated.
+        free_edge = (
+            label_x + self.template["label_width"] - self.template["label_margin_x"]
+            if self.view_mode == "types"
+            else symbol_area_start
+        )
+
+        # Mana symbol on the left edge; the text starts after it. Mana symbols
+        # are square, so they render at the text block's height — reserving that
+        # keeps the gap tight instead of padding out to the max symbol width.
+        mana_symbol_file = self._get_mana_symbol_file(mana_color) if mana_color else None
+        mana_left_x = text_x
+        if mana_symbol_file:
+            mana_width = min(self.effective_symbol_width, self.text_block_height)
+            # On a pathologically narrow (custom) label there may be no room left
+            # for text beside a symbol; drop it rather than overlap the text or
+            # run off the label edge.
+            if text_x + mana_width + padding < free_edge:
+                text_x += mana_width + padding
+            else:
+                mana_symbol_file = None
+
         letter_x = 0.0
         letter_size = 0.0
-        text_boundary = symbol_area_start
         if letter:
             letter_size = letter_font_size(self.template["label_height"])
             letter_width = self.canvas.stringWidth(letter, "EBGaramondBold", letter_size)
-            letter_x = symbol_area_start - padding - letter_width
-            text_boundary = letter_x - padding
-            # On a pathologically narrow (custom) label there may be no room left
-            # for text beside the letter; drop the letter rather than overlap the
-            # text or run off the label edge.
-            if text_boundary <= text_x:
+            letter_x = free_edge - padding - letter_width
+            if letter_x - padding > text_x:
+                free_edge = letter_x - padding
+            else:
                 letter = None
-                text_boundary = symbol_area_start
 
-        max_text_width = text_boundary - text_x
+        max_text_width = free_edge - text_x
 
         # Ensure max_text_width is positive
         if max_text_width <= 0:
@@ -258,28 +313,6 @@ class PDFGenerator:
                 f"symbol_area={self.SYMBOL_AREA_WIDTH}"
             )
             max_text_width = max(10, self.template["label_width"] - self.SYMBOL_AREA_WIDTH - 20)
-
-        if self.view_mode == "types":
-            card_type = set_data.get("type", set_data.get("name", ""))
-            color = set_data.get("color", "")
-            line1_text = card_type
-            line2_text = color or ""
-            symbol_file = self._get_mana_symbol_file(color)
-            symbol_label = f"{color} {card_type}"
-        else:
-            full_set_name = set_data.get("name", "")
-            line1_text = abbreviate_set_name(full_set_name)
-            set_code = set_data.get("code", "").upper()
-            release_date_str = ""
-            released_at = set_data.get("released_at")
-            if released_at:
-                try:
-                    release_date_str = datetime.strptime(released_at, "%Y-%m-%d").strftime("%B %Y")
-                except ValueError:
-                    release_date_str = released_at
-            line2_text = f"{set_code} - {release_date_str}"
-            symbol_file = get_symbol_file(set_data)
-            symbol_label = full_set_name
 
         # Fit text to available width
         fitted_name = fit_text_to_width(
@@ -292,9 +325,13 @@ class PDFGenerator:
         # Draw text
         self._draw_label_text(text_x, text_y, fitted_name, fitted_line2)
 
-        # Draw symbol
-        if symbol_file:
-            self._draw_symbol(symbol_file, label_x, label_y, symbol_label)
+        # Draw the color's mana symbol on the left edge, ahead of the text.
+        if mana_symbol_file:
+            self._draw_symbol(mana_symbol_file, label_x, label_y, symbol_label, left_x=mana_left_x)
+
+        # Draw the set symbol in the top-right corner.
+        if corner_symbol_file:
+            self._draw_symbol(corner_symbol_file, label_x, label_y, symbol_label)
 
         # Draw the alphabet divider letter, top-aligned with the set name, left
         # of the symbol. capHeight is reported in 1/1000 em units by ReportLab.
@@ -336,14 +373,17 @@ class PDFGenerator:
         label_y: float,
         symbol_width: float,
         symbol_height: float,
+        left_x: float | None = None,
     ) -> tuple[float, float]:
-        """Calculate position for symbol in top-right corner of label.
+        """Calculate a symbol's position, top-aligned with the label text.
 
         Args:
             label_x: X position of label
             label_y: Y position of label (bottom)
             symbol_width: Width of symbol after scaling
             symbol_height: Height of symbol after scaling
+            left_x: X position of the symbol's left edge. Omit to right-align
+                the symbol in the label's top-right corner.
 
         Returns:
             Tuple of (symbol_x, symbol_y) coordinates
@@ -352,6 +392,8 @@ class PDFGenerator:
         text_y_pos = label_top - self.template["label_margin_y"]
         text_top_y = text_y_pos + FONT_SIZE_ROW1
         symbol_y = text_top_y - symbol_height
+        if left_x is not None:
+            return left_x, symbol_y
         symbol_x = (
             label_x + self.template["label_width"] - self.template["label_margin_x"] - symbol_width
         )
@@ -451,25 +493,42 @@ class PDFGenerator:
         logger.warning(f"Symbol code '{symbol_code}' not found in symbology cache")
         return None
 
-    def _draw_symbol(self, local_file: str, label_x: float, label_y: float, set_name: str) -> None:
+    def _draw_symbol(
+        self,
+        local_file: str,
+        label_x: float,
+        label_y: float,
+        set_name: str,
+        left_x: float | None = None,
+    ) -> None:
         """
-        Draw set symbol on label.
+        Draw a symbol on a label.
 
         Args:
             local_file: Path to symbol file
             label_x: X position of label
             label_y: Y position of label
             set_name: Name of set for logging
+            left_x: X position of the symbol's left edge. Omit to place the
+                symbol in the label's top-right corner.
         """
         target_symbol_height = self.text_block_height
 
         if local_file.lower().endswith(".svg"):
-            self._draw_svg_symbol(local_file, label_x, label_y, target_symbol_height, set_name)
+            self._draw_svg_symbol(
+                local_file, label_x, label_y, target_symbol_height, set_name, left_x
+            )
         else:
-            self._draw_raster_symbol(local_file, label_x, label_y, target_symbol_height)
+            self._draw_raster_symbol(local_file, label_x, label_y, target_symbol_height, left_x)
 
     def _draw_svg_symbol(
-        self, local_file: str, label_x: float, label_y: float, target_height: float, set_name: str
+        self,
+        local_file: str,
+        label_x: float,
+        label_y: float,
+        target_height: float,
+        set_name: str,
+        left_x: float | None = None,
     ) -> None:
         """
         Draw SVG symbol on label with lazy loading and caching.
@@ -480,6 +539,7 @@ class PDFGenerator:
             label_y: Y position of label
             target_height: Target height for symbol
             set_name: Name of set for logging
+            left_x: X position of the symbol's left edge (None = top-right corner)
         """
         # Use cached drawing if available (lazy loading optimization)
         drawing = self._get_cached_svg_drawing(local_file)
@@ -531,7 +591,7 @@ class PDFGenerator:
         scaled_width = intrinsic_width * scale_factor
 
         symbol_x, symbol_y = self._calculate_symbol_position(
-            label_x, label_y, scaled_width, scaled_symbol_height
+            label_x, label_y, scaled_width, scaled_symbol_height, left_x
         )
 
         logger.debug(f"Drawing SVG symbol at ({symbol_x}, {symbol_y})")
@@ -549,7 +609,12 @@ class PDFGenerator:
         self.canvas.restoreState()
 
     def _draw_raster_symbol(
-        self, local_file: str, label_x: float, label_y: float, target_height: float
+        self,
+        local_file: str,
+        label_x: float,
+        label_y: float,
+        target_height: float,
+        left_x: float | None = None,
     ) -> None:
         """
         Draw raster image symbol on label.
@@ -559,6 +624,7 @@ class PDFGenerator:
             label_x: X position of label
             label_y: Y position of label
             target_height: Target height for symbol
+            left_x: X position of the symbol's left edge (None = top-right corner)
         """
         try:
             image_reader = ImageReader(local_file)
@@ -566,7 +632,7 @@ class PDFGenerator:
             symbol_height = symbol_width
 
             symbol_x, symbol_y = self._calculate_symbol_position(
-                label_x, label_y, symbol_width, symbol_height
+                label_x, label_y, symbol_width, symbol_height, left_x
             )
 
             logger.debug(

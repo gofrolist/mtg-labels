@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { countLabelItems } from '../labelCount'
+import { countDividersPerSet, countLabelItems } from '../labelCount'
 
 describe('countLabelItems', () => {
   it('returns the base count when there are no divider letters', () => {
@@ -22,5 +22,23 @@ describe('countLabelItems', () => {
 
   it('treats a missing custom quantity as 1', () => {
     expect(countLabelItems(['a', 'b'], {}, true, 1)).toBe(2)
+  })
+})
+
+describe('countDividersPerSet', () => {
+  it('is 1 when both axes are empty', () => {
+    expect(countDividersPerSet(0, 0)).toBe(1)
+  })
+
+  it('is the letter count when only letters are chosen', () => {
+    expect(countDividersPerSet(26, 0)).toBe(26)
+  })
+
+  it('is the type count when only types are chosen', () => {
+    expect(countDividersPerSet(0, 3)).toBe(3)
+  })
+
+  it('crosses the two axes when both are chosen', () => {
+    expect(countDividersPerSet(3, 2)).toBe(6)
   })
 })

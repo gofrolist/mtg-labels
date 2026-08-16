@@ -3,6 +3,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useApiSetsApiSetsGet, useApiCardTypesApiCardTypesGet } from './api/queries/default/default'
 import { useSelection } from './hooks/useSelection'
+import { useTypeSelection } from './hooks/useTypeSelection'
 import { useOpenGroups } from './hooks/useOpenGroups'
 import { useSetIcons } from './hooks/useSetIcons'
 import { useCustomTemplates } from './hooks/useCustomTemplates'
@@ -15,13 +16,17 @@ import {
 } from './constants/setFilterDefaults'
 import { groupSetsByType, filterSetsByQuery } from './utils/grouping'
 import { resolveLetters } from './utils/letters'
-import { countLabelItems } from './utils/labelCount'
+import { countDividersPerSet, countLabelItems } from './utils/labelCount'
+import { splitDividerTypeId } from './utils/dividerTypes'
 import { LABEL_TEMPLATES } from './constants/templates'
 import { Header } from './components/Layout/Header'
 import { Footer } from './components/Layout/Footer'
 import { SetList } from './components/SetList/SetList'
 import { TypeList } from './components/TypeList/TypeList'
 import { ViewToggle, type ViewMode } from './components/ViewToggle/ViewToggle'
+const MatrixBuilder = lazy(() =>
+  import('./components/MatrixBuilder/MatrixBuilder').then(m => ({ default: m.MatrixBuilder }))
+)
 const TemplateCustomizer = lazy(() =>
   import('./components/TemplateCustomizer/TemplateCustomizer').then(m => ({
     default: m.TemplateCustomizer,
@@ -93,10 +98,27 @@ function App() {
   if (setFilterOpen && !setFilterMounted) setSetFilterMounted(true)
   const [viewMode, setViewMode] = useState<ViewMode>('sets')
 
-  // Types selection state (separate from sets selection)
-  const [selectedTypeIds, setSelectedTypeIds] = useState<string[]>([])
-  const [typeQuantities, setTypeQuantities] = useState<Record<string, number>>({})
-  const [typeOpenGroups, setTypeOpenGroups] = useState<Set<string>>(new Set())
+  // Types selection state (separate from sets selection, persisted alongside it)
+  const {
+    typeSelection,
+    toggleTypeSelection,
+    selectTypes,
+    deselectTypes,
+    selectAllTypes,
+    deselectAllTypes,
+    setTypeQuantity,
+  } = useTypeSelection()
+  const { selectedTypeIds, quantities: typeQuantities } = typeSelection
+  // Open the colors holding a restored selection, so a reload shows the ticked
+  // types rather than a wall of collapsed groups (the Sets tab does the same).
+  const [typeOpenGroups, setTypeOpenGroups] = useState<Set<string>>(
+    () =>
+      new Set(
+        selectedTypeIds
+          .map(id => splitDividerTypeId(id)?.color)
+          .filter((color): color is string => Boolean(color))
+      )
+  )
 
   const filteredSets = useMemo(() => filterSetsByQuery(sets, searchQuery), [sets, searchQuery])
   const groupedSets = useMemo(() => groupSetsByType(filteredSets), [filteredSets])
@@ -106,9 +128,10 @@ function App() {
     selection.selectedSetIds
   )
 
-  // Alphabet dividers add one label per chosen letter for each set, so the
-  // label/page totals must reflect the set x letter cross-product.
+  // The Matrix tab expands each selected set into the letter x type
+  // cross-product, so its totals differ from the plain Sets tab.
   const dividerLetters = useMemo(() => resolveLetters(selection.alphabet), [selection.alphabet])
+  const dividersPerSet = countDividersPerSet(dividerLetters.length, selectedTypeIds.length)
 
   const totalLabels = useMemo(
     () =>
@@ -116,13 +139,14 @@ function App() {
         selection.selectedSetIds,
         selection.quantities,
         selection.useCustomQuantity,
-        dividerLetters.length
+        viewMode === 'matrix' ? dividersPerSet : 0
       ),
     [
       selection.selectedSetIds,
       selection.quantities,
       selection.useCustomQuantity,
-      dividerLetters.length,
+      viewMode,
+      dividersPerSet,
     ]
   )
 
@@ -188,16 +212,6 @@ function App() {
   }
 
   // Types handlers
-  const toggleTypeSelection = (typeId: string) => {
-    setSelectedTypeIds(prev =>
-      prev.includes(typeId) ? prev.filter(id => id !== typeId) : [...prev, typeId]
-    )
-  }
-
-  const handleTypeQuantityChange = (typeId: string, quantity: number) => {
-    setTypeQuantities(prev => ({ ...prev, [typeId]: quantity }))
-  }
-
   const toggleTypeGroup = (groupName: string) => {
     setTypeOpenGroups(prev => {
       const next = new Set(prev)
@@ -213,7 +227,7 @@ function App() {
   const handleSelectTypeGroup = (groupName: string, typeIds: string[]) => {
     const allSelected = typeIds.every(id => selectedTypeIds.includes(id))
     if (allSelected) {
-      setSelectedTypeIds(prev => prev.filter(id => !typeIds.includes(id)))
+      deselectTypes(typeIds)
       // Close the group when deselecting
       setTypeOpenGroups(prev => {
         const next = new Set(prev)
@@ -221,7 +235,7 @@ function App() {
         return next
       })
     } else {
-      setSelectedTypeIds(prev => [...new Set([...prev, ...typeIds])])
+      selectTypes(typeIds)
       // Open the group when selecting
       setTypeOpenGroups(prev => new Set([...prev, groupName]))
     }
@@ -233,11 +247,11 @@ function App() {
     )
     const allSelected = allTypeIds.every(id => selectedTypeIds.includes(id))
     if (allSelected) {
-      setSelectedTypeIds([])
+      deselectAllTypes()
       // Close all groups when deselecting all
       setTypeOpenGroups(new Set())
     } else {
-      setSelectedTypeIds(allTypeIds)
+      selectAllTypes(allTypeIds)
       // Open all groups when selecting all
       setTypeOpenGroups(new Set(Object.keys(cardTypes)))
     }
@@ -273,8 +287,21 @@ function App() {
     return totalSlots > 0 ? Math.ceil(totalSlots / labelsPerPage) : 0
   }, [selection.placeholders, totalTypeLabels, labelsPerPage])
 
-  const isLoading = viewMode === 'sets' ? setsLoading : typesLoading
-  const error = viewMode === 'sets' ? setsError : typesError
+  // The Matrix tab crosses sets with card types, so it needs both requests.
+  const isLoading =
+    viewMode === 'sets'
+      ? setsLoading
+      : viewMode === 'types'
+        ? typesLoading
+        : setsLoading || typesLoading
+  const error =
+    viewMode === 'sets' ? setsError : viewMode === 'types' ? typesError : (setsError ?? typesError)
+
+  // The Matrix tab previews the first selected set as it will print.
+  const sampleSet = useMemo(() => {
+    const first = sets.find(s => s.id === selection.selectedSetIds[0])
+    return first ? { name: first.name, code: first.code, releasedAt: first.released_at } : null
+  }, [sets, selection.selectedSetIds])
 
   return (
     <div className="min-h-screen flex flex-col bg-mtg-bg text-mtg-text transition-colors">
@@ -308,8 +335,6 @@ function App() {
           templateId={selection.templateId}
           placeholders={selection.placeholders}
           customTemplatesApi={customTemplatesApi}
-          alphabet={selection.alphabet}
-          onAlphabetChange={setAlphabet}
           onCustomTemplateChange={setCustomTemplate}
           onUseCustomTemplateChange={setUseCustomTemplate}
           onUseCustomQuantityChange={setUseCustomQuantity}
@@ -346,6 +371,10 @@ function App() {
                     </span>
                   )}
                 </>
+              ) : viewMode === 'matrix' ? (
+                <>
+                  {totalLabels} labels / {pageCount} {pageCount === 1 ? 'page' : 'pages'}
+                </>
               ) : (
                 <>
                   {totalTypeLabels} labels / {typePageCount}{' '}
@@ -359,7 +388,7 @@ function App() {
               )}
             </span>
           </div>
-          {viewMode === 'sets' ? (
+          {viewMode === 'matrix' ? null : viewMode === 'sets' ? (
             <button
               onClick={handleSelectAllSets}
               className={`h-9 px-3 py-0 flex items-center border border-mtg-border rounded hover:bg-mtg-hover-bg transition-colors text-sm focus-visible:ring-2 focus-visible:ring-mtg-accent ${filteredSets.length === 0 ? 'invisible' : ''}`}
@@ -386,6 +415,21 @@ function App() {
           <div className="text-center py-12">
             <ErrorDisplay message={(error as Error).message} />
           </div>
+        ) : viewMode === 'matrix' ? (
+          <Suspense fallback={<LoadingSkeleton />}>
+            <MatrixBuilder
+              selectedSetCount={selection.selectedSetIds.length}
+              sampleSet={sampleSet}
+              selectedTypeIds={selectedTypeIds}
+              groupedTypes={cardTypes}
+              alphabet={selection.alphabet}
+              dividersPerSet={dividersPerSet}
+              totalLabels={totalLabels}
+              onAlphabetChange={setAlphabet}
+              onGoToSets={() => setViewMode('sets')}
+              onGoToTypes={() => setViewMode('types')}
+            />
+          </Suspense>
         ) : viewMode === 'sets' ? (
           filteredSets.length === 0 && searchQuery.trim() ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -524,7 +568,7 @@ function App() {
             quantities={typeQuantities}
             useCustomQuantity={selection.useCustomQuantity}
             onToggleType={toggleTypeSelection}
-            onQuantityChange={handleTypeQuantityChange}
+            onQuantityChange={setTypeQuantity}
             openGroups={typeOpenGroups}
             onToggleGroup={toggleTypeGroup}
             onSelectGroup={handleSelectTypeGroup}

@@ -7,7 +7,7 @@ vi.mock('../../api/client')
 globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock')
 globalThis.URL.revokeObjectURL = vi.fn()
 
-describe('PDFGenerator alphabet letters', () => {
+describe('PDFGenerator matrix axes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -18,6 +18,7 @@ describe('PDFGenerator alphabet letters', () => {
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
+        viewMode="matrix"
         quantities={{}}
         useCustomQuantity={false}
         templateId="avery5160"
@@ -35,10 +36,63 @@ describe('PDFGenerator alphabet letters', () => {
     })
   })
 
+  it('passes divider types to generatePDF', async () => {
+    vi.mocked(generatePDF).mockResolvedValue(new Blob(['x'], { type: 'application/pdf' }))
+
+    render(
+      <PDFGenerator
+        selectedSetIds={['set-1']}
+        viewMode="matrix"
+        quantities={{}}
+        useCustomQuantity={false}
+        templateId="avery5160"
+        placeholders={0}
+        selectedTypeIds={['White:Creature', 'Blue:Instant']}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /pdf/i }))
+
+    await waitFor(() => {
+      expect(generatePDF).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dividerTypes: ['White:Creature', 'Blue:Instant'],
+          viewMode: 'sets',
+        })
+      )
+    })
+  })
+
+  it('omits the divider axes in the plain sets view', async () => {
+    vi.mocked(generatePDF).mockResolvedValue(new Blob(['x'], { type: 'application/pdf' }))
+
+    render(
+      <PDFGenerator
+        selectedSetIds={['set-1']}
+        viewMode="sets"
+        quantities={{}}
+        useCustomQuantity={false}
+        templateId="avery5160"
+        placeholders={0}
+        alphabet={{ mode: 'all', customInput: '' }}
+        selectedTypeIds={['White:Creature']}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /pdf/i }))
+
+    await waitFor(() => {
+      expect(generatePDF).toHaveBeenCalledWith(
+        expect.objectContaining({ letters: undefined, dividerTypes: undefined })
+      )
+    })
+  })
+
   it('disables the button when the custom spec is invalid', () => {
     render(
       <PDFGenerator
         selectedSetIds={['set-1']}
+        viewMode="matrix"
         quantities={{}}
         useCustomQuantity={false}
         templateId="avery5160"
@@ -65,17 +119,19 @@ describe('PDFGenerator alphabet letters', () => {
     expect(screen.getByRole('button', { name: /pdf/i })).toBeEnabled()
   })
 
-  it('disables the button and explains when sets x letters exceed the cap', () => {
-    // 200 sets x 3 letters = 600 label items, over the 500 maximum.
-    const manySets = Array.from({ length: 200 }, (_, i) => `set-${i}`)
+  it('disables the button and explains when the matrix exceeds the cap', () => {
+    // 100 sets x 3 letters x 2 types = 600 label items, over the 500 maximum.
+    const manySets = Array.from({ length: 100 }, (_, i) => `set-${i}`)
     render(
       <PDFGenerator
         selectedSetIds={manySets}
+        viewMode="matrix"
         quantities={{}}
         useCustomQuantity={false}
         templateId="avery5160"
         placeholders={0}
         alphabet={{ mode: 'custom', customInput: 'A-C' }}
+        selectedTypeIds={['White:Creature', 'Blue:Instant']}
       />
     )
     expect(screen.getByRole('button', { name: /pdf/i })).toBeDisabled()
@@ -87,6 +143,7 @@ describe('PDFGenerator alphabet letters', () => {
     render(
       <PDFGenerator
         selectedSetIds={manySets}
+        viewMode="matrix"
         quantities={{}}
         useCustomQuantity={false}
         templateId="avery5160"
@@ -104,6 +161,7 @@ describe('PDFGenerator alphabet letters', () => {
     render(
       <PDFGenerator
         selectedSetIds={sets}
+        viewMode="matrix"
         quantities={{}}
         useCustomQuantity={false}
         templateId="avery5160"
