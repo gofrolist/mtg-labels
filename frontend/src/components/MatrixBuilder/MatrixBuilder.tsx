@@ -17,6 +17,8 @@ interface MatrixBuilderProps {
   groupedTypes: Record<string, string[]>
   alphabet: AlphabetSelection
   dividersPerSet: number
+  /** Selected sets expanded by their custom quantities. */
+  setLabelCount: number
   totalLabels: number
   onAlphabetChange: (value: AlphabetSelection) => void
   onGoToSets: () => void
@@ -47,6 +49,7 @@ export function MatrixBuilder({
   groupedTypes,
   alphabet,
   dividersPerSet,
+  setLabelCount,
   totalLabels,
   onAlphabetChange,
   onGoToSets,
@@ -58,14 +61,19 @@ export function MatrixBuilder({
   const letters = resolveLetters(alphabet)
   const customSpec = alphabet.mode === 'custom' ? parseLetterSpec(alphabet.customInput) : null
   const orderedTypeIds = sortDividerTypeIds(selectedTypeIds, groupedTypes)
-  const sampleSetName = sampleSet?.name ?? 'Secrets of Strixhaven'
+  // The hardcoded sample only stands in for an empty selection. A selection we
+  // cannot resolve must not be dressed up as a set the user never picked.
+  const sampleSetName =
+    sampleSet?.name ?? (selectedSetCount === 0 ? 'Secrets of Strixhaven' : 'Selected set')
   const sampleTypeLine =
     orderedTypeIds.length > 0 ? formatDividerTypeLabel(orderedTypeIds[0]) : null
   const sampleCodeLine = sampleSet
     ? [sampleSet.code.toUpperCase(), formatReleaseDate(sampleSet.releasedAt)]
         .filter(Boolean)
         .join(' - ')
-    : 'STX - April 2021'
+    : selectedSetCount === 0
+      ? 'STX - April 2021'
+      : ''
 
   const axisButtonClasses =
     'flex items-center justify-between gap-2 bg-mtg-card-bg border border-mtg-border rounded-md px-3 py-2 text-sm text-mtg-text hover:bg-mtg-hover-bg focus-visible:ring-2 focus-visible:ring-mtg-accent'
@@ -92,8 +100,8 @@ export function MatrixBuilder({
               <span className="truncate">
                 {selectedSetCount === 0
                   ? 'None'
-                  : selectedSetCount === 1
-                    ? sampleSetName
+                  : selectedSetCount === 1 && sampleSet
+                    ? sampleSet.name
                     : `${selectedSetCount} selected`}
               </span>
               <span className="text-xs text-mtg-text-muted shrink-0">Edit in Sets</span>
@@ -191,9 +199,13 @@ export function MatrixBuilder({
             <>Select at least one set in the Sets tab to print labels.</>
           ) : (
             <>
-              {dividersPerSet} label{dividersPerSet === 1 ? '' : 's'} per set × {selectedSetCount}{' '}
-              set{selectedSetCount === 1 ? '' : 's'} ={' '}
-              <span className="text-mtg-text">{totalLabels}</span> labels
+              {dividersPerSet} label{dividersPerSet === 1 ? '' : 's'} per set ×{' '}
+              {/* Custom quantities print a set more than once, so count copies
+                  rather than sets — otherwise the line does not multiply out. */}
+              {setLabelCount === selectedSetCount
+                ? `${selectedSetCount} set${selectedSetCount === 1 ? '' : 's'}`
+                : `${setLabelCount} set cop${setLabelCount === 1 ? 'y' : 'ies'}`}{' '}
+              = <span className="text-mtg-text">{totalLabels}</span> labels
             </>
           )}
         </p>

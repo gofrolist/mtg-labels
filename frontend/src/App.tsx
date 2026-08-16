@@ -17,7 +17,7 @@ import {
 import { groupSetsByType, filterSetsByQuery } from './utils/grouping'
 import { resolveLetters } from './utils/letters'
 import { countDividersPerSet, countLabelItems } from './utils/labelCount'
-import { splitDividerTypeId } from './utils/dividerTypes'
+import { splitDividerTypeId, sortDividerTypeIds } from './utils/dividerTypes'
 import { LABEL_TEMPLATES } from './constants/templates'
 import { Header } from './components/Layout/Header'
 import { Footer } from './components/Layout/Footer'
@@ -132,6 +132,26 @@ function App() {
   // cross-product, so its totals differ from the plain Sets tab.
   const dividerLetters = useMemo(() => resolveLetters(selection.alphabet), [selection.alphabet])
   const dividersPerSet = countDividersPerSet(dividerLetters.length, selectedTypeIds.length)
+
+  // Print the types in the order the picker lays them out rather than the order
+  // the boxes were ticked in, so the PDF matches the matrix preview.
+  const orderedTypeIds = useMemo(
+    () => sortDividerTypeIds(selectedTypeIds, cardTypes),
+    [selectedTypeIds, cardTypes]
+  )
+
+  // Selected sets expanded by their custom quantities — the number of set
+  // copies the matrix multiplies its dividers over.
+  const setLabelCount = useMemo(
+    () =>
+      countLabelItems(
+        selection.selectedSetIds,
+        selection.quantities,
+        selection.useCustomQuantity,
+        0
+      ),
+    [selection.selectedSetIds, selection.quantities, selection.useCustomQuantity]
+  )
 
   const totalLabels = useMemo(
     () =>
@@ -297,11 +317,13 @@ function App() {
   const error =
     viewMode === 'sets' ? setsError : viewMode === 'types' ? typesError : (setsError ?? typesError)
 
-  // The Matrix tab previews the first selected set as it will print.
+  // The Matrix tab previews the first selected set as it will print. Resolve it
+  // against the unfiltered list: the selection outlives the set filter, so a
+  // set hidden by the current filter is still printed and still previewable.
   const sampleSet = useMemo(() => {
-    const first = sets.find(s => s.id === selection.selectedSetIds[0])
+    const first = rawSets.find(s => s.id === selection.selectedSetIds[0])
     return first ? { name: first.name, code: first.code, releasedAt: first.released_at } : null
-  }, [sets, selection.selectedSetIds])
+  }, [rawSets, selection.selectedSetIds])
 
   return (
     <div className="min-h-screen flex flex-col bg-mtg-bg text-mtg-text transition-colors">
@@ -312,9 +334,9 @@ function App() {
         onTemplateToggle={() => setTemplateCustomizerOpen(o => !o)}
         templateBadgeLabel={templateBadgeLabel}
         selectedSetIds={selection.selectedSetIds}
-        selectedTypeIds={selectedTypeIds}
+        selectedTypeIds={orderedTypeIds}
         viewMode={viewMode}
-        quantities={viewMode === 'sets' ? selection.quantities : typeQuantities}
+        quantities={viewMode === 'types' ? typeQuantities : selection.quantities}
         useCustomQuantity={selection.useCustomQuantity}
         templateId={selection.templateId}
         placeholders={selection.placeholders}
@@ -424,6 +446,7 @@ function App() {
               groupedTypes={cardTypes}
               alphabet={selection.alphabet}
               dividersPerSet={dividersPerSet}
+              setLabelCount={setLabelCount}
               totalLabels={totalLabels}
               onAlphabetChange={setAlphabet}
               onGoToSets={() => setViewMode('sets')}

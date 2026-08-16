@@ -16,6 +16,7 @@ function baseProps(alphabet: AlphabetSelection, onAlphabetChange = vi.fn()) {
     alphabet,
     selectedTypeIds: [],
     dividersPerSet: 1,
+    setLabelCount: 1,
     totalLabels: 1,
     onAlphabetChange,
     onGoToSets: vi.fn(),

@@ -63,6 +63,50 @@ describe('PDFGenerator matrix axes', () => {
     })
   })
 
+  it('expands the matrix sets by their custom quantities', async () => {
+    // The matrix prints set labels, so `quantities` is keyed by set id here —
+    // not by the "Color:Type" ids the divider axis uses.
+    vi.mocked(generatePDF).mockResolvedValue(new Blob(['x'], { type: 'application/pdf' }))
+
+    render(
+      <PDFGenerator
+        selectedSetIds={['set-1', 'set-2']}
+        viewMode="matrix"
+        quantities={{ 'set-1': 3 }}
+        useCustomQuantity={true}
+        templateId="avery5160"
+        placeholders={0}
+        selectedTypeIds={['White:Creature']}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /pdf/i }))
+
+    await waitFor(() => {
+      expect(generatePDF).toHaveBeenCalledWith(
+        expect.objectContaining({ setIds: ['set-1', 'set-1', 'set-1', 'set-2'] })
+      )
+    })
+  })
+
+  it('counts custom set quantities against the label cap', () => {
+    // 1 set at quantity 200 x 3 letters = 600 items, over the cap. A map that
+    // does not resolve the set id would count 3 and wave this through.
+    render(
+      <PDFGenerator
+        selectedSetIds={['set-1']}
+        viewMode="matrix"
+        quantities={{ 'set-1': 200 }}
+        useCustomQuantity={true}
+        templateId="avery5160"
+        placeholders={0}
+        alphabet={{ mode: 'custom', customInput: 'A-C' }}
+      />
+    )
+    expect(screen.getByRole('button', { name: /pdf/i })).toBeDisabled()
+    expect(screen.getByText(/600 labels, over the 500 maximum/i)).toBeInTheDocument()
+  })
+
   it('omits the divider axes in the plain sets view', async () => {
     vi.mocked(generatePDF).mockResolvedValue(new Blob(['x'], { type: 'application/pdf' }))
 

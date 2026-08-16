@@ -15,6 +15,7 @@ function baseProps(overrides: Partial<Parameters<typeof MatrixBuilder>[0]> = {})
     groupedTypes: GROUPED_TYPES,
     alphabet: { mode: 'off' as const, customInput: '' },
     dividersPerSet: 1,
+    setLabelCount: 1,
     totalLabels: 1,
     onAlphabetChange: vi.fn(),
     onGoToSets: vi.fn(),
@@ -77,12 +78,47 @@ describe('MatrixBuilder types axis', () => {
           selectedTypeIds: ['White:Creature', 'Blue:Sorcery'],
           alphabet: { mode: 'custom', customInput: 'A-C' },
           dividersPerSet: 6,
+          setLabelCount: 2,
           totalLabels: 12,
         })}
       />
     )
     expect(screen.getByText(/6 labels per set × 2 sets =/i)).toBeInTheDocument()
     expect(screen.getByText('12')).toBeInTheDocument()
+  })
+
+  it('counts set copies so custom quantities still multiply out', () => {
+    // 2 sets at quantity 3 = 6 copies, 2 dividers each = 12 labels.
+    render(
+      <MatrixBuilder
+        {...baseProps({
+          selectedSetCount: 2,
+          selectedTypeIds: ['White:Creature', 'Blue:Sorcery'],
+          dividersPerSet: 2,
+          setLabelCount: 6,
+          totalLabels: 12,
+        })}
+      />
+    )
+    expect(screen.getByText(/2 labels per set × 6 set copies =/i)).toBeInTheDocument()
+    expect(screen.queryByText(/× 2 sets =/i)).not.toBeInTheDocument()
+  })
+
+  it('does not name a set the user never selected', () => {
+    // The selection outlives the set filter, so a selected set can fail to
+    // resolve — the hardcoded sample must not stand in for it.
+    render(<MatrixBuilder {...baseProps({ selectedSetCount: 1, sampleSet: null })} />)
+    expect(screen.queryByText(/Secrets of Strixhaven/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/STX - April 2021/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /edit the set selection/i })).toHaveTextContent(
+      '1 selected'
+    )
+  })
+
+  it('previews the hardcoded sample only when nothing is selected', () => {
+    render(<MatrixBuilder {...baseProps({ selectedSetCount: 0, sampleSet: null })} />)
+    expect(screen.getByText('Secrets of Strixhaven')).toBeInTheDocument()
+    expect(screen.getByText('STX - April 2021')).toBeInTheDocument()
   })
 
   it('prompts for a set selection when none is made', () => {
