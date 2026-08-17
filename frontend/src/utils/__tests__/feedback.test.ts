@@ -4,6 +4,9 @@ const sendFeedback = vi.fn()
 
 vi.mock('@sentry/react', () => ({
   sendFeedback: (...args: unknown[]) => sendFeedback(...args),
+  // Mirrors the real signature closely enough to prove the call is wrapped:
+  // withScope forks the scope, runs the callback, and returns its result.
+  withScope: (callback: () => unknown) => callback(),
 }))
 
 // `sentryEnabled` is computed at module load from the DSN, so each test picks
@@ -63,7 +66,7 @@ describe('submitFeedback', () => {
     )
   })
 
-  it('no-ops when Sentry is disabled', async () => {
+  it('no-ops in dev when Sentry is disabled', async () => {
     const { submitFeedback } = await importFeedback(false)
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => {})
 
@@ -71,5 +74,17 @@ describe('submitFeedback', () => {
 
     expect(sendFeedback).not.toHaveBeenCalled()
     debug.mockRestore()
+  })
+
+  it('rejects rather than falsely confirming when a production build has no DSN', async () => {
+    vi.stubEnv('DEV', false)
+    const { submitFeedback } = await importFeedback(false)
+
+    await expect(submitFeedback({ type: 'other', message: 'hello' })).rejects.toThrow(
+      /VITE_SENTRY_DSN/
+    )
+
+    expect(sendFeedback).not.toHaveBeenCalled()
+    vi.unstubAllEnvs()
   })
 })

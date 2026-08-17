@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useModalDialog } from '../hooks/useModalDialog'
 import { submitFeedback, type FeedbackType } from '../utils/feedback'
 
@@ -33,6 +33,20 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(false)
   const [sent, setSent] = useState(false)
+
+  // Submitting unmounts the form along with the focused Send button, which
+  // would drop focus to <body> and let the next Tab walk the page behind the
+  // dialog. Hand it to the one control the success state has.
+  const sentCloseRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (sent) sentCloseRef.current?.focus()
+  }, [sent])
+
+  // A click event targets the nearest common ancestor of mousedown and mouseup,
+  // so drag-selecting text in the textarea and releasing over the dimmed
+  // backdrop would otherwise count as a backdrop click and discard a typed-out
+  // report. Only dismiss when the gesture both starts and ends on the backdrop.
+  const backdropArmed = useRef(false)
 
   const validate = () => {
     const next: { message?: string; email?: string } = {}
@@ -73,7 +87,12 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-      onClick={onClose}
+      onMouseDown={e => {
+        backdropArmed.current = e.target === e.currentTarget
+      }}
+      onClick={e => {
+        if (e.target === e.currentTarget && backdropArmed.current) onClose()
+      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="feedback-modal-title"
@@ -113,13 +132,16 @@ export function FeedbackModal({ onClose }: FeedbackModalProps) {
 
         {sent ? (
           <div className="text-center">
-            <p className="text-mtg-text mb-4 leading-relaxed">Thanks — your feedback was sent!</p>
+            <p role="status" className="text-mtg-text mb-4 leading-relaxed">
+              Thanks — your feedback was sent!
+            </p>
             <button
+              ref={sentCloseRef}
               type="button"
               onClick={onClose}
               className="h-9 px-4 rounded bg-mtg-accent hover:bg-mtg-accent-hover text-gray-900 text-sm font-semibold"
             >
-              Close
+              Done
             </button>
           </div>
         ) : (

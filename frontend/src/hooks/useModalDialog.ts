@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
-const FOCUSABLE_SELECTOR =
-  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+// Disabled controls are excluded: they sit in the DOM order but can never be
+// `document.activeElement`, so counting them as `first`/`last` would make the
+// wrap-around check below never fire and let focus escape the dialog.
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ')
 
 /**
  * Wiring shared by the app's hand-rolled modals: Escape to close, Tab/Shift+Tab
@@ -16,10 +25,19 @@ export function useModalDialog<T extends HTMLElement = HTMLElement>(onClose: () 
   /** Attach to the element that should receive focus when the modal opens. */
   const initialFocusRef = useRef<T>(null)
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+  // Held in a ref so the effect below can keep an empty dep list. Callers pass
+  // an inline arrow, so depending on `onClose` directly would tear down and
+  // re-run the effect on every parent render — re-focusing the initial element
+  // out from under someone mid-form and briefly releasing the scroll lock.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (e.key === 'Tab') {
@@ -41,11 +59,8 @@ export function useModalDialog<T extends HTMLElement = HTMLElement>(onClose: () 
           }
         }
       }
-    },
-    [onClose]
-  )
+    }
 
-  useEffect(() => {
     const prev = document.activeElement as HTMLElement | null
     initialFocusRef.current?.focus()
     document.addEventListener('keydown', handleKeyDown)
@@ -55,7 +70,7 @@ export function useModalDialog<T extends HTMLElement = HTMLElement>(onClose: () 
       document.body.style.overflow = ''
       prev?.focus()
     }
-  }, [handleKeyDown])
+  }, [])
 
   return { dialogRef, initialFocusRef }
 }

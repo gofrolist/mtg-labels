@@ -97,4 +97,46 @@ describe('FeedbackModal', () => {
     render(<FeedbackModal onClose={vi.fn()} />)
     expect(screen.getByLabelText('Message')).toHaveFocus()
   })
+
+  it('moves focus to Done once sent, so the trap keeps holding', async () => {
+    const user = userEvent.setup()
+    render(<FeedbackModal onClose={vi.fn()} />)
+
+    await user.type(screen.getByLabelText('Message'), 'The Matrix tab misaligns columns')
+    await user.click(screen.getByRole('button', { name: 'Send' }))
+
+    const done = await screen.findByRole('button', { name: 'Done' })
+    expect(done).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveTextContent(/your feedback was sent/i)
+  })
+
+  it('keeps a typed message when a drag-select ends on the backdrop', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    render(<FeedbackModal onClose={onClose} />)
+
+    const message = screen.getByLabelText('Message')
+    await user.type(message, 'A long bug report worth not losing')
+
+    // Gesture starts inside the textarea and releases over the backdrop, so the
+    // click lands on the overlay even though the user never clicked it.
+    const backdrop = screen.getByRole('dialog')
+    await user.pointer([
+      { target: message, keys: '[MouseLeft>]' },
+      { target: backdrop, keys: '[/MouseLeft]' },
+    ])
+
+    expect(onClose).not.toHaveBeenCalled()
+    expect(message).toHaveValue('A long bug report worth not losing')
+  })
+
+  it('still closes on a genuine backdrop click', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    render(<FeedbackModal onClose={onClose} />)
+
+    await user.click(screen.getByRole('dialog'))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

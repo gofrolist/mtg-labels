@@ -22,14 +22,25 @@ export interface FeedbackInput {
  */
 export async function submitFeedback(input: FeedbackInput): Promise<void> {
   if (!sentryEnabled) {
+    // Dev convenience only. A production build with no DSN is a misconfigured
+    // deploy, and silently resolving there would tell users their message was
+    // sent while dropping it — so let those surface the modal's error state.
+    if (!import.meta.env.DEV) {
+      throw new Error('Feedback is unavailable: VITE_SENTRY_DSN is not configured')
+    }
     console.debug('[feedback] Sentry disabled — feedback not sent:', input)
     return
   }
-  await Sentry.sendFeedback({
-    message: input.message,
-    email: input.email,
-    url: input.url ?? window.location.href,
-    source: 'feedback-modal',
-    tags: { 'feedback.type': input.type },
-  })
+  // `sendFeedback` applies `tags` via `getCurrentScope().setTags()` and never
+  // reverts it, which would leave `feedback.type` stuck on every later event in
+  // the session. A forked scope keeps the tag on this entry alone.
+  await Sentry.withScope(() =>
+    Sentry.sendFeedback({
+      message: input.message,
+      email: input.email,
+      url: input.url ?? window.location.href,
+      source: 'feedback-modal',
+      tags: { 'feedback.type': input.type },
+    })
+  )
 }
