@@ -1,4 +1,5 @@
 import { Component, ReactNode, ErrorInfo } from 'react'
+import { reportRenderError } from '../../utils/sentry'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -32,8 +33,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       console.error('ErrorBoundary caught an error:', error, errorInfo)
     }
 
-    // In production, you could log to an error reporting service
-    // Example: logErrorToService(error, errorInfo)
+    // No-ops unless VITE_SENTRY_DSN is set, so this stays quiet in dev/test
+    reportRenderError(error, errorInfo.componentStack)
   }
 
   handleReset = () => {
