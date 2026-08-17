@@ -1,6 +1,7 @@
 """PDF generation service for MTG Label Generator."""
 
 import io
+import threading
 import time
 from collections import OrderedDict
 from datetime import datetime
@@ -54,6 +55,17 @@ try:
     pdfmetrics.registerFont(TTFont("SourceSansProRegular", FONT_SOURCE_SANS_PRO_REGULAR))
 except Exception:
     logger.warning(f"Could not register font {FONT_SOURCE_SANS_PRO_REGULAR}")
+
+
+# Registered fonts live in ReportLab's process-global registry, so every
+# PDFGenerator shares one TTFont and one TTFontFace. That face carries a single
+# byte cursor which its parser seeks while subsetting glyphs, and subsetting
+# happens at save() time — so two canvases saving at once interleave their
+# seeks and read each other's garbage, surfacing as IndexError/KeyError deep in
+# reportlab.pdfbase.ttfonts. It is rare but real: it has failed both the
+# concurrency tests and, in the same way, the live PDF endpoint under load.
+# Serializing just the save keeps the expensive part — drawing — parallel.
+_font_subset_lock = threading.Lock()
 
 
 class PDFGenerator:
@@ -150,7 +162,9 @@ class PDFGenerator:
                     if _svg_drawing_cache:
                         _svg_drawing_cache.popitem(last=False)
 
-        self.canvas.save()
+        # Font subsetting runs here, on shared global state (see the lock).
+        with _font_subset_lock:
+            self.canvas.save()
         self.buffer.seek(0)
 
         self.end_time = time.time()
