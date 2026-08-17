@@ -462,3 +462,82 @@ class TestGeneratePdfEndpoint:
         )
         assert response.status_code == 400
         assert "Too many label items" in response.text
+
+    @patch("src.api.routes.PDFGenerator")
+    @patch("src.api.routes.scryfall_client.fetch_sets")
+    def test_generate_pdf_with_divider_types_expands_items(
+        self, mock_fetch, mock_pdf_gen, client, sample_set_data
+    ):
+        """divider_types expands each set into one item per color/type."""
+        mock_fetch.return_value = sample_set_data
+
+        mock_instance = Mock()
+        mock_instance.generate.return_value = BytesIO(b"%PDF-1.4 fake pdf content")
+        mock_pdf_gen.return_value = mock_instance
+
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "set_ids": ["test-set-1"],
+                "divider_types": "White:Creature,Blue:Instant",
+            },
+        )
+
+        assert response.status_code == 200
+        passed_items = mock_pdf_gen.call_args.args[0]
+        assert [(i["divider_color"], i["divider_type"]) for i in passed_items] == [
+            ("White", "Creature"),
+            ("Blue", "Instant"),
+        ]
+
+    @patch("src.api.routes.PDFGenerator")
+    @patch("src.api.routes.scryfall_client.fetch_sets")
+    def test_generate_pdf_crosses_letters_and_divider_types(
+        self, mock_fetch, mock_pdf_gen, client, sample_set_data
+    ):
+        """Both divider axes together produce the letter x type cross-product."""
+        mock_fetch.return_value = sample_set_data
+
+        mock_instance = Mock()
+        mock_instance.generate.return_value = BytesIO(b"%PDF-1.4 fake pdf content")
+        mock_pdf_gen.return_value = mock_instance
+
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "set_ids": ["test-set-1"],
+                "letters": "A,B",
+                "divider_types": "White:Creature",
+            },
+        )
+
+        assert response.status_code == 200
+        passed_items = mock_pdf_gen.call_args.args[0]
+        assert [(i["letter"], i["divider_type"]) for i in passed_items] == [
+            ("A", "Creature"),
+            ("B", "Creature"),
+        ]
+
+    def test_generate_pdf_invalid_divider_types_returns_400(self, client):
+        """A token without a 'Color:Type' separator is rejected."""
+        response = client.post(
+            "/generate-pdf",
+            data={"set_ids": ["test-set-1"], "divider_types": "Creature"},
+        )
+        assert response.status_code == 400
+
+    def test_generate_pdf_divider_cross_product_capped(self, client):
+        """The set x letter x type expansion is capped at MAX_INPUT_ITEMS."""
+        # 10 sets x 26 letters x 3 types = 780 label items > 500 -> rejected.
+        set_ids = [f"id-{i}" for i in range(10)]
+        all_letters = ",".join(chr(c) for c in range(ord("A"), ord("Z") + 1))
+        response = client.post(
+            "/generate-pdf",
+            data={
+                "set_ids": set_ids,
+                "letters": all_letters,
+                "divider_types": "White:Creature,Blue:Instant,Red:Sorcery",
+            },
+        )
+        assert response.status_code == 400
+        assert "Too many label items" in response.text

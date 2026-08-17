@@ -3,6 +3,8 @@
 from io import BytesIO
 from unittest.mock import Mock, patch
 
+import pytest
+
 from src.services.pdf_generator import PDFGenerator
 
 
@@ -455,3 +457,191 @@ class TestPDFGenerator:
         label_center = (label_top + label_bottom) / 2
         # Top-aligned: the baseline stays above the label's vertical center.
         assert letter_y > label_center
+
+    def _divider_type_set_data(self, **extra) -> list[dict]:
+        """A single set item carrying a White/Creature type divider."""
+        return [
+            {
+                "id": "s1",
+                "name": "Secrets of Strixhaven",
+                "code": "STX",
+                "released_at": "2021-04-23",
+                "divider_color": "White",
+                "divider_type": "Creature",
+                **extra,
+            }
+        ]
+
+    def _record_draw_strings(self, generator: PDFGenerator) -> list[tuple[float, float, str]]:
+        """Patch the canvas to capture every drawString call."""
+        calls: list[tuple[float, float, str]] = []
+        original = generator.canvas.drawString
+
+        def record(x, y, text, *args, **kwargs):
+            calls.append((x, y, text))
+            return original(x, y, text, *args, **kwargs)
+
+        generator.canvas.drawString = record
+        return calls
+
+    def test_divider_type_replaces_code_and_date_line(self):
+        """A type divider prints 'Color - Type' instead of the code/date line."""
+        generator = PDFGenerator(self._divider_type_set_data())
+        draw_calls = self._record_draw_strings(generator)
+        with (
+            patch("src.services.pdf_generator.get_symbol_file", return_value=None),
+            patch.object(PDFGenerator, "_get_mana_symbol_file", return_value=None),
+        ):
+            generator.generate()
+
+        drawn = [call[2] for call in draw_calls]
+        assert "White - Creature" in drawn
+        assert not any("STX" in text for text in drawn)
+
+    def _record_symbol_calls(self, generator: PDFGenerator) -> list[dict]:
+        """Patch _draw_symbol to capture each symbol's file and placement."""
+        calls: list[dict] = []
+        original = generator._draw_symbol
+
+        def record(local_file, label_x, label_y, set_name, left_x=None):
+            calls.append({"file": local_file, "left_x": left_x})
+            return original(local_file, label_x, label_y, set_name, left_x)
+
+        generator._draw_symbol = record
+        return calls
+
+    def test_divider_type_draws_mana_symbol_on_the_left(self):
+        """The mana symbol is left-anchored ahead of the text; the set icon keeps the corner."""
+        generator = PDFGenerator(self._divider_type_set_data())
+        symbol_calls = self._record_symbol_calls(generator)
+        text_calls = self._record_draw_strings(generator)
+        with (
+            patch("src.services.pdf_generator.get_symbol_file", return_value="set.svg"),
+            patch.object(PDFGenerator, "_get_mana_symbol_file", return_value="mana.svg"),
+            patch.object(PDFGenerator, "_draw_svg_symbol"),
+        ):
+            generator.generate()
+
+        assert [call["file"] for call in symbol_calls] == ["mana.svg", "set.svg"]
+        mana_left_x = symbol_calls[0]["left_x"]
+        assert mana_left_x is not None
+        # The set symbol has no explicit x — it right-aligns in the corner.
+        assert symbol_calls[1]["left_x"] is None
+        # The label's left margin holds the mana symbol, so the text starts after it.
+        template = generator.template
+        label_left = template["left_margin"] + template["label_margin_x"]
+        assert mana_left_x == label_left
+        assert all(x > mana_left_x for x, _, _ in text_calls)
+
+    def test_types_view_draws_mana_symbol_on_the_left(self):
+        """The types view moves its mana symbol to the left edge too."""
+        generator = PDFGenerator(
+            [{"color": "White", "type": "Creature", "name": "Creature", "id": "White:Creature"}],
+            view_mode="types",
+        )
+        symbol_calls = self._record_symbol_calls(generator)
+        text_calls = self._record_draw_strings(generator)
+        with (
+            patch.object(PDFGenerator, "_get_mana_symbol_file", return_value="mana.svg"),
+            patch.object(PDFGenerator, "_draw_svg_symbol"),
+        ):
+            generator.generate()
+
+        assert [call["file"] for call in symbol_calls] == ["mana.svg"]
+        template = generator.template
+        label_left = template["left_margin"] + template["label_margin_x"]
+        assert symbol_calls[0]["left_x"] == label_left
+        assert all(x > label_left for x, _, _ in text_calls)
+
+    def test_types_view_text_uses_the_freed_right_edge(self):
+        """With no corner symbol, types-view text may run to the right margin."""
+        card_type = [{"color": "White", "type": "Creature", "name": "Creature"}]
+        widths: list[float] = []
+        generator = PDFGenerator(card_type, view_mode="types")
+
+        def record(text, font, size, max_width, canvas):
+            widths.append(max_width)
+            return text
+
+        with (
+            patch.object(PDFGenerator, "_get_mana_symbol_file", return_value=None),
+            patch("src.services.pdf_generator.fit_text_to_width", side_effect=record),
+        ):
+            generator.generate()
+
+        template = generator.template
+        usable = template["label_width"] - 2 * template["label_margin_x"]
+        assert widths and all(w == pytest.approx(usable) for w in widths)
+
+    def test_divider_type_with_letter_renders(self):
+        """Letter and type divider on one label render a valid PDF."""
+        generator = PDFGenerator(self._divider_type_set_data(letter="Q"))
+        with (
+            patch("src.services.pdf_generator.get_symbol_file", return_value=None),
+            patch.object(PDFGenerator, "_get_mana_symbol_file", return_value=None),
+        ):
+            result = generator.generate()
+        assert result.read().startswith(b"%PDF")
+
+    def test_divider_type_narrow_template_renders(self):
+        """Type dividers also work on the short narrow 94208 template."""
+        generator = PDFGenerator(
+            self._divider_type_set_data(letter="Q"), template_name="avery94208"
+        )
+        with (
+            patch("src.services.pdf_generator.get_symbol_file", return_value=None),
+            patch.object(PDFGenerator, "_get_mana_symbol_file", return_value=None),
+        ):
+            result = generator.generate()
+        assert result.read().startswith(b"%PDF")
+
+    def test_mana_symbol_dropped_on_too_narrow_label(self):
+        """A pathologically narrow custom label drops the extras without error."""
+        custom_config: dict[str, float] = {
+            "page_width": 612,
+            "page_height": 792,
+            "labels_per_row": 1,
+            "label_rows": 1,
+            "label_width": 45,
+            "label_height": 40,
+            "label_margin_x": 5,
+            "label_margin_y": 5,
+            "left_margin": 20,
+            "top_margin": 20,
+            "horizontal_gap": 0,
+            "vertical_gap": 0,
+        }
+        generator = PDFGenerator(
+            self._divider_type_set_data(letter="Q"), template_config=custom_config
+        )
+        symbol_files: list[str] = []
+        with (
+            patch("src.services.pdf_generator.get_symbol_file", return_value="set.svg"),
+            patch.object(PDFGenerator, "_get_mana_symbol_file", return_value="mana.svg"),
+            patch.object(
+                PDFGenerator,
+                "_draw_svg_symbol",
+                side_effect=lambda f, *a, **kw: symbol_files.append(f),
+            ),
+        ):
+            result = generator.generate()
+
+        assert result.read().startswith(b"%PDF")
+        assert symbol_files == ["set.svg"]
+
+    def test_no_divider_type_keeps_code_and_date(self):
+        """Without a type divider the second line is unchanged."""
+        set_data = [
+            {
+                "id": "s1",
+                "name": "Secrets of Strixhaven",
+                "code": "STX",
+                "released_at": "2021-04-23",
+            }
+        ]
+        generator = PDFGenerator(set_data)
+        draw_calls = self._record_draw_strings(generator)
+        with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+            generator.generate()
+
+        assert "STX - April 2021" in [call[2] for call in draw_calls]

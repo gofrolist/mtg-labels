@@ -300,6 +300,57 @@ def _parse_letters(raw: str | None) -> list[str]:
     return letters
 
 
+def _parse_divider_types(raw: str | None) -> list[tuple[str, str]]:
+    """Parse the ``divider_types`` form value into ``(color, card_type)`` pairs.
+
+    The value is a comma-separated list of ``"Color:Type"`` tokens — the same
+    ``color:type`` identifiers the "types" view already uses, joined the way
+    ``letters`` is. Tokens are de-duplicated while preserving order.
+
+    Args:
+        raw: Comma-separated ``"Color:Type"`` tokens, or ``None``/empty.
+
+    Returns:
+        Ordered, de-duplicated list of ``(color, card_type)`` pairs (empty if
+        no input).
+
+    Raises:
+        HTTPException: 400 if the value is too long or a token is malformed.
+    """
+    if not raw:
+        return []
+    if len(raw) > MAX_INPUT_ITEMS * (MAX_ITEM_LENGTH + 1):
+        raise HTTPException(status_code=400, detail="Divider types value too long.")
+    pairs: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for raw_token in raw.split(","):
+        token = raw_token.strip()
+        if not token:
+            continue
+        if len(token) > MAX_ITEM_LENGTH:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Divider type too long. Maximum is {MAX_ITEM_LENGTH} characters.",
+            )
+        color, separator, card_type = token.partition(":")
+        color, card_type = color.strip(), card_type.strip()
+        if not separator or not color or not card_type:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid divider type '{token}'. Use the form 'Color:Type'.",
+            )
+        pair = (color, card_type)
+        if pair not in seen:
+            seen.add(pair)
+            pairs.append(pair)
+    if len(pairs) > MAX_INPUT_ITEMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many divider types. Maximum is {MAX_INPUT_ITEMS}.",
+        )
+    return pairs
+
+
 def _parse_custom_template(custom_template: str) -> dict[str, float]:
     """Parse and validate the ``custom_template`` JSON blob into a config dict.
 
@@ -386,11 +437,14 @@ def _build_label_items(
     card_type_ids: list[str] | None,
     placeholder_count: int,
     letters: list[str] | None = None,
+    divider_types: list[tuple[str, str]] | None = None,
 ) -> list[dict]:
     """Build the ordered list of label entries to render.
 
     Leading placeholders shift the first printed label; the remainder are the
-    resolved card-type or set entries.
+    resolved card-type or set entries. In the "sets" view, divider letters and
+    divider types expand each set into the set x letter x type cross-product,
+    ordered set-major then letter then type.
     """
     items: list[dict] = [{"__placeholder__": True} for _ in range(placeholder_count)]
 
@@ -417,13 +471,21 @@ def _build_label_items(
         if set_id not in sets_by_id:
             continue
         set_dict = sets_by_id[set_id]
-        if letters:
-            # One label per letter; build a new dict so the cached set is
-            # never mutated.
-            for letter in letters:
-                items.append({**set_dict, "letter": letter})
-        else:
+        if not letters and not divider_types:
             items.append(set_dict)
+            continue
+        # One label per letter x divider type; build a new dict per label so the
+        # cached set is never mutated. An empty axis contributes a single pass,
+        # so letters-only and types-only both fall out of the same loop.
+        for letter in letters or [None]:
+            for color, card_type in divider_types or [(None, None)]:
+                item = {**set_dict}
+                if letter:
+                    item["letter"] = letter
+                if card_type:
+                    item["divider_color"] = color
+                    item["divider_type"] = card_type
+                items.append(item)
     return items
 
 
@@ -705,6 +767,7 @@ def create_app(
         placeholders: int = Form(0),
         view_mode: str = Form("sets"),
         letters: str | None = Form(None),
+        divider_types: str | None = Form(None),
     ) -> StreamingResponse:
         """
         Generate PDF with labels for selected sets or card types.
@@ -718,6 +781,9 @@ def create_app(
             template: Label template name (e.g., "avery5160", "avery64x30-r")
             placeholders: Number of empty labels at start
             view_mode: View mode - "sets" or "types" (default: "sets")
+            letters: Comma-separated alphabet divider letters (sets view only)
+            divider_types: Comma-separated "Color:Type" divider entries, each
+                printed as its own label per set (sets view only)
 
         Returns:
             StreamingResponse with PDF file
@@ -786,20 +852,27 @@ def create_app(
         max_placeholders = max(labels_per_page - 1, 0)
         placeholder_count = min(max(0, placeholders or 0), max_placeholders)
 
-        # Parse alphabet divider letters (raises 400 on a non-letter token).
+        # Parse the divider axes (each raises 400 on a malformed token).
         parsed_letters = _parse_letters(letters)
+        parsed_divider_types = _parse_divider_types(divider_types)
 
-        # Bound the set x letter cross-product to the same ceiling that limits a
-        # plain label request, so alphabet expansion cannot amplify a small
-        # request into a huge PDF (resource-exhaustion guard).
-        if parsed_letters and set_ids and len(set_ids) * len(parsed_letters) > MAX_INPUT_ITEMS:
+        # Bound the set x letter x type cross-product to the same ceiling that
+        # limits a plain label request, so divider expansion cannot amplify a
+        # small request into a huge PDF (resource-exhaustion guard).
+        divider_factor = max(len(parsed_letters), 1) * max(len(parsed_divider_types), 1)
+        if divider_factor > 1 and set_ids and len(set_ids) * divider_factor > MAX_INPUT_ITEMS:
             raise HTTPException(
                 status_code=400,
                 detail=f"Too many label items. Maximum is {MAX_INPUT_ITEMS}.",
             )
 
         selected_items_data = _build_label_items(
-            view_mode, set_ids, card_type_ids, placeholder_count, parsed_letters
+            view_mode,
+            set_ids,
+            card_type_ids,
+            placeholder_count,
+            parsed_letters,
+            parsed_divider_types,
         )
         if not selected_items_data:
             item_type = "card types" if view_mode == "types" else "sets"

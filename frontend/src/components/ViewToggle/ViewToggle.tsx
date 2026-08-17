@@ -1,4 +1,4 @@
-export type ViewMode = 'sets' | 'types'
+export type ViewMode = 'sets' | 'types' | 'matrix'
 
 interface ViewToggleProps {
   viewMode: ViewMode
@@ -62,6 +62,34 @@ export function ViewToggle({ viewMode, onChange }: ViewToggleProps) {
           <rect width="7" height="7" x="3" y="14" rx="1" />
         </svg>
         Types
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('matrix')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
+          viewMode === 'matrix'
+            ? 'bg-mtg-hover-bg text-mtg-text'
+            : 'text-mtg-text-muted hover:text-mtg-text'
+        }`}
+        aria-pressed={viewMode === 'matrix'}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect width="18" height="18" x="3" y="3" rx="2" />
+          <path d="M3 9h18" />
+          <path d="M9 9v12" />
+        </svg>
+        Matrix
       </button>
     </div>
   )

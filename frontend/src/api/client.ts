@@ -34,6 +34,8 @@ interface GeneratePDFOptions {
   customTemplate?: Record<string, number>
   viewMode: 'sets' | 'types'
   letters?: string[]
+  // Type dividers as "color:type" ids; sets view only, like letters.
+  dividerTypes?: string[]
 }
 
 export async function generatePDF({
@@ -44,6 +46,7 @@ export async function generatePDF({
   customTemplate,
   viewMode,
   letters,
+  dividerTypes,
 }: GeneratePDFOptions): Promise<Blob> {
   const formData = new FormData()
 
@@ -63,6 +66,10 @@ export async function generatePDF({
 
   if (viewMode === 'sets' && letters && letters.length > 0) {
     formData.append('letters', letters.join(','))
+  }
+
+  if (viewMode === 'sets' && dividerTypes && dividerTypes.length > 0) {
+    formData.append('divider_types', dividerTypes.join(','))
   }
 
   if (customTemplate) {
