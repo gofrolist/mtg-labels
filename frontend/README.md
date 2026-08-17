@@ -40,6 +40,10 @@ cp .env.example .env
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
+`VITE_SENTRY_DSN` is optional and normally set only for deployments. Leave it
+empty locally: Sentry stays inert and the **Feedback** button logs its payload
+to the console instead of sending it.
+
 ### Running Locally
 
 ```bash

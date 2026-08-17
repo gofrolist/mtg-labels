@@ -1,55 +1,11 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useModalDialog } from '../hooks/useModalDialog'
 
 interface DonateModalProps {
   onClose: () => void
 }
 
 export function DonateModal({ onClose }: DonateModalProps) {
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-        return
-      }
-      if (e.key === 'Tab') {
-        const dialog = dialogRef.current
-        if (!dialog) return
-        const focusable = dialog.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        )
-        if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (e.shiftKey) {
-          if (document.activeElement === first) {
-            e.preventDefault()
-            last.focus()
-          }
-        } else {
-          if (document.activeElement === last) {
-            e.preventDefault()
-            first.focus()
-          }
-        }
-      }
-    },
-    [onClose]
-  )
-
-  useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null
-    closeButtonRef.current?.focus()
-    document.addEventListener('keydown', handleKeyDown)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = ''
-      prev?.focus()
-    }
-  }, [handleKeyDown])
+  const { dialogRef, initialFocusRef } = useModalDialog<HTMLButtonElement>(onClose)
 
   return (
     <div
@@ -69,7 +25,7 @@ export function DonateModal({ onClose }: DonateModalProps) {
             Thank You!
           </h3>
           <button
-            ref={closeButtonRef}
+            ref={initialFocusRef}
             type="button"
             onClick={onClose}
             className="text-mtg-text-muted hover:text-mtg-text p-1"

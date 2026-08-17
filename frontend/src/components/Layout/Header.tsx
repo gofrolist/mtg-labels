@@ -4,8 +4,12 @@ import { SearchBar } from '../SearchBar/SearchBar'
 import { TemplateNavButton } from '../TemplateCustomizer/TemplateNavButton'
 import { SetFilterNavButton } from '../SetFilterCustomizer/SetFilterNavButton'
 import { PDFGenerator } from '../PDFGenerator/PDFGenerator'
+import { FeedbackNavButton } from '../FeedbackNavButton'
 
 const DonateModal = lazy(() => import('../DonateModal').then(m => ({ default: m.DonateModal })))
+const FeedbackModal = lazy(() =>
+  import('../FeedbackModal').then(m => ({ default: m.FeedbackModal }))
+)
 import type { AlphabetSelection, CustomTemplateDimensions } from '../../types'
 
 interface HeaderProps {
@@ -51,6 +55,12 @@ export function Header({
 }: HeaderProps) {
   const [navMenuOpen, setNavMenuOpen] = useState(false)
   const [showDonateModal, setShowDonateModal] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+
+  const openFeedback = () => {
+    setNavMenuOpen(false)
+    setShowFeedbackModal(true)
+  }
 
   return (
     <>
@@ -86,6 +96,10 @@ export function Header({
                 onToggle={onSetFilterToggle}
                 modified={setFilterModified}
               />
+            </div>
+
+            <div className="hidden min-[880px]:block">
+              <FeedbackNavButton isOpen={showFeedbackModal} onOpen={openFeedback} />
             </div>
 
             <button
@@ -169,6 +183,9 @@ export function Header({
                     modified={setFilterModified}
                   />
                 </div>
+                <div className="w-full min-w-0 [&_button]:w-full [&_button]:justify-start">
+                  <FeedbackNavButton isOpen={showFeedbackModal} onOpen={openFeedback} />
+                </div>
               </div>
             </div>
           </div>
@@ -178,6 +195,12 @@ export function Header({
       {showDonateModal && (
         <Suspense fallback={null}>
           <DonateModal onClose={() => setShowDonateModal(false)} />
+        </Suspense>
+      )}
+
+      {showFeedbackModal && (
+        <Suspense fallback={null}>
+          <FeedbackModal onClose={() => setShowFeedbackModal(false)} />
         </Suspense>
       )}
     </>

@@ -5,7 +5,10 @@ import { getApiSetsApiSetsGetQueryKey } from './api/queries/default/default'
 import { SET_ICONS_QUERY_KEY } from './hooks/useSetIcons'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary.tsx'
+import { initSentry } from './utils/sentry'
 import './index.css'
+
+initSentry()
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -26,6 +26,8 @@ bun run api:gen                  # Generate API client via Orval
 
 - Bun (package manager and runtime)
 - Copy `.env.example` to `.env` and set `VITE_API_BASE_URL=http://localhost:8080` for local dev
+- `VITE_SENTRY_DSN` is optional and set only in Vercel. Without it, Sentry stays
+  inert and the feedback modal logs its payload to the console instead of sending.
 
 ## Code Style
 
