@@ -8,6 +8,7 @@ These tests verify performance requirements:
 """
 
 import os
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from unittest.mock import patch
@@ -15,6 +16,7 @@ from unittest.mock import patch
 import psutil
 import pytest
 from fastapi.testclient import TestClient
+from reportlab.pdfgen.canvas import Canvas
 
 from src.api.routes import create_app
 from src.services.pdf_generator import PDFGenerator
@@ -136,6 +138,48 @@ class TestPDFGenerationPerformance:
         for size in results:
             variance = abs(size - avg_size) / avg_size
             assert variance < 0.1, f"PDF size variance too high: {variance:.2%}"
+
+    def test_font_subsetting_never_overlaps(self, sample_sets_30):
+        """Two canvases must never be inside save() at the same time.
+
+        Registered fonts are process-global, and the shared TTFontFace seeks a
+        single byte cursor while subsetting glyphs at save time. An overlap
+        corrupts the read and raises deep inside reportlab.pdfbase.ttfonts —
+        rarely, and only under load, which is what made it a CI flake and an
+        intermittent 500 on the PDF endpoint rather than an obvious bug.
+
+        The sleep widens the window so an unserialized save overlaps every run,
+        making this deterministic instead of another race against a race.
+        """
+        inside = 0
+        overlapped = False
+        counter_lock = threading.Lock()
+        real_save = Canvas.save
+
+        def instrumented_save(canvas_self):
+            nonlocal inside, overlapped
+            with counter_lock:
+                inside += 1
+                overlapped = overlapped or inside > 1
+            try:
+                time.sleep(0.02)
+                return real_save(canvas_self)
+            finally:
+                with counter_lock:
+                    inside -= 1
+
+        def generate_pdf():
+            generator = PDFGenerator(sample_sets_30)
+            with patch("src.services.pdf_generator.get_symbol_file", return_value=None):
+                return len(generator.generate().read())
+
+        with patch.object(Canvas, "save", instrumented_save):
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                futures = [executor.submit(generate_pdf) for _ in range(8)]
+                results = [future.result(timeout=60) for future in as_completed(futures)]
+
+        assert not overlapped, "concurrent saves overlapped; font subsetting is not serialized"
+        assert all(size > 0 for size in results)
 
 
 @pytest.mark.performance
