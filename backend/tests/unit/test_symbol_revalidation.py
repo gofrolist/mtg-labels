@@ -161,3 +161,53 @@ class TestManifestCompatibility:
         manager.save_symbol("s", SVG, "111", '"etag-1"', "then")
         manager.record_symbol_version("s", "222")
         assert manager.symbol_validators("s") == ('"etag-1"', "then")
+
+    def test_empty_version_survives_a_reload(self, tmp_path):
+        """A URL with no version query has version "" — a value, not a gap.
+
+        Every mana symbol is in this shape, so dropping it on load would miss
+        on every boot and revalidate the symbol over the network for nothing.
+        """
+        manager = CacheManager(symbol_cache_dir=tmp_path)
+        manager.save_symbol("mana_white_W", SVG, "", '"etag-1"')
+        assert manager.get_symbol("mana_white_W", "") is not None
+
+        reloaded = CacheManager(symbol_cache_dir=tmp_path)
+        assert reloaded.get_symbol("mana_white_W", "") is not None
+        assert reloaded.symbol_validators("mana_white_W") == ('"etag-1"', None)
+
+    def test_empty_validators_are_not_recorded(self, tmp_path):
+        """An empty ETag cannot go in a conditional request, so it is dropped."""
+        (tmp_path / "versions.json").write_text(
+            json.dumps({"s": {"version": "111", "etag": "", "last_modified": ""}})
+        )
+        manager = CacheManager(symbol_cache_dir=tmp_path)
+        manager.save_symbol("s", SVG)
+        assert manager.get_symbol("s", "111") is not None
+        assert manager.symbol_validators("s") == (None, None)
+
+    def test_save_records_validators_without_a_version(self, tmp_path):
+        """Validators describe the bytes just written, version or not.
+
+        Keeping the previous file's ETag would make the next revalidation send
+        a stale If-None-Match and take a needless 200.
+        """
+        manager = CacheManager(symbol_cache_dir=tmp_path)
+        manager.save_symbol("s", SVG, "111", '"etag-1"', "then")
+        manager.save_symbol("s", SVG, None, '"etag-2"')
+        assert manager.symbol_validators("s") == ('"etag-2"', "then")
+        # The version is left alone, not cleared.
+        assert manager.get_symbol("s", "111") is not None
+
+    def test_manifest_write_failure_does_not_break_the_save(self, tmp_path):
+        """The manifest is an optimization; failing to write it must not raise.
+
+        Serialization runs inside the handler, so an entry that will not encode
+        is logged rather than thrown up through save_symbol into fetch_symbol.
+        """
+        manager = CacheManager(symbol_cache_dir=tmp_path)
+        with patch("src.cache.cache_manager.json.dumps", side_effect=TypeError("not serializable")):
+            manager.save_symbol("s", SVG, "111")  # must not raise
+
+        # The SVG still landed on disk even though the manifest write failed.
+        assert manager.get_symbol("s") is not None

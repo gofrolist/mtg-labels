@@ -209,8 +209,17 @@ class CacheManager:
         if isinstance(value, str):
             return {"version": value}
         if isinstance(value, dict):
-            entry = {}
-            for key in ("version", "etag", "last_modified"):
+            entry: dict[str, str] = {}
+            # An empty version is meaningful, not missing: a symbol URL with no
+            # query string has version "" (every mana symbol). Dropping it would
+            # stop the entry round-tripping, so the icon would miss on every
+            # boot and be revalidated over the network for nothing.
+            version = value.get("version")
+            if isinstance(version, str):
+                entry["version"] = version
+            # An empty validator, by contrast, cannot go in a conditional
+            # request — keeping it would only bloat the manifest.
+            for key in ("etag", "last_modified"):
                 field = value.get(key)
                 if isinstance(field, str) and field:
                     entry[key] = field
@@ -272,17 +281,20 @@ class CacheManager:
             return
         path = self._versions_path()
         tmp = path.with_name(f"{path.name}.tmp")
-        # One line per symbol: the manifest is committed as a warm cache, and a
-        # line-per-entry diff stays reviewable where a pretty-printed nested
-        # object would balloon to five lines per icon.
-        entries = ",\n".join(
-            f"{json.dumps(k)}: {json.dumps(v, sort_keys=True, separators=(',', ':'))}"
-            for k, v in sorted(self._symbol_versions.items())
-        )
         try:
+            # One line per symbol: the manifest is committed as a warm cache,
+            # and a line-per-entry diff stays reviewable where a pretty-printed
+            # nested object would balloon to five lines per icon. Serializing
+            # inside the handler keeps an unexpected entry value (TypeError)
+            # from escaping into the caller's fetch — the manifest is an
+            # optimization, so failing to write it must never fail the fetch.
+            entries = ",\n".join(
+                f"{json.dumps(k)}: {json.dumps(v, sort_keys=True, separators=(',', ':'))}"
+                for k, v in sorted(self._symbol_versions.items())
+            )
             tmp.write_text(f"{{\n{entries}\n}}\n" if entries else "{}\n", encoding="utf-8")
             tmp.replace(path)  # atomic on POSIX
-        except OSError as e:
+        except (OSError, TypeError, ValueError) as e:
             logger.error(f"Error saving symbol version manifest: {e}")
 
     @contextmanager
@@ -402,7 +414,10 @@ class CacheManager:
                 pass
             return None
 
-        if version is not None:
+        # Record the validators even without a version. They describe the bytes
+        # just written, so keeping the previous file's ETag would make the next
+        # revalidation send a stale If-None-Match and take a needless 200.
+        if version is not None or etag or last_modified:
             self.record_symbol_version(set_id, version, etag, last_modified)
 
         return str(symbol_file)
@@ -428,7 +443,7 @@ class CacheManager:
     def record_symbol_version(
         self,
         set_id: str,
-        version: str,
+        version: str | None = None,
         etag: str | None = None,
         last_modified: str | None = None,
     ) -> None:
@@ -436,7 +451,9 @@ class CacheManager:
 
         Used when a conditional request answers 304: the bytes on disk are
         current, only the version the server advertises has moved on. Existing
-        validators are kept when the caller has none to supply.
+        validators are kept when the caller has none to supply, and passing
+        ``version=None`` refreshes the validators while leaving any recorded
+        version as it is.
         """
         safe_id = self._sanitize_symbol_id(set_id)
         if not safe_id:
@@ -444,7 +461,8 @@ class CacheManager:
         with self._symbol_lock:
             manifest = self._load_symbol_versions()
             entry = dict(manifest.get(safe_id, {}))
-            entry["version"] = version
+            if version is not None:
+                entry["version"] = version
             if etag:
                 entry["etag"] = etag
             if last_modified:

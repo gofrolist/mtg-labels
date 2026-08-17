@@ -985,11 +985,11 @@
 "ff405aba-0309-4694-a6d5-e657024f7ad0": {"etag":"\"c26e3f4bfa15fb83aaef14060aecc232\"","last_modified":"Tue, 21 Apr 2026 00:57:02 GMT","version":"1786334400"},
 "ff5503b1-ac4c-4164-b7e4-6bca31640493": {"etag":"\"53f986615ea8437f7b185c86522b2ed8\"","last_modified":"Sat, 10 Dec 2022 11:19:24 GMT","version":"1786334400"},
 "ff711291-dc0f-4b9a-bd3d-663428550d55": {"etag":"\"e6a08637f0732769bb94717a73631424\"","last_modified":"Sat, 10 Dec 2022 11:19:28 GMT","version":"1786334400"},
-"mana_black_B": {},
-"mana_blue_U": {},
-"mana_colorless_C": {},
-"mana_green_G": {},
-"mana_multicolor_PW": {},
-"mana_red_R": {},
-"mana_white_W": {}
+"mana_black_B": {"version":""},
+"mana_blue_U": {"version":""},
+"mana_colorless_C": {"version":""},
+"mana_green_G": {"version":""},
+"mana_multicolor_PW": {"version":""},
+"mana_red_R": {"version":""},
+"mana_white_W": {"version":""}
 }
