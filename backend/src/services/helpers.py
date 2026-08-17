@@ -1,6 +1,9 @@
 """Helper functions for MTG Label Generator."""
 
+import hashlib
 import time
+from pathlib import Path
+from typing import NamedTuple
 
 import defusedxml.ElementTree as DefusedET
 import requests
@@ -113,11 +116,45 @@ def letter_baseline_y(
     return row1_cap_top - cap_height_ratio * letter_size
 
 
-def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str) -> str | None:
-    """
-    Download a symbol SVG and cache it locally.
+class SymbolFetch(NamedTuple):
+    """Result of fetching a symbol: its cached path and how it got there.
 
-    Checks the file cache first, downloads from URL if not cached.
+    ``outcome`` is one of ``"cached"`` (version already current),
+    ``"revalidated"`` (version bumped but the server confirmed the bytes with a
+    304), ``"downloaded"``, or ``"failed"``.
+    """
+
+    path: str | None
+    outcome: str
+
+
+def _content_etag(path: str) -> str | None:
+    """Derive the ETag Scryfall would serve for an already-cached file.
+
+    Their CDN's ETag is the MD5 of the file content, so hashing the cached bytes
+    reproduces it exactly. That lets a file cached before validators were
+    recorded still be revalidated with ``If-None-Match``: matching bytes answer
+    304, genuinely changed artwork answers 200 and is downloaded. If the CDN ever
+    stopped deriving ETags this way the header simply would not match, and the
+    request degrades to a normal download.
+    """
+    try:
+        digest = hashlib.md5(Path(path).read_bytes(), usedforsecurity=False).hexdigest()
+    except OSError as e:
+        logger.warning(f"Could not hash cached symbol {path}: {e}")
+        return None
+    return f'"{digest}"'
+
+
+def fetch_symbol(symbol_id: str, symbol_url: str, description: str) -> SymbolFetch:
+    """
+    Fetch a symbol SVG into the local cache, revalidating when possible.
+
+    Checks the file cache first. When the cached file exists but the icon
+    version has moved on, the current copy is revalidated with a conditional
+    request rather than downloaded again — Scryfall rolls the version query for
+    every set at once (a periodic cache-buster), so a roll otherwise means
+    re-downloading roughly a thousand unchanged icons.
 
     Args:
         symbol_id: Cache key for the symbol
@@ -125,7 +162,7 @@ def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str)
         description: Human-readable description for logging
 
     Returns:
-        Local file path to cached symbol, or None if unavailable
+        The cached path and the outcome (see :class:`SymbolFetch`).
     """
     cache_manager = get_cache_manager()
 
@@ -137,44 +174,93 @@ def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str)
     cached_path = cache_manager.get_symbol(symbol_id, version)
     if cached_path:
         logger.debug(f"Symbol file found in cache: {cached_path}")
-        return cached_path
-
-    logger.info(f"Downloading symbol from {symbol_url} for {description}")
+        return SymbolFetch(cached_path, "cached")
 
     # Validate URL is from Scryfall to prevent SSRF
     if not symbol_url.startswith("https://svgs.scryfall.io/"):
         logger.warning(f"Rejected non-Scryfall symbol URL: {symbol_url}")
-        return None
+        return SymbolFetch(None, "failed")
+
+    # A copy on disk under an older version can be confirmed with a conditional
+    # request: 304 means the bytes are still current and only the version moved.
+    stale_path = cache_manager.get_symbol(symbol_id)
+    headers: dict[str, str] = {}
+    if stale_path:
+        etag, last_modified = cache_manager.symbol_validators(symbol_id)
+        etag = etag or _content_etag(stale_path)
+        if etag:
+            headers["If-None-Match"] = etag
+        if last_modified:
+            headers["If-Modified-Since"] = last_modified
+
+    if headers:
+        logger.debug(f"Revalidating symbol {symbol_url} for {description}")
+    else:
+        logger.info(f"Downloading symbol from {symbol_url} for {description}")
 
     try:
         time.sleep(SCRYFALL_API_RATE_LIMIT_DELAY)
-        response = requests.get(symbol_url, timeout=30)
+        response = requests.get(symbol_url, timeout=30, headers=headers)
     except requests.RequestException as e:
         logger.error(f"Error downloading symbol: {e}")
-        return None
+        return SymbolFetch(None, "failed")
+
+    # 304: the cached bytes are current; record the version so the next boot is
+    # a plain cache hit, and keep the validators the server just confirmed.
+    if response.status_code == 304 and stale_path:
+        cache_manager.record_symbol_version(
+            symbol_id,
+            version,
+            response.headers.get("ETag"),
+            response.headers.get("Last-Modified"),
+        )
+        logger.debug(f"Symbol unchanged, revalidated from cache: {stale_path}")
+        return SymbolFetch(stale_path, "revalidated")
 
     if response.status_code != 200:
         logger.error(f"Failed to download symbol, status: {response.status_code}")
-        return None
+        return SymbolFetch(None, "failed")
 
     # Reject excessively large files (max 1MB for an SVG symbol)
     max_size = 1024 * 1024
     if len(response.content) > max_size:
         logger.warning(f"Symbol file too large ({len(response.content)} bytes), rejecting")
-        return None
+        return SymbolFetch(None, "failed")
 
     # Validate SVG content before saving
     if not response.content.lstrip().startswith((b"<svg", b"<?xml")):
         logger.warning("Downloaded content is not valid SVG, rejecting")
-        return None
+        return SymbolFetch(None, "failed")
 
-    cached_path = cache_manager.save_symbol(symbol_id, response.content, version)
+    cached_path = cache_manager.save_symbol(
+        symbol_id,
+        response.content,
+        version,
+        response.headers.get("ETag"),
+        response.headers.get("Last-Modified"),
+    )
     if cached_path:
         logger.info(f"Saved symbol to cache: {cached_path}")
-        return cached_path
-    else:
-        logger.error("Failed to save symbol to cache")
-        return None
+        return SymbolFetch(cached_path, "downloaded")
+    logger.error("Failed to save symbol to cache")
+    return SymbolFetch(None, "failed")
+
+
+def download_and_cache_symbol(symbol_id: str, symbol_url: str, description: str) -> str | None:
+    """
+    Download a symbol SVG and cache it locally.
+
+    Thin wrapper over :func:`fetch_symbol` for callers that only need the path.
+
+    Args:
+        symbol_id: Cache key for the symbol
+        symbol_url: URL to download the symbol from
+        description: Human-readable description for logging
+
+    Returns:
+        Local file path to cached symbol, or None if unavailable
+    """
+    return fetch_symbol(symbol_id, symbol_url, description).path
 
 
 def get_symbol_file(set_data: dict) -> str | None:

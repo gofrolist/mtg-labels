@@ -164,7 +164,7 @@ class TestVersionAwareSymbolCache:
 
         # Manifest persisted to disk.
         manifest = json.loads((cache_dir / "versions.json").read_text())
-        assert manifest == {"set-id": "1783915200"}
+        assert manifest == {"set-id": {"version": "1783915200"}}
         # Matching version is a hit.
         assert cache_manager.get_symbol("set-id", "1783915200") == str(cache_dir / "set-id.svg")
 
@@ -238,7 +238,7 @@ class TestVersionAwareSymbolCache:
 
         # A single flush persisted both entries.
         manifest = json.loads((cache_dir / "versions.json").read_text())
-        assert manifest == {"a": "1", "b": "2"}
+        assert manifest == {"a": {"version": "1"}, "b": {"version": "2"}}
 
     def test_nested_batch_flushes_once_at_outermost_exit(self, tmp_path):
         """Only the outermost batch flushes; the inner exit does not."""

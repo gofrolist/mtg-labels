@@ -1,7 +1,7 @@
 """Unit tests for helper functions."""
 
 from io import BytesIO
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 import requests
@@ -180,6 +180,7 @@ class TestGetSymbolFile:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.content = b"<svg></svg>"
+        mock_response.headers = {}
 
         set_data = {
             "id": "test-set-id",
@@ -192,9 +193,14 @@ class TestGetSymbolFile:
             # Should attempt to download
             assert result is not None
             assert result == str(cached_file)
-            mock_cache_manager.get_symbol.assert_called_once_with("test-set-id", "")
+            # Looked up at the current version, then version-agnostically to see
+            # whether an older copy could be revalidated instead.
+            assert mock_cache_manager.get_symbol.call_args_list == [
+                call("test-set-id", ""),
+                call("test-set-id"),
+            ]
             mock_cache_manager.save_symbol.assert_called_once_with(
-                "test-set-id", b"<svg></svg>", ""
+                "test-set-id", b"<svg></svg>", "", None, None
             )
 
     def test_get_symbol_file_download_error(self, tmp_path, monkeypatch):
@@ -218,7 +224,10 @@ class TestGetSymbolFile:
         ):
             result = get_symbol_file(set_data)
             assert result is None
-            mock_cache_manager.get_symbol.assert_called_once_with("test-set-id", "")
+            assert mock_cache_manager.get_symbol.call_args_list == [
+                call("test-set-id", ""),
+                call("test-set-id"),
+            ]
             # save_symbol should not be called on error
             mock_cache_manager.save_symbol.assert_not_called()
 

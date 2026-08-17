@@ -57,7 +57,7 @@ class CacheManager:
         # access is guarded by a reentrant lock. Batching (see
         # `batch_symbol_writes`) is per-thread so the preload deferring its own
         # writes never withholds an unrelated request thread's write.
-        self._symbol_versions: dict[str, str] | None = None
+        self._symbol_versions: dict[str, dict[str, str]] | None = None
         self._symbol_lock = threading.RLock()
         self._batch = threading.local()
 
@@ -198,13 +198,45 @@ class CacheManager:
         """Path to the JSON manifest mapping symbol id -> cached version."""
         return self.symbol_cache_dir / "versions.json"
 
-    def _load_symbol_versions(self) -> dict[str, str]:
-        """Load (and memoize) the symbol version manifest.
+    @staticmethod
+    def _normalize_entry(value: object) -> dict[str, str]:
+        """Coerce a manifest value into the ``{version, etag, last_modified}`` shape.
+
+        Entries were originally a bare version string. Those are still read as a
+        version with no HTTP validators — such an icon simply cannot be
+        revalidated cheaply until its next fetch records an ETag.
+        """
+        if isinstance(value, str):
+            return {"version": value}
+        if isinstance(value, dict):
+            entry: dict[str, str] = {}
+            # An empty version is meaningful, not missing: a symbol URL with no
+            # query string has version "" (every mana symbol). Dropping it would
+            # stop the entry round-tripping, so the icon would miss on every
+            # boot and be revalidated over the network for nothing.
+            version = value.get("version")
+            if isinstance(version, str):
+                entry["version"] = version
+            # An empty validator, by contrast, cannot go in a conditional
+            # request — keeping it would only bloat the manifest.
+            for key in ("etag", "last_modified"):
+                field = value.get(key)
+                if isinstance(field, str) and field:
+                    entry[key] = field
+            return entry
+        return {}
+
+    def _load_symbol_versions(self) -> dict[str, dict[str, str]]:
+        """Load (and memoize) the symbol manifest.
 
         Keeping filenames stable (``{id}.svg``) while recording the version in a
         sidecar manifest lets a committed warm cache stay valid across restarts
         — only genuinely bumped icons re-download, rather than the whole set
         being re-fetched on every boot.
+
+        Each entry also carries the ETag / Last-Modified served with the file,
+        so a version bump can be settled with a conditional request instead of a
+        download (see :meth:`symbol_validators`).
 
         Callers must hold ``self._symbol_lock`` before mutating the returned
         dict.
@@ -217,7 +249,7 @@ class CacheManager:
                         data = json.loads(path.read_text(encoding="utf-8"))
                         # Guard against a corrupt/unexpected manifest shape.
                         self._symbol_versions = (
-                            {str(k): str(v) for k, v in data.items()}
+                            {str(k): self._normalize_entry(v) for k, v in data.items()}
                             if isinstance(data, dict)
                             else {}
                         )
@@ -250,12 +282,19 @@ class CacheManager:
         path = self._versions_path()
         tmp = path.with_name(f"{path.name}.tmp")
         try:
-            tmp.write_text(
-                json.dumps(self._symbol_versions, sort_keys=True, indent=0) + "\n",
-                encoding="utf-8",
+            # One line per symbol: the manifest is committed as a warm cache,
+            # and a line-per-entry diff stays reviewable where a pretty-printed
+            # nested object would balloon to five lines per icon. Serializing
+            # inside the handler keeps an unexpected entry value (TypeError)
+            # from escaping into the caller's fetch — the manifest is an
+            # optimization, so failing to write it must never fail the fetch.
+            entries = ",\n".join(
+                f"{json.dumps(k)}: {json.dumps(v, sort_keys=True, separators=(',', ':'))}"
+                for k, v in sorted(self._symbol_versions.items())
             )
+            tmp.write_text(f"{{\n{entries}\n}}\n" if entries else "{}\n", encoding="utf-8")
             tmp.replace(path)  # atomic on POSIX
-        except OSError as e:
+        except (OSError, TypeError, ValueError) as e:
             logger.error(f"Error saving symbol version manifest: {e}")
 
     @contextmanager
@@ -306,7 +345,7 @@ class CacheManager:
         # a re-download of the current icon.
         if expected_version is not None:
             with self._symbol_lock:
-                if self._load_symbol_versions().get(safe_id) != expected_version:
+                if self._load_symbol_versions().get(safe_id, {}).get("version") != expected_version:
                     return None
 
         # Validate file (check if it's not empty and readable)
@@ -330,7 +369,14 @@ class CacheManager:
             logger.error(f"Error validating symbol file {symbol_file}: {e}")
             return None
 
-    def save_symbol(self, set_id: str, content: bytes, version: str | None = None) -> str | None:
+    def save_symbol(
+        self,
+        set_id: str,
+        content: bytes,
+        version: str | None = None,
+        etag: str | None = None,
+        last_modified: str | None = None,
+    ) -> str | None:
         """
         Save symbol to file cache.
 
@@ -341,6 +387,8 @@ class CacheManager:
                 :meth:`symbol_version`). When provided, subsequent
                 :meth:`get_symbol` calls with a different version miss and
                 re-download. Pass ``None`` to leave the manifest untouched.
+            etag: ``ETag`` response header, stored for conditional revalidation.
+            last_modified: ``Last-Modified`` response header, same.
 
         Returns:
             Path to saved file or None on error
@@ -366,12 +414,61 @@ class CacheManager:
                 pass
             return None
 
-        if version is not None:
-            with self._symbol_lock:
-                self._load_symbol_versions()[safe_id] = version
-                self._save_symbol_versions()
+        # Record the validators even without a version. They describe the bytes
+        # just written, so keeping the previous file's ETag would make the next
+        # revalidation send a stale If-None-Match and take a needless 200.
+        if version is not None or etag or last_modified:
+            self.record_symbol_version(set_id, version, etag, last_modified)
 
         return str(symbol_file)
+
+    def symbol_validators(self, set_id: str) -> tuple[str | None, str | None]:
+        """Return the cached ``(etag, last_modified)`` for a symbol.
+
+        Feeding these back as ``If-None-Match`` / ``If-Modified-Since`` lets a
+        version bump be settled with a 304 instead of re-downloading bytes that
+        did not change. Scryfall rolls the icon version query for *every* set at
+        once (a periodic cache-buster), so without this a single roll would
+        re-download the entire icon set.
+
+        Returns ``(None, None)`` when nothing is recorded for the symbol.
+        """
+        safe_id = self._sanitize_symbol_id(set_id)
+        if not safe_id:
+            return None, None
+        with self._symbol_lock:
+            entry = self._load_symbol_versions().get(safe_id, {})
+        return entry.get("etag"), entry.get("last_modified")
+
+    def record_symbol_version(
+        self,
+        set_id: str,
+        version: str | None = None,
+        etag: str | None = None,
+        last_modified: str | None = None,
+    ) -> None:
+        """Record a symbol's version and validators without touching the file.
+
+        Used when a conditional request answers 304: the bytes on disk are
+        current, only the version the server advertises has moved on. Existing
+        validators are kept when the caller has none to supply, and passing
+        ``version=None`` refreshes the validators while leaving any recorded
+        version as it is.
+        """
+        safe_id = self._sanitize_symbol_id(set_id)
+        if not safe_id:
+            return
+        with self._symbol_lock:
+            manifest = self._load_symbol_versions()
+            entry = dict(manifest.get(safe_id, {}))
+            if version is not None:
+                entry["version"] = version
+            if etag:
+                entry["etag"] = etag
+            if last_modified:
+                entry["last_modified"] = last_modified
+            manifest[safe_id] = entry
+        self._save_symbol_versions()
 
     def invalidate_symbol(self, set_id: str) -> None:
         """
