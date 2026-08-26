@@ -21,7 +21,15 @@ export function initSentry(): void {
       /Failed to fetch dynamically imported module/i,
       /Importing a module script failed/i,
       /error loading dynamically imported module/i,
+      // Browser-extension content scripts injected into the page. Their
+      // uncaught errors reach window.onerror and get billed to us; none of
+      // this code is ours.
+      /runtime\.sendMessage/i,
+      /Extension context invalidated/i,
+      /message channel closed before a response was received/i,
     ],
+    // Same reason: drop anything whose stack points at extension-injected code.
+    denyUrls: [/^chrome-extension:\/\//i, /^moz-extension:\/\//i, /^safari-(web-)?extension:\/\//i],
     tracesSampleRate: 0.1,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE,
     // Per-deploy regression grouping (git SHA injected at build time).
