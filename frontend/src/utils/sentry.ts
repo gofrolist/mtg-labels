@@ -27,9 +27,20 @@ export function initSentry(): void {
       /runtime\.sendMessage/i,
       /Extension context invalidated/i,
       /message channel closed before a response was received/i,
+      // In-app browsers (Facebook/Instagram Android WebView) inject their own
+      // instrumentation and lose the JS↔Java bridge when the WebView is torn
+      // down. Their failures surface as our uncaught errors.
+      /Java object is gone/i,
+      /Error invoking postMessage/i,
     ],
-    // Same reason: drop anything whose stack points at extension-injected code.
-    denyUrls: [/^chrome-extension:\/\//i, /^moz-extension:\/\//i, /^safari-(web-)?extension:\/\//i],
+    // Same reason: drop anything whose stack points at extension-injected or
+    // in-app-browser-injected code (iabjs:// is the Facebook WebView scheme).
+    denyUrls: [
+      /^chrome-extension:\/\//i,
+      /^moz-extension:\/\//i,
+      /^safari-(web-)?extension:\/\//i,
+      /^iabjs:\/\//i,
+    ],
     tracesSampleRate: 0.1,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE,
     // Per-deploy regression grouping (git SHA injected at build time).
