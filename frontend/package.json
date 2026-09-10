@@ -34,7 +34,7 @@
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.0",
     "@vitest/coverage-v8": "^4.1.11",
-    "@vitest/ui": "^4.1.11",
+    "@vitest/ui": "^5.0.0",
     "ajv": "^8.20.0",
     "autoprefixer": "^10.5.4",
     "eslint": "^10",
