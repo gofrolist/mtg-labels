@@ -43,7 +43,7 @@
     "globals": "^17.12.0",
     "jsdom": "^30.0.1",
     "orval": "^8.35.0",
-    "postcss": "^8.5.26",
+    "postcss": "^8.5.28",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
